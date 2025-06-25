@@ -14,7 +14,7 @@ async function lookupPA() {
     const response = await fetch(geocodeURL);
     const data = await response.json();
 
-    // ADD THIS LINE
+    // Debug: show full geocoding result in console
     console.log("Geocoding Response:", data);
 
     if (data.status !== "OK") {
@@ -46,7 +46,7 @@ async function lookupPA() {
     }
 
   } catch (err) {
-    console.error(err);
+    console.error("Error during PA lookup:", err);
     resultBox.innerHTML = "Something went wrong.";
   }
 }
