@@ -7,15 +7,18 @@ async function lookupPA() {
     return;
   }
 
-  const apiKey = "YAIzaSyBf5czoCIvUjjMywliXA6jfdApDPL4hbek"; // Replace with your real API key
+  const apiKey = "AIzaSyBf5czoCIvUjjMywliXA6jfdApDPL4hbek";
   const geocodeURL = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
 
   try {
     const response = await fetch(geocodeURL);
     const data = await response.json();
 
+    // ADD THIS LINE
+    console.log("Geocoding Response:", data);
+
     if (data.status !== "OK") {
-      resultBox.innerHTML = "Address not found.";
+      resultBox.innerHTML = `Address not found. (${data.status})`;
       return;
     }
 
