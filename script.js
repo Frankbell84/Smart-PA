@@ -7,7 +7,7 @@ async function lookupPA() {
     return;
   }
 
-  const apiKey = "YOUR_API_KEY"; // Replace with your real API key
+  const apiKey = "YAIzaSyBf5czoCIvUjjMywliXA6jfdApDPL4hbek"; // Replace with your real API key
   const geocodeURL = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
 
   try {
