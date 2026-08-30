@@ -1,8 +1,19 @@
-# NoxLock Security Architecture — Draft 0.1
+# NoxLock Security Architecture — Draft 0.2
 
 ## Security objective
 
 NoxLock stores user-imported photos locally in multiple cryptographically independent vaults. Possession of one valid vault passcode must not grant access to the plaintext contents of another vault.
+
+## Hard access rule
+
+A NoxLock vault is unlocked only by its own NoxLock passcode.
+
+- No Face ID unlock.
+- No Touch ID unlock.
+- No Apple device-passcode fallback.
+- No recovery flow that substitutes the iPhone passcode for a NoxLock vault passcode.
+
+The operating system may still protect the application container and Keychain at the platform level, but platform authentication must never become an alternate NoxLock vault-unlock path.
 
 ## Threat model
 
@@ -15,6 +26,7 @@ V1 explicitly considers:
 5. Plaintext leakage through thumbnails, temporary files, logs, caches, app-switcher snapshots, or backups.
 6. App backgrounding while a vault is open.
 7. Accidental persistence of imported source metadata.
+8. Partial failure during a requested move from Apple Photos into NoxLock.
 
 V1 does **not** promise protection against every compromised/jailbroken device, malicious OS, sophisticated live-memory extraction, or physical coercion. Marketing must not claim otherwise.
 
@@ -38,7 +50,9 @@ The raw passcode is never persisted.
 
 ## Key handling
 
-Sensitive long-lived key material uses iOS Keychain only where doing so is compatible with vault isolation and the passcode-routing design. Keychain accessibility must be restricted appropriately. Decrypted vault keys should live in memory only for the active session and be discarded when locking/backgrounding.
+Sensitive long-lived key material uses iOS Keychain only where doing so is compatible with vault isolation and the passcode-routing design. Keychain accessibility must be restricted appropriately. Keychain storage must not introduce Face ID, Touch ID, or device-passcode fallback as a vault-unlock mechanism.
+
+Decrypted vault keys should live in memory only for the active session and be discarded when locking/backgrounding.
 
 ## Files
 
@@ -50,7 +64,29 @@ Entering background/inactive state locks the active vault and clears decrypted s
 
 ## Import behavior
 
-Importing creates an encrypted app-managed copy. NoxLock must clearly tell users that importing does not itself delete the original from Apple Photos. Temporary plaintext buffers/files must be minimized and destroyed/released promptly.
+Every import presents two explicit modes:
+
+### Copy to Vault
+
+1. Read the selected photo through the permitted Apple Photos interface.
+2. Encrypt the photo into the active vault.
+3. Verify that the encrypted object and required metadata were committed successfully.
+4. Leave the source photo in Apple Photos untouched.
+
+### Move to Vault
+
+"Move" is implemented as a verified encrypted import followed by a separate request to delete the source asset from Apple Photos.
+
+1. Read the selected source photo.
+2. Encrypt it into the active vault.
+3. Verify the encrypted object can be authenticated/decrypted and that required metadata was committed.
+4. Only after successful verification, request deletion of the original through Apple's supported Photos APIs.
+5. If deletion is denied, cancelled, or fails, report the operation as **Copied**, never **Moved**.
+6. NoxLock must never delete the source first and attempt encryption afterward.
+
+Any Apple-provided authorization or confirmation UI required for deletion is respected; NoxLock must not attempt to bypass it.
+
+Temporary plaintext buffers/files must be minimized and destroyed/released promptly. Importing must never imply that the original disappeared unless deletion actually succeeded.
 
 ## Logging and telemetry
 
@@ -64,5 +100,7 @@ Before describing NoxLock publicly as a secure photo vault, perform:
 - backup/container inspection;
 - lifecycle/snapshot leakage tests;
 - brute-force/rate-limit testing;
+- copy/move transaction failure testing;
+- Photos permission/deletion behavior testing;
 - dependency review;
 - independent security review of cryptographic architecture and implementation.
