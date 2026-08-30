@@ -9,27 +9,30 @@ enum KeyDerivationError: Error {
 }
 
 protocol PasswordKeyDeriving {
-    func deriveKey(passcode: String, salt: Data, pepper: Data) throws -> SymmetricKey
+    func deriveKey(passcode: String, installationSalt: Data, pepper: Data) throws -> SymmetricKey
 }
 
 /// Production candidate KDF for NoxLock.
 ///
-/// The passcode is first keyed with the device-local pepper using HMAC-SHA256,
-/// then fed to Argon2id with a per-vault random salt. This prevents ambiguous
-/// concatenation and means a stolen app container is not enough to test PIN
-/// guesses without also recovering the device-local Keychain pepper.
+/// Every unlock attempt runs this KDF before any vault-file lookup. That avoids
+/// a simple timing signal where nonexistent passcodes would otherwise fail much
+/// faster than valid ones.
 ///
-/// Release gate: benchmark these Argon2id parameters on the minimum supported
-/// iPhone and independently review the dependency + integration before launch.
+/// The passcode is first keyed with the device-local pepper using HMAC-SHA256,
+/// then fed to Argon2id with a random installation salt. The pepper and salt are
+/// both device-local in V1; neither is an alternate unlock credential.
+///
+/// Release gate: benchmark these parameters on the minimum supported iPhone and
+/// independently review the Argon2 dependency + integration before launch.
 struct ProductionArgon2idKDF: PasswordKeyDeriving {
     static let memoryKiB = 65_536   // 64 MiB
     static let iterations = 3
     static let parallelism = 2
     static let outputByteCount = 32
 
-    func deriveKey(passcode: String, salt: Data, pepper: Data) throws -> SymmetricKey {
+    func deriveKey(passcode: String, installationSalt: Data, pepper: Data) throws -> SymmetricKey {
         guard PasscodePolicy.isValid(passcode) else { throw KeyDerivationError.invalidPasscode }
-        guard salt.count >= 16 else { throw KeyDerivationError.invalidSalt }
+        guard installationSalt.count >= 16 else { throw KeyDerivationError.invalidSalt }
         guard pepper.count == 32 else { throw KeyDerivationError.invalidOutput }
 
         let pepperKey = SymmetricKey(data: pepper)
@@ -40,7 +43,7 @@ struct ProductionArgon2idKDF: PasswordKeyDeriving {
 
         let result = try Argon2Swift.hashPasswordBytes(
             password: Data(prehash),
-            salt: Salt(bytes: salt),
+            salt: Salt(bytes: installationSalt),
             iterations: Self.iterations,
             memory: Self.memoryKiB,
             parallelism: Self.parallelism,
@@ -56,9 +59,9 @@ struct ProductionArgon2idKDF: PasswordKeyDeriving {
 }
 
 enum VaultKeySchedule {
-    static func locatorKey(from pepper: Data) -> SymmetricKey {
+    static func locatorKey(from unlockKey: SymmetricKey) -> SymmetricKey {
         HKDF<SHA256>.deriveKey(
-            inputKeyMaterial: SymmetricKey(data: pepper),
+            inputKeyMaterial: unlockKey,
             salt: Data("noxlock.locator.v1".utf8),
             info: Data(),
             outputByteCount: 32
