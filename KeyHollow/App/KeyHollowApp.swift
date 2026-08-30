@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 @main
@@ -5,9 +6,20 @@ struct KeyHollowApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var session = VaultSession()
 
+    private var isHostedUnitTest: Bool {
+        NSClassFromString("XCTestCase") != nil
+    }
+
     var body: some Scene {
         WindowGroup {
-            ZStack {
+            if isHostedUnitTest {
+                // Security unit tests are hosted by the app executable so they can
+                // import internal crypto types. Avoid bootstrapping the production
+                // navigation hierarchy in that test host; the prior CI failure was
+                // a SwiftUI navigation-bar assertion before XCTest could start.
+                Color.clear
+            } else {
+                ZStack {
                 RootView()
                     .environmentObject(session)
                     .privacySensitive()
