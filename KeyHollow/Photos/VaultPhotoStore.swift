@@ -75,8 +75,6 @@ actor VaultPhotoStore {
             try secureWrite(originalCiphertext, to: originalURL)
             try secureWrite(thumbnailCiphertext, to: thumbnailURL)
 
-            // Verify encrypted objects before committing the record to the
-            // encrypted manifest. A failed verification leaves no manifest entry.
             let verifiedOriginal = try CryptoBox.open(
                 Data(contentsOf: originalURL),
                 using: VaultPhotoKeySchedule.photoKey(from: vaultKey, id: id)
@@ -122,12 +120,26 @@ actor VaultPhotoStore {
         var manifest = try loadManifest()
         manifest.photos.removeAll { $0.id == record.id }
 
-        // Commit the manifest first so a crash cannot leave a manifest pointing
-        // to deleted data. Orphaned encrypted blobs are safer than broken records.
         try saveManifest(manifest)
 
         try? fileManager.removeItem(at: root.appendingPathComponent(record.blobName))
         try? fileManager.removeItem(at: root.appendingPathComponent(record.thumbnailName))
+    }
+
+    static func destroyVaultData(vaultID: UUID) throws {
+        let fileManager = FileManager.default
+        let appSupport = try fileManager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let target = appSupport
+            .appendingPathComponent("KeyHollow/PhotoData", isDirectory: true)
+            .appendingPathComponent(vaultID.uuidString.lowercased(), isDirectory: true)
+
+        guard fileManager.fileExists(atPath: target.path) else { return }
+        try fileManager.removeItem(at: target)
     }
 
     private var manifestURL: URL {
