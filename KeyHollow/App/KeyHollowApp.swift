@@ -20,17 +20,18 @@ struct KeyHollowApp: App {
                 Color.clear
             } else {
                 ZStack {
-                RootView()
-                    .environmentObject(session)
-                    .privacySensitive()
+                    RootView()
+                        .environmentObject(session)
+                        .privacySensitive()
 
-                // A dedicated opaque cover is rendered whenever the scene is not
-                // active so iOS app-switcher snapshots never intentionally contain
-                // an open vault/photo. Session state is also destroyed below.
-                if scenePhase != .active {
-                    PrivacyShieldView()
-                        .transition(.identity)
-                        .zIndex(10_000)
+                    // A dedicated opaque cover is rendered whenever the scene is not
+                    // active so iOS app-switcher snapshots never intentionally contain
+                    // an open vault/photo. Session state is also destroyed below.
+                    if scenePhase != .active {
+                        PrivacyShieldView()
+                            .transition(.identity)
+                            .zIndex(10_000)
+                    }
                 }
             }
         }
