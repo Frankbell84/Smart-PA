@@ -15,12 +15,15 @@ private struct DecryptedPhoto: Identifiable {
 struct VaultGalleryView: View {
     @EnvironmentObject private var session: VaultSession
 
+    let service: VaultUnlockService
+
     @State private var store: VaultPhotoStore?
     @State private var records: [VaultPhotoRecord] = []
     @State private var thumbnails: [UUID: UIImage] = [:]
     @State private var decryptedPhoto: DecryptedPhoto?
     @State private var showingImportOptions = false
     @State private var showingPicker = false
+    @State private var showingNewVault = false
     @State private var importMode: VaultImportMode = .copy
     @State private var isWorking = false
     @State private var message: String?
@@ -60,7 +63,8 @@ struct VaultGalleryView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Lock") { session.lock() }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+
+                ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
                         showingImportOptions = true
                     } label: {
@@ -68,6 +72,24 @@ struct VaultGalleryView: View {
                     }
                     .disabled(isWorking)
                     .accessibilityLabel("Import photos")
+
+                    Menu {
+                        Button {
+                            showingNewVault = true
+                        } label: {
+                            Label("Create New Vault", systemImage: "lock.badge.plus")
+                        }
+
+                        Button {
+                            session.lock()
+                        } label: {
+                            Label("Lock KeyHollow", systemImage: "lock.fill")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .disabled(isWorking)
+                    .accessibilityLabel("Vault options")
                 }
             }
             .confirmationDialog("Import Photos", isPresented: $showingImportOptions, titleVisibility: .visible) {
@@ -90,6 +112,10 @@ struct VaultGalleryView: View {
                     importPhotos(photos)
                 }
             }
+            .sheet(isPresented: $showingNewVault) {
+                AdditionalVaultSetupView(service: service)
+                    .environmentObject(session)
+            }
             .sheet(item: $decryptedPhoto) { photo in
                 DecryptedPhotoView(photo: photo) {
                     delete(photo.record)
@@ -104,7 +130,14 @@ struct VaultGalleryView: View {
                 Text(message ?? "")
             }
         }
-        .task {
+        .task(id: session.activeVaultID) {
+            // A newly created vault replaces the active session directly. Rebuild
+            // the encrypted photo store for that vault without exposing any list
+            // or count of other vaults on the device.
+            store = nil
+            records = []
+            thumbnails = [:]
+            decryptedPhoto = nil
             await initializeStore()
         }
     }
@@ -198,9 +231,6 @@ struct VaultGalleryView: View {
             }
 
             if importMode == .move, importedCount > 0 {
-                // Never claim a move unless every successfully encrypted item can
-                // be represented by a Photos asset identifier and the batch delete
-                // itself succeeds. If any identifier is unavailable, delete none.
                 let allImportedPhotosAreDeletable = identifiersToDelete.count == importedCount
                 let result: PhotoMoveResult
                 if allImportedPhotosAreDeletable {
