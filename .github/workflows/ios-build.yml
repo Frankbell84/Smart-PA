@@ -1,4 +1,4 @@
-name: NoxLock iOS Build
+name: KeyHollow iOS Build
 
 on:
   push:
@@ -22,14 +22,14 @@ jobs:
         run: xcodegen generate
 
       - name: Resolve packages
-        run: xcodebuild -project NoxLock.xcodeproj -scheme NoxLock -resolvePackageDependencies
+        run: xcodebuild -project KeyHollow.xcodeproj -scheme KeyHollow -resolvePackageDependencies
 
       - name: Build for iOS Simulator
         run: |
           set -o pipefail
           xcodebuild \
-            -project NoxLock.xcodeproj \
-            -scheme NoxLock \
+            -project KeyHollow.xcodeproj \
+            -scheme KeyHollow \
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
             CODE_SIGNING_ALLOWED=NO \

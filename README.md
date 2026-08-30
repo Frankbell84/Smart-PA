@@ -1,6 +1,6 @@
-# NoxLock
+# KeyHollow
 
-NoxLock is a native iOS privacy application built around multiple independent encrypted photo vaults. A valid passcode opens only the vault associated with that passcode; the normal locked interface does not enumerate other vaults.
+KeyHollow is a native iOS privacy application built around multiple independent encrypted photo vaults. A valid passcode opens only the vault associated with that passcode; the normal locked interface does not enumerate other vaults.
 
 ## Product principle
 
@@ -14,15 +14,17 @@ NoxLock is a native iOS privacy application built around multiple independent en
 - Authenticated encryption for photo data and thumbnails
 - iOS Keychain and Data Protection where appropriate
 - Automatic lock when the app leaves the foreground
+- No Face ID, Touch ID, or Apple device-passcode fallback for vault unlock
 - No cloud backend in V1
 - No analytics or advertising SDKs in the secure application path
 - No plaintext vault index exposed by the UI
+- Copy-to-vault and verified move-to-vault import modes
 - No claims of absolute coercion or forensic resistance
 
 ## Engineering rule
 
-NoxLock is a security product first. Cryptographic design, key derivation, secure storage, import/export behavior, caches, thumbnails, backups, logging, and lifecycle handling must be threat-modeled before release. Production security claims require independent review.
+KeyHollow is a security product first. Cryptographic design, key derivation, secure storage, import/export behavior, caches, thumbnails, backups, logging, and lifecycle handling must be threat-modeled before release. Production security claims require independent review.
 
 ## Status
 
-Initial architecture and native iOS implementation are in progress.
+Native iOS implementation is in active development.

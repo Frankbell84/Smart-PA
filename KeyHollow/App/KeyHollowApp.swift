@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct NoxLockApp: App {
+struct KeyHollowApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var session = VaultSession()
 

@@ -1,6 +1,6 @@
-name: NoxLock
+name: KeyHollow
 options:
-  bundleIdPrefix: com.noxlock
+  bundleIdPrefix: com.keyhollow
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -11,26 +11,26 @@ packages:
     exactVersion: 1.0.4
 
 targets:
-  NoxLock:
+  KeyHollow:
     type: application
     platform: iOS
     sources:
-      - path: NoxLock
+      - path: KeyHollow
     dependencies:
       - package: Argon2Swift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.noxlock.app
-        PRODUCT_NAME: NoxLock
+        PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app
+        PRODUCT_NAME: KeyHollow
         SWIFT_VERSION: 5.0
         SWIFT_STRICT_CONCURRENCY: complete
         ENABLE_USER_SCRIPT_SANDBOXING: YES
     info:
-      path: NoxLock/Resources/Info.plist
+      path: KeyHollow/Resources/Info.plist
       properties:
-        CFBundleDisplayName: NoxLock
+        CFBundleDisplayName: KeyHollow
         UILaunchScreen: {}
         UIApplicationSupportsIndirectInputEvents: true
-        NSPhotoLibraryUsageDescription: NoxLock needs access only to photos you choose to copy or move into an encrypted vault.
-        NSPhotoLibraryAddUsageDescription: NoxLock may need Photos access to complete user-requested photo operations.
+        NSPhotoLibraryUsageDescription: KeyHollow needs access only to photos you choose to copy or move into an encrypted vault.
+        NSPhotoLibraryAddUsageDescription: KeyHollow may need Photos access to complete user-requested photo operations.
         ITSAppUsesNonExemptEncryption: false
