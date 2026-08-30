@@ -16,11 +16,12 @@ struct RootView: View {
 
 private struct LockView: View {
     @State private var digits = ""
+    @State private var message: String?
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 18), count: 3)
 
     var body: some View {
-        VStack(spacing: 28) {
+        VStack(spacing: 24) {
             Spacer()
 
             Image(systemName: "lock.shield.fill")
@@ -30,25 +31,52 @@ private struct LockView: View {
                 .font(.title.bold())
                 .tracking(4)
 
-            HStack(spacing: 12) {
-                ForEach(0..<6, id: \.self) { index in
+            HStack(spacing: 7) {
+                ForEach(0..<min(digits.count, PasscodePolicy.maximumLength), id: \.self) { _ in
                     Circle()
-                        .fill(index < digits.count ? Color.primary : Color.secondary.opacity(0.25))
-                        .frame(width: 12, height: 12)
+                        .fill(Color.primary)
+                        .frame(width: 9, height: 9)
+                }
+
+                if digits.isEmpty {
+                    Text("Enter passcode")
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
                 }
             }
-            .accessibilityLabel("Passcode entry")
+            .frame(minHeight: 20)
+            .accessibilityLabel(digits.isEmpty ? "Passcode entry empty" : "Passcode entry contains \(digits.count) digits")
+
+            if let message {
+                Text(message)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
 
             LazyVGrid(columns: columns, spacing: 18) {
                 ForEach(1...9, id: \.self) { value in key(String(value)) }
-                Color.clear.frame(height: 64)
-                key("0")
+
                 Button {
-                    if !digits.isEmpty { digits.removeLast() }
+                    submit()
+                } label: {
+                    Image(systemName: "arrow.right.circle.fill")
+                        .frame(maxWidth: .infinity, minHeight: 64)
+                }
+                .disabled(digits.count < PasscodePolicy.minimumLength)
+                .accessibilityLabel("Unlock")
+
+                key("0")
+
+                Button {
+                    if !digits.isEmpty {
+                        digits.removeLast()
+                        message = nil
+                    }
                 } label: {
                     Image(systemName: "delete.left")
                         .frame(maxWidth: .infinity, minHeight: 64)
                 }
+                .accessibilityLabel("Delete digit")
             }
             .font(.title2)
 
@@ -59,15 +87,27 @@ private struct LockView: View {
 
     private func key(_ value: String) -> some View {
         Button {
-            guard digits.count < 6 else { return }
+            guard digits.count < PasscodePolicy.maximumLength else { return }
             digits.append(value)
-            // SECURITY TODO: Route completed passcodes through the production
-            // KDF + vault discovery service. Never persist the raw passcode.
+            message = nil
         } label: {
             Text(value)
                 .frame(maxWidth: .infinity, minHeight: 64)
                 .background(.thinMaterial, in: Circle())
         }
+    }
+
+    private func submit() {
+        guard PasscodePolicy.isValid(digits) else {
+            message = "Use 6–20 digits."
+            return
+        }
+
+        // SECURITY RELEASE GATE:
+        // Route this passcode to VaultUnlockService only after the production
+        // Argon2id implementation is integrated. Never persist or log `digits`.
+        message = "Secure unlock engine is being configured."
+        digits.removeAll(keepingCapacity: false)
     }
 }
 
@@ -76,12 +116,16 @@ private struct VaultPlaceholderView: View {
 
     var body: some View {
         NavigationStack {
-            ContentUnavailableView("Encrypted Vault", systemImage: "photo.on.rectangle.angled", description: Text("Encrypted photo storage is the next implementation milestone."))
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Lock") { session.lock() }
-                    }
+            ContentUnavailableView(
+                "Encrypted Vault",
+                systemImage: "photo.on.rectangle.angled",
+                description: Text("Encrypted photo storage is the next implementation milestone.")
+            )
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Lock") { session.lock() }
                 }
+            }
         }
     }
 }
