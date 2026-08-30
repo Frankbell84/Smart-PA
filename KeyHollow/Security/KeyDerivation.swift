@@ -1,6 +1,5 @@
 import Foundation
 import CryptoKit
-import Argon2idSwiftNative
 
 enum KeyDerivationError: Error {
     case invalidPasscode
@@ -23,9 +22,9 @@ protocol PasswordKeyDeriving: Sendable {
 /// both device-local in V1; neither is an alternate unlock credential.
 ///
 /// Release gate: benchmark these parameters on the minimum supported iPhone and
-/// independently review this dependency + integration before launch.
+/// independently review the vendored Argon2id implementation + integration.
 struct ProductionArgon2idKDF: PasswordKeyDeriving {
-    static let memoryKiB: UInt32 = 65_536   // 64 MiB development starting point
+    static let memoryKiB: UInt32 = 65_536
     static let iterations: UInt32 = 3
     static let parallelism: UInt32 = 2
 
