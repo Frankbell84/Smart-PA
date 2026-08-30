@@ -308,4 +308,3 @@ private struct InitialVaultSetupView: View {
         }
     }
 }
-
