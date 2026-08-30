@@ -1,14 +1,14 @@
-# NoxLock Vault Discovery Design — Draft 0.2
+# KeyHollow Vault Discovery Design — Draft 0.2
 
 ## Goal
 
-Entering a NoxLock passcode should open exactly the vault associated with that passcode without presenting a normal plaintext directory of vault names/counts to the locked UI.
+Entering a KeyHollow passcode should open exactly the vault associated with that passcode without presenting a normal plaintext directory of vault names/counts to the locked UI.
 
 ## Current V1 design: opaque locator files
 
-NoxLock does not maintain a plaintext vault directory for the locked UI. Instead, each vault envelope is stored under a 256-bit opaque locator derived only after the entered passcode has completed the expensive Argon2id path.
+KeyHollow does not maintain a plaintext vault directory for the locked UI. Instead, each vault envelope is stored under a 256-bit opaque locator derived only after the entered passcode has completed the expensive Argon2id path.
 
-This design intentionally prioritizes cryptographic simplicity and uniform unlock work over pretending to provide perfect forensic deniability. A sophisticated forensic examiner may still infer that encrypted NoxLock data exists from filesystem/storage artifacts. NoxLock must not claim otherwise.
+This design intentionally prioritizes cryptographic simplicity and uniform unlock work over pretending to provide perfect forensic deniability. A sophisticated forensic examiner may still infer that encrypted KeyHollow data exists from filesystem/storage artifacts. KeyHollow must not claim otherwise.
 
 ## Unlock derivation
 
@@ -44,12 +44,12 @@ The normal lock-screen experience does not enumerate vaults, names, security tie
 
 ## Rate limiting
 
-Online attempts inside NoxLock are rate limited with increasing delays persisted across relaunches. Rate limiting is defense-in-depth for interactive guessing. It does not replace KDF strength because a sufficiently capable attacker with extracted secrets/material may bypass application-level delays.
+Online attempts inside KeyHollow are rate limited with increasing delays persisted across relaunches. Rate limiting is defense-in-depth for interactive guessing. It does not replace KDF strength because a sufficiently capable attacker with extracted secrets/material may bypass application-level delays.
 
 ## Six-digit warning
 
-A six-digit PIN contains only one million possible numeric strings. NoxLock therefore labels six digits as the lowest security tier. Argon2id, the Keychain pepper, iOS Data Protection, and online rate limiting improve resistance, but NoxLock must not represent a six-digit PIN as equivalent to a high-entropy secret.
+A six-digit PIN contains only one million possible numeric strings. KeyHollow therefore labels six digits as the lowest security tier. Argon2id, the Keychain pepper, iOS Data Protection, and online rate limiting improve resistance, but KeyHollow must not represent a six-digit PIN as equivalent to a high-entropy secret.
 
 ## No alternate unlock
 
-Neither Face ID, Touch ID, nor the Apple device passcode can unwrap or substitute for a NoxLock vault passcode. Platform security still protects the app sandbox/Keychain at the operating-system layer.
+Neither Face ID, Touch ID, nor the Apple device passcode can unwrap or substitute for a KeyHollow vault passcode. Platform security still protects the app sandbox/Keychain at the operating-system layer.
