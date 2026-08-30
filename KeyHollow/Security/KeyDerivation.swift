@@ -1,6 +1,6 @@
 import Foundation
 import CryptoKit
-import Argon2Swift
+import Argon2idSwiftNative
 
 enum KeyDerivationError: Error {
     case invalidPasscode
@@ -12,7 +12,7 @@ protocol PasswordKeyDeriving: Sendable {
     func deriveKey(passcode: String, installationSalt: Data, pepper: Data) throws -> SymmetricKey
 }
 
-/// Production candidate KDF for KeyHollow.
+/// Production-candidate KDF for KeyHollow.
 ///
 /// Every unlock attempt runs this KDF before any vault-file lookup. That avoids
 /// a simple timing signal where nonexistent passcodes would otherwise fail much
@@ -23,12 +23,11 @@ protocol PasswordKeyDeriving: Sendable {
 /// both device-local in V1; neither is an alternate unlock credential.
 ///
 /// Release gate: benchmark these parameters on the minimum supported iPhone and
-/// independently review the Argon2 dependency + integration before launch.
+/// independently review this dependency + integration before launch.
 struct ProductionArgon2idKDF: PasswordKeyDeriving {
-    static let memoryKiB = 65_536   // 64 MiB
+    static let memoryKiB = 65_536   // 64 MiB development starting point
     static let iterations = 3
     static let parallelism = 2
-    static let outputByteCount = 32
 
     func deriveKey(passcode: String, installationSalt: Data, pepper: Data) throws -> SymmetricKey {
         guard PasscodePolicy.isValid(passcode) else { throw KeyDerivationError.invalidPasscode }
@@ -41,20 +40,13 @@ struct ProductionArgon2idKDF: PasswordKeyDeriving {
             using: pepperKey
         )
 
-        let result = try Argon2Swift.hashPasswordBytes(
+        return try Argon2id.deriveKey(
             password: Data(prehash),
-            salt: Salt(bytes: installationSalt),
+            salt: installationSalt,
+            memoryKiB: Self.memoryKiB,
             iterations: Self.iterations,
-            memory: Self.memoryKiB,
-            parallelism: Self.parallelism,
-            length: Self.outputByteCount,
-            type: .id,
-            version: .V13
+            parallelism: Self.parallelism
         )
-
-        let data = result.hashData()
-        guard data.count == Self.outputByteCount else { throw KeyDerivationError.invalidOutput }
-        return SymmetricKey(data: data)
     }
 }
 
