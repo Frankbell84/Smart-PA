@@ -13,7 +13,7 @@ actor VaultStore {
         )
         root = appSupport.appendingPathComponent("KeyHollow/Vaults", isDirectory: true)
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
-        try protectAndExclude(root)
+        try Self.protectAndExclude(root, fileManager: fileManager)
     }
 
     func hasAnyVaults() throws -> Bool {
@@ -40,14 +40,14 @@ actor VaultStore {
         let target = url(for: locator)
         let data = try JSONEncoder().encode(envelope)
         try data.write(to: target, options: [.atomic, .completeFileProtection])
-        try protectAndExclude(target)
+        try Self.protectAndExclude(target, fileManager: fileManager)
     }
 
     private func url(for locator: String) -> URL {
         root.appendingPathComponent(locator).appendingPathExtension("khv")
     }
 
-    private func protectAndExclude(_ url: URL) throws {
+    private static func protectAndExclude(_ url: URL, fileManager: FileManager) throws {
         try fileManager.setAttributes(
             [.protectionKey: FileProtectionType.complete],
             ofItemAtPath: url.path
