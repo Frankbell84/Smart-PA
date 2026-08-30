@@ -11,7 +11,7 @@ actor VaultStore {
             appropriateFor: nil,
             create: true
         )
-        root = appSupport.appendingPathComponent("NoxLock/Vaults", isDirectory: true)
+        root = appSupport.appendingPathComponent("KeyHollow/Vaults", isDirectory: true)
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
         try protectAndExclude(root)
     }
@@ -22,7 +22,7 @@ actor VaultStore {
             includingPropertiesForKeys: nil,
             options: [.skipsHiddenFiles]
         )
-        return contents.contains { $0.pathExtension == "nox" }
+        return contents.contains { $0.pathExtension == "khv" }
     }
 
     func contains(locator: String) -> Bool {
@@ -44,7 +44,7 @@ actor VaultStore {
     }
 
     private func url(for locator: String) -> URL {
-        root.appendingPathComponent(locator).appendingPathExtension("nox")
+        root.appendingPathComponent(locator).appendingPathExtension("khv")
     }
 
     private func protectAndExclude(_ url: URL) throws {
