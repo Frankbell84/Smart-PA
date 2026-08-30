@@ -173,6 +173,7 @@ struct VaultGalleryView: View {
 
         Task {
             var importedCount = 0
+            var failedCount = 0
             var identifiersToDelete: [String] = []
 
             for photo in photos {
@@ -186,8 +187,7 @@ struct VaultGalleryView: View {
                         identifiersToDelete.append(identifier)
                     }
                 } catch {
-                    // Continue importing the remaining selected photos. A failed
-                    // photo never receives a committed manifest entry.
+                    failedCount += 1
                 }
             }
 
@@ -198,23 +198,43 @@ struct VaultGalleryView: View {
             }
 
             if importMode == .move, importedCount > 0 {
-                let result = await PhotoLibraryDeletionService.deleteOriginals(
-                    localIdentifiers: identifiersToDelete
-                )
+                // Never claim a move unless every successfully encrypted item can
+                // be represented by a Photos asset identifier and the batch delete
+                // itself succeeds. If any identifier is unavailable, delete none.
+                let allImportedPhotosAreDeletable = identifiersToDelete.count == importedCount
+                let result: PhotoMoveResult
+                if allImportedPhotosAreDeletable {
+                    result = await PhotoLibraryDeletionService.deleteOriginals(
+                        localIdentifiers: identifiersToDelete
+                    )
+                } else {
+                    result = .copiedOnly
+                }
+
                 switch result {
                 case .deleted:
-                    message = "Moved \(importedCount) photo\(importedCount == 1 ? "" : "s") into KeyHollow."
+                    message = importResultMessage(action: "Moved", importedCount: importedCount, failedCount: failedCount)
                 case .copiedOnly:
-                    message = "Encrypted \(importedCount) photo\(importedCount == 1 ? "" : "s"), but iOS did not delete every original. They remain in Photos."
+                    let base = importResultMessage(action: "Encrypted", importedCount: importedCount, failedCount: failedCount)
+                    message = "\(base) iOS did not delete every original, so KeyHollow treats this batch as copied."
                 }
             } else if importedCount > 0 {
-                message = "Copied \(importedCount) photo\(importedCount == 1 ? "" : "s") into KeyHollow."
+                message = importResultMessage(action: "Copied", importedCount: importedCount, failedCount: failedCount)
             } else {
                 message = "No photos were imported."
             }
 
             isWorking = false
         }
+    }
+
+    private func importResultMessage(action: String, importedCount: Int, failedCount: Int) -> String {
+        let noun = importedCount == 1 ? "photo" : "photos"
+        if failedCount > 0 {
+            let failedNoun = failedCount == 1 ? "photo" : "photos"
+            return "\(action) \(importedCount) \(noun) into KeyHollow. \(failedCount) \(failedNoun) could not be imported."
+        }
+        return "\(action) \(importedCount) \(noun) into KeyHollow."
     }
 
     private func open(_ record: VaultPhotoRecord) {
