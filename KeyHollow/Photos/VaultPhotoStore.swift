@@ -28,7 +28,7 @@ actor VaultPhotoStore {
             .appendingPathComponent(vaultID.uuidString.lowercased(), isDirectory: true)
 
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
-        try protectAndExclude(root)
+        try Self.protectAndExclude(root, fileManager: fileManager)
     }
 
     func loadManifest() throws -> VaultPhotoManifest {
@@ -75,7 +75,7 @@ actor VaultPhotoStore {
             try secureWrite(originalCiphertext, to: originalURL)
             try secureWrite(thumbnailCiphertext, to: thumbnailURL)
 
-            // Verify the encrypted objects before committing the record to the
+            // Verify encrypted objects before committing the record to the
             // encrypted manifest. A failed verification leaves no manifest entry.
             let verifiedOriginal = try CryptoBox.open(
                 Data(contentsOf: originalURL),
@@ -145,14 +145,14 @@ actor VaultPhotoStore {
 
     private func secureWrite(_ data: Data, to url: URL) throws {
         try data.write(to: url, options: [.atomic, .completeFileProtection])
-        try protectAndExclude(url)
+        try Self.protectAndExclude(url, fileManager: fileManager)
     }
 
     private func randomName(extension fileExtension: String) -> String {
         "\(UUID().uuidString.lowercased()).\(fileExtension)"
     }
 
-    private func protectAndExclude(_ url: URL) throws {
+    private static func protectAndExclude(_ url: URL, fileManager: FileManager) throws {
         try fileManager.setAttributes(
             [.protectionKey: FileProtectionType.complete],
             ofItemAtPath: url.path
