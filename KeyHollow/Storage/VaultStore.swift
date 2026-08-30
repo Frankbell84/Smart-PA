@@ -43,6 +43,12 @@ actor VaultStore {
         try Self.protectAndExclude(target, fileManager: fileManager)
     }
 
+    func delete(locator: String) throws {
+        let target = url(for: locator)
+        guard fileManager.fileExists(atPath: target.path) else { return }
+        try fileManager.removeItem(at: target)
+    }
+
     private func url(for locator: String) -> URL {
         root.appendingPathComponent(locator).appendingPathExtension("khv")
     }
