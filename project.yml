@@ -5,19 +5,12 @@ options:
     iOS: "17.0"
   createIntermediateGroups: true
 
-packages:
-  Argon2idSwiftNative:
-    url: https://github.com/MarlonJD/argon2id-swift-native.git
-    exactVersion: 0.1.1
-
 targets:
   KeyHollow:
     type: application
     platform: iOS
     sources:
       - path: KeyHollow
-    dependencies:
-      - package: Argon2idSwiftNative
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app
