@@ -53,6 +53,35 @@ final class SecurityCryptoTests: XCTestCase {
         XCTAssertNotEqual(manifest, thumbnail)
         XCTAssertNotEqual(photo, thumbnail)
     }
+
+    func testKnownVaultSuccessDoesNotResetGlobalFailureBudget() async throws {
+        let suiteName = "KeyHollowTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            return XCTFail("Could not create isolated UserDefaults suite")
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let limiter = UnlockAttemptLimiter(defaults: defaults)
+        let start = Date(timeIntervalSince1970: 1_000_000)
+
+        for offset in 0..<5 {
+            await limiter.recordFailure(now: start.addingTimeInterval(TimeInterval(offset)))
+        }
+
+        // Simulate waiting out the first five-second delay and successfully
+        // opening a different, known vault. That success must not erase the five
+        // failures accumulated while guessing another vault.
+        let afterInitialDelay = start.addingTimeInterval(10)
+        await limiter.recordSuccess(now: afterInitialDelay)
+        await limiter.recordFailure(now: afterInitialDelay)
+
+        do {
+            try await limiter.checkAllowed(now: afterInitialDelay.addingTimeInterval(1))
+            XCTFail("Known-vault success incorrectly reset the failure budget")
+        } catch UnlockAttemptLimiter.LimitError.temporarilyLocked(let until) {
+            XCTAssertGreaterThan(until, afterInitialDelay.addingTimeInterval(1))
+        }
+    }
 }
 
 private extension SymmetricKey {
