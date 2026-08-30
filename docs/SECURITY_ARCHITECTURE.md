@@ -1,4 +1,4 @@
-# NoxLock Security Architecture — Draft 0.2
+# NoxLock Security Architecture — Draft 0.3
 
 ## Security objective
 
@@ -14,6 +14,24 @@ A NoxLock vault is unlocked only by its own NoxLock passcode.
 - No recovery flow that substitutes the iPhone passcode for a NoxLock vault passcode.
 
 The operating system may still protect the application container and Keychain at the platform level, but platform authentication must never become an alternate NoxLock vault-unlock path.
+
+## Passcode security levels
+
+NoxLock uses variable-length numeric passcodes. The lock screen does not reveal the expected passcode length for any vault.
+
+Recommended user-facing levels:
+
+- **Standard — 6 digits.** Lowest permitted NoxLock security level. Intended for convenience-oriented vaults.
+- **Enhanced — 8 digits.** More resistant to guessing while remaining easy to enter.
+- **High — 12 digits.** Intended for highly private vaults.
+- **Maximum — 16 digits.** Strongest predefined numeric option for users willing to trade convenience for additional entropy.
+- **Custom — 6 to 20 digits.** Advanced users may choose any supported length in this range.
+
+Different vaults on the same device may use different passcode lengths. NoxLock must not expose which lengths exist.
+
+The labels above describe relative resistance to passcode guessing within NoxLock; they are not claims of absolute security. Longer numeric passcodes provide more possible combinations, but security also depends on the KDF, rate limiting, device state, implementation quality, and user-chosen predictability.
+
+No 4-digit vault passcodes are permitted.
 
 ## Threat model
 
@@ -44,9 +62,11 @@ No custom cryptographic primitive is permitted.
 
 ## Passcode derivation
 
-Numeric passcodes have low entropy. Production release therefore requires a vetted, memory-hard password derivation design and rate limiting. Argon2id is the preferred candidate pending iOS dependency/security review. Parameters must be benchmarked on supported iPhones rather than chosen arbitrarily.
+Numeric passcodes have limited entropy compared with strong random passwords. Production release therefore requires a vetted, memory-hard password derivation design and rate limiting. Argon2id is the preferred candidate pending iOS dependency/security review. Parameters must be benchmarked on supported iPhones rather than chosen arbitrarily.
 
 The raw passcode is never persisted.
+
+The application must use a deliberate submit action rather than automatically attempting unlock at a fixed number of digits. This avoids revealing a vault's passcode length through the keypad behavior.
 
 ## Key handling
 
