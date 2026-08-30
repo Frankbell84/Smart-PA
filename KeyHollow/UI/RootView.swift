@@ -10,8 +10,8 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if session.isUnlocked {
-                VaultGalleryView()
+            if session.isUnlocked, let service {
+                VaultGalleryView(service: service)
             } else if isChecking {
                 ProgressView("Preparing KeyHollow…")
             } else if let startupError {
