@@ -1,25 +1,25 @@
-# NoxLock Argon2id Dependency Review — Draft 0.1
+# KeyHollow Argon2id Dependency Review — Draft 0.1
 
 ## Current integration candidate
 
-NoxLock currently integrates `tmthecoder/Argon2Swift` version `1.0.4` through Swift Package Manager.
+KeyHollow currently integrates `tmthecoder/Argon2Swift` version `1.0.4` through Swift Package Manager.
 
 Why it is being used for the development build:
 
 - exposes Argon2id v1.3;
-- wraps the Password Hashing Competition reference Argon2 C implementation rather than inventing a NoxLock-specific primitive;
+- wraps the Password Hashing Competition reference Argon2 C implementation rather than inventing a KeyHollow-specific primitive;
 - supports iOS through Swift Package Manager;
 - permits raw 32-byte key output needed for a wrapping-key design.
 
 ## Important release caveat
 
-The Swift wrapper's most recent release is from 2023 and its package manifest references the upstream Argon2 package by branch. That is acceptable for a development candidate but **not sufficient as-is for NoxLock's production security release gate**.
+The Swift wrapper's most recent release is from 2023 and its package manifest references the upstream Argon2 package by branch. That is acceptable for a development candidate but **not sufficient as-is for KeyHollow's production security release gate**.
 
 Before App Store release:
 
 1. Resolve and pin the complete transitive dependency graph to exact reviewed commits.
 2. Review upstream Argon2 changes represented by the pinned commit.
-3. Run RFC/test-vector verification in NoxLock CI.
+3. Run RFC/test-vector verification in KeyHollow CI.
 4. Benchmark Argon2id parameters on the oldest supported iPhone.
 5. Review memory behavior and denial-of-service implications.
 6. Run dependency/vulnerability scanning.
@@ -27,7 +27,7 @@ Before App Store release:
 
 ## Apple CryptoKit status
 
-CryptoKit supplies NoxLock's AES-GCM, HKDF, HMAC, and SHA-256 building blocks but does not currently provide a released Argon2id API that NoxLock can rely on. A proposed Argon2id addition to Apple's open-source Swift Crypto project is not treated as a production dependency until it is actually merged/released and evaluated.
+CryptoKit supplies KeyHollow's AES-GCM, HKDF, HMAC, and SHA-256 building blocks but does not currently provide a released Argon2id API that KeyHollow can rely on. A proposed Argon2id addition to Apple's open-source Swift Crypto project is not treated as a production dependency until it is actually merged/released and evaluated.
 
 ## Parameter starting point
 
