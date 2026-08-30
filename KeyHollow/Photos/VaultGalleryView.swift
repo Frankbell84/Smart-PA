@@ -24,6 +24,7 @@ struct VaultGalleryView: View {
     @State private var showingImportOptions = false
     @State private var showingPicker = false
     @State private var showingNewVault = false
+    @State private var showingSecuritySettings = false
     @State private var importMode: VaultImportMode = .copy
     @State private var isWorking = false
     @State private var message: String?
@@ -81,6 +82,12 @@ struct VaultGalleryView: View {
                         }
 
                         Button {
+                            showingSecuritySettings = true
+                        } label: {
+                            Label("Vault Security", systemImage: "shield.lefthalf.filled")
+                        }
+
+                        Button {
                             session.lock()
                         } label: {
                             Label("Lock KeyHollow", systemImage: "lock.fill")
@@ -116,6 +123,10 @@ struct VaultGalleryView: View {
                 AdditionalVaultSetupView(service: service)
                     .environmentObject(session)
             }
+            .sheet(isPresented: $showingSecuritySettings) {
+                VaultSecuritySettingsView(service: service)
+                    .environmentObject(session)
+            }
             .sheet(item: $decryptedPhoto) { photo in
                 DecryptedPhotoView(photo: photo) {
                     delete(photo.record)
@@ -131,9 +142,6 @@ struct VaultGalleryView: View {
             }
         }
         .task(id: session.activeVaultID) {
-            // A newly created vault replaces the active session directly. Rebuild
-            // the encrypted photo store for that vault without exposing any list
-            // or count of other vaults on the device.
             store = nil
             records = []
             thumbnails = [:]
