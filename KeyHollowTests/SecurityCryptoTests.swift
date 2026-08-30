@@ -170,4 +170,3 @@ private extension Data {
 
     enum HexError: Error { case invalid }
 }
-
