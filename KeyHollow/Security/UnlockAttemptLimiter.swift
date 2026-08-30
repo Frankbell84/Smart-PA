@@ -6,8 +6,8 @@ actor UnlockAttemptLimiter {
     }
 
     private let defaults: UserDefaults
-    private let countKey = "noxlock.unlock.failure-count.v1"
-    private let blockedUntilKey = "noxlock.unlock.blocked-until.v1"
+    private let countKey = "keyhollow.unlock.failure-count.v1"
+    private let blockedUntilKey = "keyhollow.unlock.blocked-until.v1"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -24,8 +24,6 @@ actor UnlockAttemptLimiter {
         let failures = defaults.integer(forKey: countKey) + 1
         defaults.set(failures, forKey: countKey)
 
-        // Escalating local delay. This is defense-in-depth for interactive
-        // guessing; it is not a substitute for Argon2id or strong passcodes.
         let delay: TimeInterval
         switch failures {
         case 0...4: delay = 0
