@@ -7,9 +7,9 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -21,9 +21,6 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Resolve packages
-        run: xcodebuild -project KeyHollow.xcodeproj -scheme KeyHollow -resolvePackageDependencies
-
       - name: Build for iOS Simulator
         run: |
           set -o pipefail
@@ -34,3 +31,14 @@ jobs:
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Run security unit tests
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project KeyHollow.xcodeproj \
+            -scheme KeyHollow \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            CODE_SIGNING_ALLOWED=NO \
+            test
