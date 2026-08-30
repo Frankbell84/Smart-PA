@@ -120,4 +120,3 @@ enum PasscodePolicy {
         !passcode.isEmpty && passcode.utf8.allSatisfy { (48...57).contains($0) }
     }
 }
-
