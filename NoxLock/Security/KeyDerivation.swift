@@ -8,7 +8,7 @@ enum KeyDerivationError: Error {
     case invalidOutput
 }
 
-protocol PasswordKeyDeriving {
+protocol PasswordKeyDeriving: Sendable {
     func deriveKey(passcode: String, installationSalt: Data, pepper: Data) throws -> SymmetricKey
 }
 
