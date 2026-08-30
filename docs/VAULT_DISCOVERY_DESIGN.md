@@ -16,7 +16,7 @@ For every entered passcode:
 
 1. Load the device-local 256-bit pepper from Keychain.
 2. Load the random installation salt from Keychain.
-3. Validate only the public 6–20 digit format.
+3. Validate only the public 8–20 digit format.
 4. HMAC-SHA256 the passcode with the device pepper to create fixed-width secret KDF input.
 5. Run Argon2id v1.3 with the installation salt. **This happens before any vault-file existence check.**
 6. Expand the resulting unlock key with HKDF into independent subkeys:
@@ -53,3 +53,4 @@ A six-digit PIN contains only one million possible numeric strings. KeyHollow th
 ## No alternate unlock
 
 Neither Face ID, Touch ID, nor the Apple device passcode can unwrap or substitute for a KeyHollow vault passcode. Platform security still protects the app sandbox/Keychain at the operating-system layer.
+
