@@ -28,6 +28,10 @@ actor VaultUnlockService {
         self.store = try VaultStore()
     }
 
+    func hasAnyVaults() async throws -> Bool {
+        try await store.hasAnyVaults()
+    }
+
     func createVault(passcode: String) async throws -> UnlockedVault {
         guard PasscodePolicy.isValid(passcode) else { throw KeyDerivationError.invalidPasscode }
 
