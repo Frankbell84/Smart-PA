@@ -7,7 +7,7 @@ enum VaultLocator {
     static func derive(from unlockKey: SymmetricKey) -> String {
         let key = VaultKeySchedule.locatorKey(from: unlockKey)
         let code = HMAC<SHA256>.authenticationCode(
-            for: Data("noxlock.vault-locator.v1".utf8),
+            for: Data("keyhollow.vault-locator.v1".utf8),
             using: key
         )
         return Data(code).map { String(format: "%02x", $0) }.joined()
