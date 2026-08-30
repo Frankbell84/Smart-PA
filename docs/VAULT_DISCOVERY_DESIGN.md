@@ -1,40 +1,50 @@
-# NoxLock Vault Discovery Design — Draft 0.1
+# NoxLock Vault Discovery Design — Draft 0.2
 
 ## Goal
 
 Entering a NoxLock passcode should open exactly the vault associated with that passcode without presenting a normal plaintext directory of vault names/counts to the locked UI.
 
-## Fixed opaque slot bank
+## Current V1 design: opaque locator files
 
-NoxLock maintains a fixed-size bank of opaque records rather than a variable-length plaintext vault list. Unused records are filled with cryptographically random padding so the ordinary on-disk structure does not simply expose `N vaults exist`.
+NoxLock does not maintain a plaintext vault directory for the locked UI. Instead, each vault envelope is stored under a 256-bit opaque locator derived only after the entered passcode has completed the expensive Argon2id path.
 
-This design is intended to reduce obvious metadata leakage. It is not a claim of perfect forensic deniability; filesystem history, storage usage, device state, backups, or sophisticated analysis can leak information and must be evaluated independently.
+This design intentionally prioritizes cryptographic simplicity and uniform unlock work over pretending to provide perfect forensic deniability. A sophisticated forensic examiner may still infer that encrypted NoxLock data exists from filesystem/storage artifacts. NoxLock must not claim otherwise.
 
 ## Unlock derivation
 
-For an entered passcode:
+For every entered passcode:
 
 1. Load the device-local 256-bit pepper from Keychain.
-2. Run the production Argon2id KDF using the passcode, public installation salt, and pepper as inputs according to the reviewed implementation design.
-3. Expand the resulting unlock key with HKDF into independent subkeys:
+2. Load the random installation salt from Keychain.
+3. Validate only the public 6–20 digit format.
+4. HMAC-SHA256 the passcode with the device pepper to create fixed-width secret KDF input.
+5. Run Argon2id v1.3 with the installation salt. **This happens before any vault-file existence check.**
+6. Expand the resulting unlock key with HKDF into independent subkeys:
    - locator key
    - vault-envelope wrapping key
-4. Derive one or more deterministic slot candidates from the locator key.
-5. Attempt authenticated decryption of the candidate envelope using the wrapping key.
-6. A valid authenticated envelope contains a versioned NoxLock marker, random vault identifier, and that vault's independent random data-encryption key.
-7. If authentication/validation fails, treat the attempt as an invalid passcode and reveal no slot/vault-specific information.
+7. Derive the 256-bit opaque locator from the locator key.
+8. Attempt to read the envelope at that opaque locator.
+9. If present, authenticate/decrypt it with AES-256-GCM under the wrapping key.
+10. A valid envelope contains a random vault identifier and that vault's independently random 256-bit data-encryption key.
+11. Missing files, malformed envelopes, authentication failure, and other credential-path errors produce the same user-visible invalid-credential result.
+
+Running Argon2id before the file lookup avoids a simple timing distinction where random guesses would otherwise fail almost instantly while a real passcode incurred KDF work.
 
 ## Vault data key
 
 The vault data-encryption key is independently random and is not deterministically derived from the numeric passcode. The passcode-derived wrapping key protects the envelope containing the random vault key. This permits a future passcode change without re-encrypting every photo: unwrap the existing vault key with the old credential and re-wrap it under the new credential.
 
-## Collision handling
+## Locator collisions
 
-Slot selection must support collisions without exposing which slots are occupied. Candidate probing must be deterministic from the locator key. The exact slot count/probe strategy is a security parameter to be set after implementation testing and review.
+The locator uses the full 256-bit HMAC-SHA256 output, making accidental collisions negligible for realistic vault counts. Creation still checks whether the derived locator is already occupied and rejects re-use of an existing passcode.
+
+## Metadata / deniability boundary
+
+The normal lock-screen experience does not enumerate vaults, names, security tiers, or counts. However, V1 does not claim perfect deniability against forensic inspection of the device or app container. Optional metadata-padding approaches can be evaluated later only if they do not weaken the core cryptography or reliability.
 
 ## Rate limiting
 
-Online attempts inside NoxLock are rate limited with increasing delays. Rate-limit state must itself be tamper-resistant enough to prevent trivial reset-by-relaunch behavior where practical. Rate limiting does not replace KDF strength because an attacker who obtains sufficient offline material may bypass application-level delays.
+Online attempts inside NoxLock are rate limited with increasing delays persisted across relaunches. Rate limiting is defense-in-depth for interactive guessing. It does not replace KDF strength because a sufficiently capable attacker with extracted secrets/material may bypass application-level delays.
 
 ## Six-digit warning
 
