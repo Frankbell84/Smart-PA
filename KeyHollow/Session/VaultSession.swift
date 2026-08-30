@@ -19,6 +19,13 @@ final class VaultSession: ObservableObject {
         return try operation(activeKey)
     }
 
+    func activeVaultContext() -> (id: UUID, key: SymmetricKey)? {
+        guard isUnlocked,
+              let activeVaultID,
+              let activeKey else { return nil }
+        return (activeVaultID, activeKey)
+    }
+
     func lock() {
         isUnlocked = false
         activeVaultID = nil
