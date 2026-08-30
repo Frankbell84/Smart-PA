@@ -27,3 +27,27 @@ targets:
         NSPhotoLibraryUsageDescription: KeyHollow needs access only to photos you choose to copy or move into an encrypted vault.
         NSPhotoLibraryAddUsageDescription: KeyHollow may need Photos access to complete user-requested photo operations.
         ITSAppUsesNonExemptEncryption: false
+
+  KeyHollowTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: KeyHollowTests
+    dependencies:
+      - target: KeyHollow
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.tests
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+
+schemes:
+  KeyHollow:
+    build:
+      targets:
+        KeyHollow: all
+        KeyHollowTests: [test]
+    test:
+      config: Debug
+      targets:
+        - KeyHollowTests
