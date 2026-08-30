@@ -77,18 +77,24 @@ final class SecurityCryptoTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
 
         let limiter = UnlockAttemptLimiter(defaults: defaults)
-        let now = Date(timeIntervalSince1970: 1_000_000)
+        let start = Date(timeIntervalSince1970: 1_000_000)
+
         for _ in 0..<5 {
-            await limiter.recordFailure(now: now)
+            await limiter.recordFailure(now: start)
         }
 
-        await limiter.recordSuccess(now: now.addingTimeInterval(1))
+        // A legitimate unlock may clear the completed active cooldown so the
+        // user can enter a known vault, but it must preserve the accumulated
+        // failure count. The next bad guess must therefore resume throttling.
+        let afterInitialCooldown = start.addingTimeInterval(6)
+        await limiter.recordSuccess(now: afterInitialCooldown)
+        await limiter.recordFailure(now: afterInitialCooldown)
 
         do {
-            try await limiter.checkAllowed(now: now.addingTimeInterval(2))
-            XCTFail("A valid vault unlock must not erase the multi-vault guessing throttle")
-        } catch UnlockAttemptLimiter.LimitError.temporarilyLocked {
-            // Expected.
+            try await limiter.checkAllowed(now: afterInitialCooldown.addingTimeInterval(1))
+            XCTFail("A valid vault unlock erased the multi-vault guessing history")
+        } catch UnlockAttemptLimiter.LimitError.temporarilyLocked(let until) {
+            XCTAssertGreaterThan(until, afterInitialCooldown.addingTimeInterval(1))
         } catch {
             XCTFail("Unexpected limiter error: \(error)")
         }
