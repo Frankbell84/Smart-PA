@@ -34,7 +34,9 @@ actor VaultUnlockService {
     }
 
     func createVault(passcode: String) async throws -> UnlockedVault {
-        guard PasscodePolicy.isValid(passcode) else { throw KeyDerivationError.invalidPasscode }
+        guard PasscodePolicy.isAcceptableNewPasscode(passcode) else {
+            throw KeyDerivationError.invalidPasscode
+        }
 
         let unlockKey = try deriveUnlockKey(passcode: passcode)
         let locator = VaultLocator.derive(from: unlockKey)
@@ -56,7 +58,7 @@ actor VaultUnlockService {
             throw VaultUnlockError.temporarilyLocked(until)
         }
 
-        guard PasscodePolicy.isValid(passcode) else {
+        guard PasscodePolicy.isValidForUnlock(passcode) else {
             await limiter.recordFailure()
             throw VaultUnlockError.invalidCredentials
         }
@@ -89,9 +91,11 @@ actor VaultUnlockService {
         newPasscode: String,
         expectedVaultID: UUID
     ) async throws -> UnlockedVault {
-        guard PasscodePolicy.isValid(currentPasscode),
-              PasscodePolicy.isValid(newPasscode) else {
+        guard PasscodePolicy.isValidForUnlock(currentPasscode) else {
             throw VaultUnlockError.invalidCredentials
+        }
+        guard PasscodePolicy.isAcceptableNewPasscode(newPasscode) else {
+            throw KeyDerivationError.invalidPasscode
         }
 
         let currentKey = try deriveUnlockKey(passcode: currentPasscode)
@@ -139,7 +143,7 @@ actor VaultUnlockService {
     /// Deletes the credential envelope first, cryptographically removing the
     /// app's route to the vault key, then removes the encrypted photo directory.
     func deleteVault(currentPasscode: String, expectedVaultID: UUID) async throws {
-        guard PasscodePolicy.isValid(currentPasscode) else {
+        guard PasscodePolicy.isValidForUnlock(currentPasscode) else {
             throw VaultUnlockError.invalidCredentials
         }
 

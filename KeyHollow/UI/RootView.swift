@@ -149,8 +149,8 @@ private struct LockView: View {
     }
 
     private func submit() {
-        guard PasscodePolicy.isValid(digits), !isWorking else {
-            message = "Use 6–20 digits."
+        guard PasscodePolicy.isValidForUnlock(digits), !isWorking else {
+            message = "Use 8–20 digits."
             return
         }
 
@@ -210,7 +210,7 @@ private struct InitialVaultSetupView: View {
                     }
 
                     if tier == .standard {
-                        Text("Six digits is KeyHollow's lowest security tier. Longer random passcodes are substantially stronger.")
+                        Text("Eight digits is KeyHollow's minimum. Longer unpredictable passcodes are substantially stronger.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -230,6 +230,16 @@ private struct InitialVaultSetupView: View {
                         .onChange(of: confirmation) { _, newValue in
                             confirmation = sanitize(newValue, limit: requiredLength)
                         }
+
+                    Text("Avoid birthdays, phone numbers, repeated digits, counting sequences, and repeated patterns.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    if let rejectionMessage {
+                        Text(rejectionMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
                 }
 
                 if let message {
@@ -261,7 +271,16 @@ private struct InitialVaultSetupView: View {
     private var canCreate: Bool {
         passcode.count == requiredLength &&
         confirmation == passcode &&
-        PasscodePolicy.isValid(passcode, tier: tier, customLength: tier == .custom ? customLength : nil)
+        PasscodePolicy.isAcceptableNewPasscode(
+            passcode,
+            tier: tier,
+            customLength: tier == .custom ? customLength : nil
+        )
+    }
+
+    private var rejectionMessage: String? {
+        guard passcode.count == requiredLength else { return nil }
+        return PasscodePolicy.rejectionReason(forNewPasscode: passcode)?.message
     }
 
     private func sanitize(_ value: String, limit: Int) -> String {

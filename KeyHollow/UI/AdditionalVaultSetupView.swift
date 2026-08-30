@@ -58,6 +58,16 @@ struct AdditionalVaultSetupView: View {
                             confirmation = sanitize(newValue, limit: requiredLength)
                             message = nil
                         }
+
+                    Text("Avoid birthdays, phone numbers, repeated digits, counting sequences, and repeated patterns.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    if let rejectionMessage {
+                        Text(rejectionMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
                 }
 
                 if let message {
@@ -97,11 +107,16 @@ struct AdditionalVaultSetupView: View {
     private var canCreate: Bool {
         passcode.count == requiredLength &&
         confirmation == passcode &&
-        PasscodePolicy.isValid(
+        PasscodePolicy.isAcceptableNewPasscode(
             passcode,
             tier: tier,
             customLength: tier == .custom ? customLength : nil
         )
+    }
+
+    private var rejectionMessage: String? {
+        guard passcode.count == requiredLength else { return nil }
+        return PasscodePolicy.rejectionReason(forNewPasscode: passcode)?.message
     }
 
     private func sanitize(_ value: String, limit: Int) -> String {

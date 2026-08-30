@@ -21,17 +21,17 @@ KeyHollow uses variable-length numeric passcodes. The lock screen does not revea
 
 Recommended user-facing levels:
 
-- **Standard — 6 digits.** Lowest permitted KeyHollow security level. Intended for convenience-oriented vaults.
-- **Enhanced — 8 digits.** More resistant to guessing while remaining easy to enter.
+- **Standard — 8 digits.** Lowest permitted KeyHollow security level.
+- **Enhanced — 10 digits.** More resistant to guessing while remaining practical to enter.
 - **High — 12 digits.** Intended for highly private vaults.
 - **Maximum — 16 digits.** Strongest predefined numeric option for users willing to trade convenience for additional entropy.
-- **Custom — 6 to 20 digits.** Advanced users may choose any supported length in this range.
+- **Custom — 8 to 20 digits.** Advanced users may choose any supported length in this range.
 
 Different vaults on the same device may use different passcode lengths. KeyHollow must not expose which lengths exist.
 
 The labels above describe relative resistance to passcode guessing within KeyHollow; they are not claims of absolute security. Longer numeric passcodes provide more possible combinations, but security also depends on the KDF, rate limiting, device state, implementation quality, and user-chosen predictability.
 
-No 4-digit vault passcodes are permitted.
+No passcode shorter than 8 digits is permitted. New and changed passcodes must also reject highly predictable constructions, including a single repeated digit, ascending or descending counting sequences, excessive reuse of one digit, and short repeated patterns. The UI warns users not to choose birthdays or phone numbers even though those personal patterns cannot be identified reliably on-device.
 
 ## Threat model
 

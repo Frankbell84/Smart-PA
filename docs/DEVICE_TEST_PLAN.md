@@ -6,9 +6,11 @@ This checklist must be executed on a physical iPhone before external TestFlight 
 
 - Install a signed development/TestFlight build on a clean device.
 - Confirm first launch offers first-vault setup and does not expose any vault count.
-- Create a Standard 6-digit vault and verify successful entry.
+- Create a Standard 8-digit vault and verify successful entry.
 - Lock and confirm the same passcode reopens the same vault.
-- Confirm an incorrect 6–20 digit passcode shows only the generic failure state.
+- Confirm an incorrect 8–20 digit passcode shows only the generic failure state.
+- Confirm passcodes shorter than 8 digits cannot be submitted or used to create a vault.
+- Confirm repeated digits, ascending/descending sequences, and repeated short patterns are rejected during creation and passcode changes.
 
 ## Multiple vaults
 
@@ -17,7 +19,7 @@ This checklist must be executed on a physical iPhone before external TestFlight 
 - Lock KeyHollow.
 - Confirm Passcode A opens only A and Passcode B opens only B.
 - Confirm neither vault UI reveals the existence, passcode length, name, count, or contents of the other vault.
-- Create vaults using 6, 8, 12, 16, and custom-length passcodes.
+- Create vaults using 8, 10, 12, 16, and custom-length passcodes.
 
 ## Brute-force throttling
 

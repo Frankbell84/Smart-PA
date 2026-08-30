@@ -4,6 +4,52 @@ import XCTest
 @testable import KeyHollow
 
 final class SecurityCryptoTests: XCTestCase {
+    func testPasscodesRequireAtLeastEightDigitsEverywhere() {
+        XCTAssertFalse(PasscodePolicy.isValidForUnlock("000000"))
+        XCTAssertFalse(PasscodePolicy.isValidForUnlock("1234567"))
+        XCTAssertTrue(PasscodePolicy.isValidForUnlock("83057291"))
+        XCTAssertFalse(PasscodePolicy.isValidForUnlock("83057291x"))
+    }
+
+    func testNewPasscodeGuardrailsRejectPredictableChoices() {
+        let rejected = [
+            "000000",
+            "00000000",
+            "111111111",
+            "12345678",
+            "123456789",
+            "987654321",
+            "78901234",
+            "12121212",
+            "12341234",
+            "11111234"
+        ]
+
+        for passcode in rejected {
+            XCTAssertFalse(
+                PasscodePolicy.isAcceptableNewPasscode(passcode),
+                "Predictable passcode should be rejected: \(passcode)"
+            )
+        }
+
+        XCTAssertTrue(PasscodePolicy.isAcceptableNewPasscode("83057291"))
+        XCTAssertTrue(PasscodePolicy.isAcceptableNewPasscode("8305729146"))
+    }
+
+    func testSecurityTiersStartAtEightDigits() {
+        XCTAssertEqual(PasscodeTier.standard.fixedLength, 8)
+        XCTAssertEqual(PasscodeTier.enhanced.fixedLength, 10)
+        XCTAssertEqual(PasscodeTier.high.fixedLength, 12)
+        XCTAssertEqual(PasscodeTier.maximum.fixedLength, 16)
+
+        XCTAssertTrue(
+            PasscodePolicy.isAcceptableNewPasscode("83057291", tier: .standard)
+        )
+        XCTAssertFalse(
+            PasscodePolicy.isAcceptableNewPasscode("83057291", tier: .enhanced)
+        )
+    }
+
     func testRFC9106Argon2idVector() throws {
         let tag = try Argon2id.deriveBytes(
             password: Data(repeating: 0x01, count: 32),
