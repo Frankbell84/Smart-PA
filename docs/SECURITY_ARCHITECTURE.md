@@ -124,4 +124,3 @@ Before describing KeyHollow publicly as a secure photo vault, perform:
 - Photos permission/deletion behavior testing;
 - dependency review;
 - independent security review of cryptographic architecture and implementation.
-
