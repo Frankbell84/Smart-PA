@@ -11,7 +11,7 @@ struct RootView: View {
     var body: some View {
         Group {
             if session.isUnlocked {
-                VaultPlaceholderView()
+                VaultGalleryView()
             } else if isChecking {
                 ProgressView("Preparing KeyHollow…")
             } else if let startupError {
@@ -275,25 +275,6 @@ private struct InitialVaultSetupView: View {
             } catch {
                 message = "The vault could not be created."
                 isWorking = false
-            }
-        }
-    }
-}
-
-private struct VaultPlaceholderView: View {
-    @EnvironmentObject private var session: VaultSession
-
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                "Encrypted Vault",
-                systemImage: "photo.on.rectangle.angled",
-                description: Text("Vault unlock is live. Encrypted photo import is the next milestone.")
-            )
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Lock") { session.lock() }
-                }
             }
         }
     }
