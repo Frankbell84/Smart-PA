@@ -26,14 +26,15 @@ struct VaultEnvelope: Codable {
             createdAt: Date()
         )
 
+        return (try seal(payload: payload, using: unlockKey), payload)
+    }
+
+    static func seal(payload: VaultPayload, using unlockKey: SymmetricKey) throws -> VaultEnvelope {
+        guard payload.vaultKey.count == 32 else { throw CryptoBoxError.invalidEnvelope }
         let wrappingKey = VaultKeySchedule.wrappingKey(from: unlockKey)
         let payloadData = try JSONEncoder().encode(payload)
         let sealed = try CryptoBox.seal(payloadData, using: wrappingKey)
-
-        return (
-            VaultEnvelope(version: currentVersion, sealedPayload: sealed),
-            payload
-        )
+        return VaultEnvelope(version: currentVersion, sealedPayload: sealed)
     }
 
     func open(using unlockKey: SymmetricKey) throws -> VaultPayload {
