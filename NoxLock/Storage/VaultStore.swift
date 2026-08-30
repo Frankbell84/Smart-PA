@@ -16,6 +16,15 @@ actor VaultStore {
         try protectAndExclude(root)
     }
 
+    func hasAnyVaults() throws -> Bool {
+        let contents = try fileManager.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        )
+        return contents.contains { $0.pathExtension == "nox" }
+    }
+
     func contains(locator: String) -> Bool {
         fileManager.fileExists(atPath: url(for: locator).path)
     }
