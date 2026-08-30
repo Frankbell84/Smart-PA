@@ -6,9 +6,9 @@ options:
   createIntermediateGroups: true
 
 packages:
-  Argon2Swift:
-    url: https://github.com/tmthecoder/Argon2Swift.git
-    exactVersion: 1.0.4
+  Argon2idSwiftNative:
+    url: https://github.com/MarlonJD/argon2id-swift-native.git
+    exactVersion: 0.1.1
 
 targets:
   KeyHollow:
@@ -17,7 +17,7 @@ targets:
     sources:
       - path: KeyHollow
     dependencies:
-      - package: Argon2Swift
+      - package: Argon2idSwiftNative
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app
