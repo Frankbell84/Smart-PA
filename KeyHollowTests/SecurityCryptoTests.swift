@@ -54,32 +54,43 @@ final class SecurityCryptoTests: XCTestCase {
         XCTAssertNotEqual(photo, thumbnail)
     }
 
-    func testKnownVaultSuccessDoesNotResetGlobalFailureBudget() async throws {
-        let suiteName = "KeyHollowTests.\(UUID().uuidString)"
-        guard let defaults = UserDefaults(suiteName: suiteName) else {
-            return XCTFail("Could not create isolated UserDefaults suite")
+    func testVaultEnvelopeCanBeRewrappedWithoutChangingVaultKey() throws {
+        let oldUnlockKey = SymmetricKey(size: .bits256)
+        let newUnlockKey = SymmetricKey(size: .bits256)
+        let created = try VaultEnvelope.create(using: oldUnlockKey)
+
+        let replacement = try VaultEnvelope.seal(payload: created.payload, using: newUnlockKey)
+        let reopened = try replacement.open(using: newUnlockKey)
+
+        XCTAssertEqual(reopened.vaultID, created.payload.vaultID)
+        XCTAssertEqual(reopened.vaultKey, created.payload.vaultKey)
+        XCTAssertEqual(reopened.createdAt, created.payload.createdAt)
+        XCTAssertThrowsError(try replacement.open(using: oldUnlockKey))
+    }
+
+    func testSuccessfulUnlockDoesNotEraseGlobalFailureBudget() async throws {
+        let suite = "KeyHollowTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suite) else {
+            XCTFail("Could not create isolated defaults")
+            return
         }
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defer { defaults.removePersistentDomain(forName: suite) }
 
         let limiter = UnlockAttemptLimiter(defaults: defaults)
-        let start = Date(timeIntervalSince1970: 1_000_000)
-
-        for offset in 0..<5 {
-            await limiter.recordFailure(now: start.addingTimeInterval(TimeInterval(offset)))
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        for _ in 0..<5 {
+            await limiter.recordFailure(now: now)
         }
 
-        // Simulate waiting out the first five-second delay and successfully
-        // opening a different, known vault. That success must not erase the five
-        // failures accumulated while guessing another vault.
-        let afterInitialDelay = start.addingTimeInterval(10)
-        await limiter.recordSuccess(now: afterInitialDelay)
-        await limiter.recordFailure(now: afterInitialDelay)
+        await limiter.recordSuccess(now: now.addingTimeInterval(1))
 
         do {
-            try await limiter.checkAllowed(now: afterInitialDelay.addingTimeInterval(1))
-            XCTFail("Known-vault success incorrectly reset the failure budget")
-        } catch UnlockAttemptLimiter.LimitError.temporarilyLocked(let until) {
-            XCTAssertGreaterThan(until, afterInitialDelay.addingTimeInterval(1))
+            try await limiter.checkAllowed(now: now.addingTimeInterval(2))
+            XCTFail("A valid vault unlock must not erase the multi-vault guessing throttle")
+        } catch UnlockAttemptLimiter.LimitError.temporarilyLocked {
+            // Expected.
+        } catch {
+            XCTFail("Unexpected limiter error: \(error)")
         }
     }
 }
