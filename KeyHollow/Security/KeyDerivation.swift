@@ -12,7 +12,7 @@ protocol PasswordKeyDeriving: Sendable {
     func deriveKey(passcode: String, installationSalt: Data, pepper: Data) throws -> SymmetricKey
 }
 
-/// Production candidate KDF for NoxLock.
+/// Production candidate KDF for KeyHollow.
 ///
 /// Every unlock attempt runs this KDF before any vault-file lookup. That avoids
 /// a simple timing signal where nonexistent passcodes would otherwise fail much
@@ -62,7 +62,7 @@ enum VaultKeySchedule {
     static func locatorKey(from unlockKey: SymmetricKey) -> SymmetricKey {
         HKDF<SHA256>.deriveKey(
             inputKeyMaterial: unlockKey,
-            salt: Data("noxlock.locator.v1".utf8),
+            salt: Data("keyhollow.locator.v1".utf8),
             info: Data(),
             outputByteCount: 32
         )
@@ -71,7 +71,7 @@ enum VaultKeySchedule {
     static func wrappingKey(from unlockKey: SymmetricKey) -> SymmetricKey {
         HKDF<SHA256>.deriveKey(
             inputKeyMaterial: unlockKey,
-            salt: Data("noxlock.wrapper.v1".utf8),
+            salt: Data("keyhollow.wrapper.v1".utf8),
             info: Data(),
             outputByteCount: 32
         )
