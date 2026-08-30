@@ -96,4 +96,3 @@ This checklist must be executed on a physical iPhone before external TestFlight 
 ## Release gate
 
 External TestFlight distribution should not begin until all critical items above pass or have a documented accepted risk. App Store security claims require the separate independent security review described in `SECURITY_ARCHITECTURE.md`.
-
