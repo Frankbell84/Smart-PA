@@ -105,6 +105,16 @@ private struct ChangeVaultPasscodeView: View {
                         .onChange(of: confirmation) { _, value in
                             confirmation = sanitize(value, limit: requiredLength)
                         }
+
+                    Text("Avoid birthdays, phone numbers, repeated digits, counting sequences, and repeated patterns.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    if let rejectionMessage {
+                        Text(rejectionMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
                 }
 
                 if let message {
@@ -129,14 +139,19 @@ private struct ChangeVaultPasscodeView: View {
     }
 
     private var canSubmit: Bool {
-        PasscodePolicy.isValid(currentPasscode) &&
+        PasscodePolicy.isValidForUnlock(currentPasscode) &&
         newPasscode.count == requiredLength &&
         newPasscode == confirmation &&
-        PasscodePolicy.isValid(
+        PasscodePolicy.isAcceptableNewPasscode(
             newPasscode,
             tier: tier,
             customLength: tier == .custom ? customLength : nil
         )
+    }
+
+    private var rejectionMessage: String? {
+        guard newPasscode.count == requiredLength else { return nil }
+        return PasscodePolicy.rejectionReason(forNewPasscode: newPasscode)?.message
     }
 
     private func changePasscode() {
@@ -239,7 +254,7 @@ private struct DeleteCurrentVaultView: View {
     }
 
     private var canDelete: Bool {
-        PasscodePolicy.isValid(currentPasscode) &&
+        PasscodePolicy.isValidForUnlock(currentPasscode) &&
         confirmationText.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == "DELETE"
     }
 
@@ -274,3 +289,4 @@ private struct DeleteCurrentVaultView: View {
         }
     }
 }
+
