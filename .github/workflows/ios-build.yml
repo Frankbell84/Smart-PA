@@ -21,6 +21,57 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Select an available iOS Simulator
+        run: |
+          set -euo pipefail
+
+          SIMULATOR_ID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          payload = json.load(sys.stdin)
+          devices = [
+              device
+              for runtime_devices in payload.get("devices", {}).values()
+              for device in runtime_devices
+              if device.get("isAvailable") and device.get("name", "").startswith("iPhone")
+          ]
+          print(devices[0]["udid"] if devices else "")
+          ')
+
+          if [[ -z "$SIMULATOR_ID" ]]; then
+            RUNTIME_ID=$(xcrun simctl list runtimes available -j | python3 -c '
+            import json, sys
+            runtimes = [
+                runtime
+                for runtime in json.load(sys.stdin).get("runtimes", [])
+                if runtime.get("isAvailable") and (
+                    runtime.get("platform") == "iOS"
+                    or ".iOS-" in runtime.get("identifier", "")
+                )
+            ]
+            print(runtimes[-1]["identifier"] if runtimes else "")
+            ')
+            DEVICE_TYPE_ID=$(xcrun simctl list devicetypes -j | python3 -c '
+            import json, sys
+            device_types = [
+                device_type
+                for device_type in json.load(sys.stdin).get("devicetypes", [])
+                if device_type.get("name", "").startswith("iPhone")
+            ]
+            print(device_types[0]["identifier"] if device_types else "")
+            ')
+
+            if [[ -z "$RUNTIME_ID" || -z "$DEVICE_TYPE_ID" ]]; then
+              echo "No usable iOS Simulator runtime or iPhone device type is installed."
+              exit 1
+            fi
+
+            SIMULATOR_ID=$(xcrun simctl create "KeyHollow CI iPhone" "$DEVICE_TYPE_ID" "$RUNTIME_ID")
+          fi
+
+          xcrun simctl boot "$SIMULATOR_ID" || true
+          xcrun simctl bootstatus "$SIMULATOR_ID" -b
+          echo "SIMULATOR_DESTINATION=platform=iOS Simulator,id=$SIMULATOR_ID" >> "$GITHUB_ENV"
+
       - name: Build for iOS Simulator
         run: |
           set -o pipefail
@@ -28,7 +79,7 @@ jobs:
             -project KeyHollow.xcodeproj \
             -scheme KeyHollow \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            -destination "$SIMULATOR_DESTINATION" \
             -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build
@@ -41,7 +92,7 @@ jobs:
             -project KeyHollow.xcodeproj \
             -scheme KeyHollow \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            -destination "$SIMULATOR_DESTINATION" \
             -derivedDataPath build/DerivedData \
             -resultBundlePath build/KeyHollowTests.xcresult \
             CODE_SIGNING_ALLOWED=NO \

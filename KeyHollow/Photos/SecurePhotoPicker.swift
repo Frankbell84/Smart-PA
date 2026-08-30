@@ -10,6 +10,11 @@ struct PickedVaultPhoto: Identifiable, @unchecked Sendable {
     let thumbnailData: Data
 }
 
+struct PickedVaultPhotoBatch: @unchecked Sendable {
+    let photos: [PickedVaultPhoto]
+    let failedSelectionCount: Int
+}
+
 private final class PickedPhotoCollector: @unchecked Sendable {
     private let lock = NSLock()
     private var storage: [PickedVaultPhoto] = []
@@ -29,7 +34,7 @@ private final class PickedPhotoCollector: @unchecked Sendable {
 
 struct SecurePhotoPicker: UIViewControllerRepresentable {
     let selectionLimit: Int
-    let onPicked: ([PickedVaultPhoto]) -> Void
+    let onPicked: (PickedVaultPhotoBatch) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(onPicked: onPicked)
@@ -49,21 +54,22 @@ struct SecurePhotoPicker: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
 
     final class Coordinator: NSObject, PHPickerViewControllerDelegate {
-        private let onPicked: ([PickedVaultPhoto]) -> Void
+        private let onPicked: (PickedVaultPhotoBatch) -> Void
 
-        init(onPicked: @escaping ([PickedVaultPhoto]) -> Void) {
+        init(onPicked: @escaping (PickedVaultPhotoBatch) -> Void) {
             self.onPicked = onPicked
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
             picker.dismiss(animated: true)
             guard !results.isEmpty else {
-                onPicked([])
+                onPicked(PickedVaultPhotoBatch(photos: [], failedSelectionCount: 0))
                 return
             }
 
             let group = DispatchGroup()
             let collector = PickedPhotoCollector()
+            let selectedCount = results.count
 
             for result in results {
                 let provider = result.itemProvider
@@ -86,7 +92,11 @@ struct SecurePhotoPicker: UIViewControllerRepresentable {
             }
 
             group.notify(queue: .main) { [onPicked] in
-                onPicked(collector.snapshot())
+                let photos = collector.snapshot()
+                onPicked(PickedVaultPhotoBatch(
+                    photos: photos,
+                    failedSelectionCount: max(0, selectedCount - photos.count)
+                ))
             }
         }
 

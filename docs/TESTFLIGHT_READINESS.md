@@ -12,6 +12,8 @@
 - Security unit-test target
 - Photos permission strings
 - Standard Apple cryptography export declaration configured
+- Draft privacy policy, support page, and App Store metadata
+- App icon asset catalog with a 1024x1024 source image
 
 ## Required from the Apple Developer account
 
@@ -25,10 +27,9 @@ These cannot be stored or guessed in source control and must be supplied through
 
 ## Required product assets before external TestFlight/App Store review
 
-- Final App Icon asset catalog (all required iPhone sizes via a 1024x1024 source image).
-- Final privacy policy URL.
-- Support URL/email.
-- App Store subtitle/description/keywords.
+- Publish the included privacy-policy draft at a final HTTPS URL.
+- Publish the included support draft at a final HTTPS URL and add the support contact.
+- Review and enter the included App Store metadata draft.
 - App Store screenshots.
 - Age rating answers.
 - App privacy questionnaire answers.

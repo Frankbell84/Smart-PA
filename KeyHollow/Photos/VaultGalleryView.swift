@@ -113,10 +113,18 @@ struct VaultGalleryView: View {
                 Text("Copy keeps the originals in Photos. Move encrypts and verifies the vault copies first, then asks iOS to delete the originals.")
             }
             .sheet(isPresented: $showingPicker) {
-                SecurePhotoPicker(selectionLimit: 50) { photos in
+                SecurePhotoPicker(selectionLimit: 50) { batch in
                     showingPicker = false
-                    guard !photos.isEmpty else { return }
-                    importPhotos(photos)
+                    guard !batch.photos.isEmpty else {
+                        if batch.failedSelectionCount > 0 {
+                            message = unreadableSelectionMessage(count: batch.failedSelectionCount)
+                        }
+                        return
+                    }
+                    importPhotos(
+                        batch.photos,
+                        pickerFailureCount: batch.failedSelectionCount
+                    )
                 }
             }
             .sheet(isPresented: $showingNewVault) {
@@ -208,13 +216,16 @@ struct VaultGalleryView: View {
         thumbnails = loaded
     }
 
-    private func importPhotos(_ photos: [PickedVaultPhoto]) {
+    private func importPhotos(
+        _ photos: [PickedVaultPhoto],
+        pickerFailureCount: Int
+    ) {
         guard let store, !isWorking else { return }
         isWorking = true
 
         Task {
             var importedCount = 0
-            var failedCount = 0
+            var failedCount = pickerFailureCount
             var identifiersToDelete: [String] = []
 
             for photo in photos {
@@ -273,6 +284,11 @@ struct VaultGalleryView: View {
             return "\(action) \(importedCount) \(noun) into KeyHollow. \(failedCount) \(failedNoun) could not be imported."
         }
         return "\(action) \(importedCount) \(noun) into KeyHollow."
+    }
+
+    private func unreadableSelectionMessage(count: Int) -> String {
+        let noun = count == 1 ? "photo" : "photos"
+        return "No photos were imported. \(count) selected \(noun) could not be read."
     }
 
     private func open(_ record: VaultPhotoRecord) {

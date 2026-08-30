@@ -114,6 +114,96 @@ final class SecurityCryptoTests: XCTestCase {
         XCTAssertThrowsError(try replacement.open(using: oldUnlockKey))
     }
 
+    func testPhotoStorePersistsOnlyAuthenticatedCiphertext() async throws {
+        let root = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let key = SymmetricKey(size: .bits256)
+        let store = try VaultPhotoStore(
+            vaultID: UUID(),
+            vaultKey: key,
+            storageRoot: root
+        )
+        let original = Data("KEYHOLLOW-PLAINTEXT-ORIGINAL-MARKER".utf8)
+        let thumbnail = Data("KEYHOLLOW-PLAINTEXT-THUMBNAIL-MARKER".utf8)
+
+        let record = try await store.importPhoto(
+            originalData: original,
+            thumbnailData: thumbnail
+        )
+
+        let storedOriginal = try Data(contentsOf: root.appendingPathComponent(record.blobName))
+        let storedThumbnail = try Data(contentsOf: root.appendingPathComponent(record.thumbnailName))
+        let storedManifest = try Data(contentsOf: root.appendingPathComponent("manifest.khm"))
+
+        XCTAssertNotEqual(storedOriginal, original)
+        XCTAssertNotEqual(storedThumbnail, thumbnail)
+        XCTAssertNil(storedOriginal.range(of: original))
+        XCTAssertNil(storedThumbnail.range(of: thumbnail))
+        XCTAssertThrowsError(try JSONDecoder().decode(VaultPhotoManifest.self, from: storedManifest))
+        let reopenedOriginal = try await store.loadPhoto(record)
+        let reopenedThumbnail = try await store.loadThumbnail(record)
+        XCTAssertEqual(reopenedOriginal, original)
+        XCTAssertEqual(reopenedThumbnail, thumbnail)
+    }
+
+    func testPhotoStoreFailsClosedWithWrongKeyOrTamperedBlob() async throws {
+        let root = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let store = try VaultPhotoStore(
+            vaultID: UUID(),
+            vaultKey: SymmetricKey(size: .bits256),
+            storageRoot: root
+        )
+        let record = try await store.importPhoto(
+            originalData: Data("private original".utf8),
+            thumbnailData: Data("private thumbnail".utf8)
+        )
+
+        let wrongKeyStore = try VaultPhotoStore(
+            vaultID: UUID(),
+            vaultKey: SymmetricKey(size: .bits256),
+            storageRoot: root
+        )
+        do {
+            _ = try await wrongKeyStore.loadManifest()
+            XCTFail("A different vault key decrypted the manifest")
+        } catch {}
+
+        let blobURL = root.appendingPathComponent(record.blobName)
+        var ciphertext = try Data(contentsOf: blobURL)
+        ciphertext[ciphertext.index(before: ciphertext.endIndex)] ^= 0x01
+        try ciphertext.write(to: blobURL, options: .atomic)
+
+        do {
+            _ = try await store.loadPhoto(record)
+            XCTFail("Tampered photo ciphertext was accepted")
+        } catch {}
+    }
+
+    func testDeletingPhotoRemovesManifestReferenceAndEncryptedBlobs() async throws {
+        let root = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let store = try VaultPhotoStore(
+            vaultID: UUID(),
+            vaultKey: SymmetricKey(size: .bits256),
+            storageRoot: root
+        )
+        let record = try await store.importPhoto(
+            originalData: Data("original".utf8),
+            thumbnailData: Data("thumbnail".utf8)
+        )
+
+        try await store.delete(record)
+
+        let manifest = try await store.loadManifest()
+        XCTAssertTrue(manifest.photos.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent(record.blobName).path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent(record.thumbnailName).path))
+    }
+
     func testSuccessfulUnlockDoesNotEraseGlobalFailureBudget() async throws {
         let suite = "KeyHollowTests.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suite) else {
@@ -144,6 +234,11 @@ final class SecurityCryptoTests: XCTestCase {
         } catch {
             XCTFail("Unexpected limiter error: \(error)")
         }
+    }
+
+    private func temporaryDirectory() -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent("KeyHollowTests-\(UUID().uuidString)", isDirectory: true)
     }
 }
 

@@ -12,20 +12,24 @@ actor VaultPhotoStore {
     private let vaultID: UUID
     private let vaultKey: SymmetricKey
 
-    init(vaultID: UUID, vaultKey: SymmetricKey) throws {
+    init(vaultID: UUID, vaultKey: SymmetricKey, storageRoot: URL? = nil) throws {
         self.vaultID = vaultID
         self.vaultKey = vaultKey
 
-        let appSupport = try fileManager.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
+        if let storageRoot {
+            root = storageRoot
+        } else {
+            let appSupport = try fileManager.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
 
-        root = appSupport
-            .appendingPathComponent("KeyHollow/PhotoData", isDirectory: true)
-            .appendingPathComponent(vaultID.uuidString.lowercased(), isDirectory: true)
+            root = appSupport
+                .appendingPathComponent("KeyHollow/PhotoData", isDirectory: true)
+                .appendingPathComponent(vaultID.uuidString.lowercased(), isDirectory: true)
+        }
 
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
         try Self.protectAndExclude(root, fileManager: fileManager)
