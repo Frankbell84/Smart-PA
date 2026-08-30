@@ -29,16 +29,38 @@ jobs:
             -scheme KeyHollow \
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build
 
       - name: Run security unit tests
         run: |
           set -o pipefail
+          rm -rf build/KeyHollowTests.xcresult
           xcodebuild \
             -project KeyHollow.xcodeproj \
             -scheme KeyHollow \
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            -derivedDataPath build/DerivedData \
+            -resultBundlePath build/KeyHollowTests.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             test
+
+      - name: Upload simulator build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyHollow-Simulator
+          path: build/DerivedData/Build/Products/Debug-iphonesimulator/KeyHollow.app
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload security test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyHollow-Security-Tests
+          path: build/KeyHollowTests.xcresult
+          if-no-files-found: warn
+          retention-days: 30
