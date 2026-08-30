@@ -13,10 +13,10 @@ struct RootView: View {
             if session.isUnlocked {
                 VaultPlaceholderView()
             } else if isChecking {
-                ProgressView("Preparing NoxLock…")
+                ProgressView("Preparing KeyHollow…")
             } else if let startupError {
                 ContentUnavailableView(
-                    "NoxLock unavailable",
+                    "KeyHollow unavailable",
                     systemImage: "exclamationmark.shield",
                     description: Text(startupError)
                 )
@@ -61,7 +61,7 @@ private struct LockView: View {
             Image(systemName: "lock.shield.fill")
                 .font(.system(size: 52))
 
-            Text("NOXLOCK")
+            Text("KEYHOLLOW")
                 .font(.title.bold())
                 .tracking(4)
 
@@ -200,7 +200,7 @@ private struct InitialVaultSetupView: View {
                     }
 
                     if tier == .standard {
-                        Text("Six digits is NoxLock's lowest security tier. Longer random passcodes are substantially stronger.")
+                        Text("Six digits is KeyHollow's lowest security tier. Longer random passcodes are substantially stronger.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -244,7 +244,7 @@ private struct InitialVaultSetupView: View {
                     .disabled(!canCreate || isWorking)
                 }
             }
-            .navigationTitle("Set Up NoxLock")
+            .navigationTitle("Set Up KeyHollow")
         }
     }
 
