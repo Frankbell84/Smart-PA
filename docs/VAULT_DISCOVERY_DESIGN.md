@@ -53,4 +53,3 @@ A six-digit PIN contains only one million possible numeric strings. KeyHollow th
 ## No alternate unlock
 
 Neither Face ID, Touch ID, nor the Apple device passcode can unwrap or substitute for a KeyHollow vault passcode. Platform security still protects the app sandbox/Keychain at the operating-system layer.
-
