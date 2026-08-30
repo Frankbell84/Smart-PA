@@ -15,9 +15,15 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app
         PRODUCT_NAME: KeyHollow
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        VERSIONING_SYSTEM: apple-generic
         SWIFT_VERSION: 5.0
         SWIFT_STRICT_CONCURRENCY: complete
         ENABLE_USER_SCRIPT_SANDBOXING: YES
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
     info:
       path: KeyHollow/Resources/Info.plist
       properties:
@@ -51,3 +57,5 @@ schemes:
       config: Debug
       targets:
         - KeyHollowTests
+    archive:
+      config: Release
