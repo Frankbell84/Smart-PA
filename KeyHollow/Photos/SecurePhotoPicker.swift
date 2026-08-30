@@ -1,13 +1,30 @@
 import SwiftUI
-import PhotosUI
+@preconcurrency import PhotosUI
 import Photos
-import UIKit
+@preconcurrency import UIKit
 
-struct PickedVaultPhoto: Identifiable {
+struct PickedVaultPhoto: Identifiable, @unchecked Sendable {
     let id = UUID()
     let sourceAssetIdentifier: String?
     let originalData: Data
     let thumbnailData: Data
+}
+
+private final class PickedPhotoCollector: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [PickedVaultPhoto] = []
+
+    func append(_ photo: PickedVaultPhoto) {
+        lock.lock()
+        storage.append(photo)
+        lock.unlock()
+    }
+
+    func snapshot() -> [PickedVaultPhoto] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
 }
 
 struct SecurePhotoPicker: UIViewControllerRepresentable {
@@ -46,44 +63,41 @@ struct SecurePhotoPicker: UIViewControllerRepresentable {
             }
 
             let group = DispatchGroup()
-            let lock = NSLock()
-            var photos: [PickedVaultPhoto] = []
+            let collector = PickedPhotoCollector()
 
             for result in results {
-                guard result.itemProvider.canLoadObject(ofClass: UIImage.self) else { continue }
+                let provider = result.itemProvider
+                let assetIdentifier = result.assetIdentifier
+                guard provider.canLoadObject(ofClass: UIImage.self) else { continue }
                 group.enter()
 
-                result.itemProvider.loadObject(ofClass: UIImage.self) { object, _ in
+                provider.loadObject(ofClass: UIImage.self) { object, _ in
                     defer { group.leave() }
                     guard let image = object as? UIImage,
                           let originalData = Self.normalizedJPEG(from: image),
                           let thumbnailData = Self.thumbnailJPEG(from: image) else { return }
 
-                    let photo = PickedVaultPhoto(
-                        sourceAssetIdentifier: result.assetIdentifier,
+                    collector.append(PickedVaultPhoto(
+                        sourceAssetIdentifier: assetIdentifier,
                         originalData: originalData,
                         thumbnailData: thumbnailData
-                    )
-
-                    lock.lock()
-                    photos.append(photo)
-                    lock.unlock()
+                    ))
                 }
             }
 
             group.notify(queue: .main) { [onPicked] in
-                onPicked(photos)
+                onPicked(collector.snapshot())
             }
         }
 
         /// Re-encoding removes most source metadata and avoids writing a plaintext
         /// source file into KeyHollow storage. The resulting bytes exist in memory
         /// until encrypted by VaultPhotoStore.
-        private static func normalizedJPEG(from image: UIImage) -> Data? {
+        nonisolated private static func normalizedJPEG(from image: UIImage) -> Data? {
             image.jpegData(compressionQuality: 0.97)
         }
 
-        private static func thumbnailJPEG(from image: UIImage) -> Data? {
+        nonisolated private static func thumbnailJPEG(from image: UIImage) -> Data? {
             let maxDimension: CGFloat = 512
             let source = image.size
             guard source.width > 0, source.height > 0 else { return nil }
