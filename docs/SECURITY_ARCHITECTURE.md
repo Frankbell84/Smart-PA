@@ -1,35 +1,35 @@
-# NoxLock Security Architecture — Draft 0.3
+# KeyHollow Security Architecture — Draft 0.3
 
 ## Security objective
 
-NoxLock stores user-imported photos locally in multiple cryptographically independent vaults. Possession of one valid vault passcode must not grant access to the plaintext contents of another vault.
+KeyHollow stores user-imported photos locally in multiple cryptographically independent vaults. Possession of one valid vault passcode must not grant access to the plaintext contents of another vault.
 
 ## Hard access rule
 
-A NoxLock vault is unlocked only by its own NoxLock passcode.
+A KeyHollow vault is unlocked only by its own KeyHollow passcode.
 
 - No Face ID unlock.
 - No Touch ID unlock.
 - No Apple device-passcode fallback.
-- No recovery flow that substitutes the iPhone passcode for a NoxLock vault passcode.
+- No recovery flow that substitutes the iPhone passcode for a KeyHollow vault passcode.
 
-The operating system may still protect the application container and Keychain at the platform level, but platform authentication must never become an alternate NoxLock vault-unlock path.
+The operating system may still protect the application container and Keychain at the platform level, but platform authentication must never become an alternate KeyHollow vault-unlock path.
 
 ## Passcode security levels
 
-NoxLock uses variable-length numeric passcodes. The lock screen does not reveal the expected passcode length for any vault.
+KeyHollow uses variable-length numeric passcodes. The lock screen does not reveal the expected passcode length for any vault.
 
 Recommended user-facing levels:
 
-- **Standard — 6 digits.** Lowest permitted NoxLock security level. Intended for convenience-oriented vaults.
+- **Standard — 6 digits.** Lowest permitted KeyHollow security level. Intended for convenience-oriented vaults.
 - **Enhanced — 8 digits.** More resistant to guessing while remaining easy to enter.
 - **High — 12 digits.** Intended for highly private vaults.
 - **Maximum — 16 digits.** Strongest predefined numeric option for users willing to trade convenience for additional entropy.
 - **Custom — 6 to 20 digits.** Advanced users may choose any supported length in this range.
 
-Different vaults on the same device may use different passcode lengths. NoxLock must not expose which lengths exist.
+Different vaults on the same device may use different passcode lengths. KeyHollow must not expose which lengths exist.
 
-The labels above describe relative resistance to passcode guessing within NoxLock; they are not claims of absolute security. Longer numeric passcodes provide more possible combinations, but security also depends on the KDF, rate limiting, device state, implementation quality, and user-chosen predictability.
+The labels above describe relative resistance to passcode guessing within KeyHollow; they are not claims of absolute security. Longer numeric passcodes provide more possible combinations, but security also depends on the KDF, rate limiting, device state, implementation quality, and user-chosen predictability.
 
 No 4-digit vault passcodes are permitted.
 
@@ -38,13 +38,13 @@ No 4-digit vault passcodes are permitted.
 V1 explicitly considers:
 
 1. Lost or stolen locked iPhone.
-2. Another person knowing one valid NoxLock passcode.
+2. Another person knowing one valid KeyHollow passcode.
 3. Offline inspection of the app container or device backup.
 4. Brute-force attempts against short numeric passcodes.
 5. Plaintext leakage through thumbnails, temporary files, logs, caches, app-switcher snapshots, or backups.
 6. App backgrounding while a vault is open.
 7. Accidental persistence of imported source metadata.
-8. Partial failure during a requested move from Apple Photos into NoxLock.
+8. Partial failure during a requested move from Apple Photos into KeyHollow.
 
 V1 does **not** promise protection against every compromised/jailbroken device, malicious OS, sophisticated live-memory extraction, or physical coercion. Marketing must not claim otherwise.
 
@@ -102,9 +102,9 @@ Every import presents two explicit modes:
 3. Verify the encrypted object can be authenticated/decrypted and that required metadata was committed.
 4. Only after successful verification, request deletion of the original through Apple's supported Photos APIs.
 5. If deletion is denied, cancelled, or fails, report the operation as **Copied**, never **Moved**.
-6. NoxLock must never delete the source first and attempt encryption afterward.
+6. KeyHollow must never delete the source first and attempt encryption afterward.
 
-Any Apple-provided authorization or confirmation UI required for deletion is respected; NoxLock must not attempt to bypass it.
+Any Apple-provided authorization or confirmation UI required for deletion is respected; KeyHollow must not attempt to bypass it.
 
 Temporary plaintext buffers/files must be minimized and destroyed/released promptly. Importing must never imply that the original disappeared unless deletion actually succeeded.
 
@@ -114,7 +114,7 @@ Never log passcodes, derived keys, plaintext filenames, photo data, sensitive me
 
 ## Release gate
 
-Before describing NoxLock publicly as a secure photo vault, perform:
+Before describing KeyHollow publicly as a secure photo vault, perform:
 
 - unit and integration security tests;
 - backup/container inspection;
