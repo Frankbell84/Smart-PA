@@ -40,6 +40,16 @@ struct RootView: View {
             }
             isChecking = false
         }
+        .onChange(of: session.isUnlocked) { _, unlocked in
+            guard !unlocked, let service else { return }
+            Task {
+                do {
+                    setupRequired = !(try await service.hasAnyVaults())
+                } catch {
+                    startupError = "Secure local storage could not be rechecked."
+                }
+            }
+        }
     }
 }
 
