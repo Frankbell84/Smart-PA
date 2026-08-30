@@ -25,9 +25,9 @@ protocol PasswordKeyDeriving: Sendable {
 /// Release gate: benchmark these parameters on the minimum supported iPhone and
 /// independently review this dependency + integration before launch.
 struct ProductionArgon2idKDF: PasswordKeyDeriving {
-    static let memoryKiB = 65_536   // 64 MiB development starting point
-    static let iterations = 3
-    static let parallelism = 2
+    static let memoryKiB: UInt32 = 65_536   // 64 MiB development starting point
+    static let iterations: UInt32 = 3
+    static let parallelism: UInt32 = 2
 
     func deriveKey(passcode: String, installationSalt: Data, pepper: Data) throws -> SymmetricKey {
         guard PasscodePolicy.isValid(passcode) else { throw KeyDerivationError.invalidPasscode }
