@@ -29,7 +29,7 @@ struct ProductionArgon2idKDF: PasswordKeyDeriving {
     static let parallelism: UInt32 = 2
 
     func deriveKey(passcode: String, installationSalt: Data, pepper: Data) throws -> SymmetricKey {
-        guard PasscodePolicy.isValid(passcode) else { throw KeyDerivationError.invalidPasscode }
+        guard PasscodePolicy.isValidForUnlock(passcode) else { throw KeyDerivationError.invalidPasscode }
         guard installationSalt.count >= 16 else { throw KeyDerivationError.invalidSalt }
         guard pepper.count == 32 else { throw KeyDerivationError.invalidOutput }
 
@@ -68,3 +68,4 @@ enum VaultKeySchedule {
         )
     }
 }
+
