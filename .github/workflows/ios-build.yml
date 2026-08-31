@@ -10,6 +10,10 @@ jobs:
   build-and-test:
     runs-on: macos-15
     timeout-minutes: 25
+    env:
+      # Reproduce the TestFlight compatibility boundary: compile with an
+      # iOS 26 SDK, then launch on an installed iOS 18 simulator runtime.
+      DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
 
     steps:
       - name: Checkout
@@ -30,7 +34,8 @@ jobs:
           payload = json.load(sys.stdin)
           devices = [
               device
-              for runtime_devices in payload.get("devices", {}).values()
+              for runtime, runtime_devices in payload.get("devices", {}).items()
+              if runtime.endswith(".iOS-18-5")
               for device in runtime_devices
               if device.get("isAvailable") and device.get("name", "").startswith("iPhone")
           ]
@@ -43,10 +48,8 @@ jobs:
             runtimes = [
                 runtime
                 for runtime in json.load(sys.stdin).get("runtimes", [])
-                if runtime.get("isAvailable") and (
-                    runtime.get("platform") == "iOS"
-                    or ".iOS-" in runtime.get("identifier", "")
-                )
+                if runtime.get("isAvailable")
+                and runtime.get("identifier", "").endswith(".iOS-18-5")
             ]
             print(runtimes[-1]["identifier"] if runtimes else "")
             ')
