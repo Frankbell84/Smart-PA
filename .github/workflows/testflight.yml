@@ -65,6 +65,21 @@ jobs:
             PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
             archive
 
+      - name: Verify archived build number
+        run: |
+          set -euo pipefail
+
+          ARCHIVED_INFO='build/KeyHollow.xcarchive/Products/Applications/KeyHollow.app/Info.plist'
+          ARCHIVED_BUILD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ARCHIVED_INFO")
+          EXPECTED_BUILD=$(xcodebuild -project KeyHollow.xcodeproj -scheme KeyHollow -configuration Release -showBuildSettings | awk '/ CURRENT_PROJECT_VERSION = / { print $3; exit }')
+
+          if [[ "$ARCHIVED_BUILD" != "$EXPECTED_BUILD" ]]; then
+            echo "Archived build number $ARCHIVED_BUILD does not match project build number $EXPECTED_BUILD."
+            exit 1
+          fi
+
+          echo "Verified archived build number $ARCHIVED_BUILD."
+
       - name: Create export options
         run: |
           /usr/libexec/PlistBuddy -c 'Add :method string app-store-connect' build/ExportOptions.plist
