@@ -90,17 +90,30 @@ The source vault remains untouched throughout this process.
 6. Ask the user to establish a new LowKey for the destination device.
 7. Derive a new device-bound V1 credential envelope and reject any LowKey that
    already resolves to a local vault.
-8. Move the fully verified staging directory into a fresh destination-vault
+8. Persist a file-protected, device-authenticated rollback journal containing
+   only the fresh vault identifier, opaque credential locator, and fingerprint
+   of the exact new encrypted credential envelope.
+9. Move the fully verified staging directory into a fresh destination-vault
    identifier without replacing any existing directory.
-9. Publish the new LowKey wrapper only after the ciphertext move succeeds.
-10. If credential publication reports an error, remove both the wrapper and
+10. Publish the new LowKey wrapper only after the ciphertext move succeeds.
+11. Remove the rollback journal only after both commits succeed.
+12. If credential publication reports an error, remove both the wrapper and
     the moved ciphertext before reporting failure.
 
 Authentication or validation failures remove staging data. A rejected new
 LowKey leaves the validated staging directory available for another LowKey;
 commit failures roll it back. Existing vaults remain unchanged in every case.
-Crash-recovery testing for termination between commit steps remains a release
-gate before this module may leave its isolated feature branch.
+On launch, any remaining authenticated journal is rolled back rather than
+completed: KeyHollow removes the new wrapper and destination directory, clears
+the journal only after both are absent, and requires the user to retry import.
+A modified, forged, malformed, or unrecognized journal fails closed without
+deleting the paths it names. Recovery deletes a credential only when its
+fingerprint matches the transaction, so an unrelated wrapper at the same
+locator is preserved. New credential publication uses an exclusive complete-
+file link and cleans abandoned hidden write files on startup. Repeated
+physical-device termination testing at
+each commit boundary remains a release gate before this module may leave its
+isolated feature branch.
 
 ## Required failure tests
 
@@ -112,6 +125,9 @@ gate before this module may leave its isolated feature branch.
 - unsupported archive version;
 - insufficient storage before and during transfer;
 - app termination during export or import;
+- tampered, malformed, or unauthenticated rollback journal;
+- incomplete rollback retained for retry on the next launch;
+- unrelated credential at the same locator is never deleted or overwritten;
 - existing vault-identifier collision;
 - large vault with bounded memory usage;
 - restoration on a different physical iPhone;

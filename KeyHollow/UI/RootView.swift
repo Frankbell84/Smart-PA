@@ -32,6 +32,7 @@ struct RootView: View {
             guard service == nil else { return }
             do {
                 let createdService = try VaultUnlockService()
+                try await createdService.recoverInterruptedPortableVaultInstalls()
                 let hasVaults = try await createdService.hasAnyVaults()
                 service = createdService
                 setupRequired = !hasVaults

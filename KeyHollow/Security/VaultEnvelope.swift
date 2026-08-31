@@ -2,13 +2,13 @@ import Foundation
 import CryptoKit
 import Security
 
-struct VaultPayload: Codable {
+struct VaultPayload: Codable, Sendable {
     let vaultID: UUID
     let vaultKey: Data
     let createdAt: Date
 }
 
-struct VaultEnvelope: Codable {
+struct VaultEnvelope: Codable, Sendable {
     static let currentVersion = 1
 
     let version: Int
