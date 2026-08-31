@@ -237,6 +237,25 @@ final class SecurityCryptoTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent(preserved.blobName).path))
     }
 
+    @MainActor
+    func testSystemPhotoOperationScopeIsBalancedAndNestSafe() {
+        let session = VaultSession()
+        XCTAssertFalse(session.isSystemPhotoOperationActive)
+
+        session.beginSystemPhotoOperation()
+        session.beginSystemPhotoOperation()
+        XCTAssertTrue(session.isSystemPhotoOperationActive)
+
+        session.endSystemPhotoOperation()
+        XCTAssertTrue(session.isSystemPhotoOperationActive)
+
+        session.endSystemPhotoOperation()
+        XCTAssertFalse(session.isSystemPhotoOperationActive)
+
+        session.endSystemPhotoOperation()
+        XCTAssertFalse(session.isSystemPhotoOperationActive)
+    }
+
     func testSuccessfulUnlockDoesNotEraseGlobalFailureBudget() async throws {
         let suite = "KeyHollowTests.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suite) else {

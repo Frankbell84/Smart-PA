@@ -36,9 +36,33 @@ struct KeyHollowApp: App {
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase != .active {
+            if shouldLock(for: newPhase) {
                 session.lock()
             }
+        }
+        .onChange(of: session.isSystemPhotoOperationActive) { _, operationActive in
+            // If the Photos operation finishes while KeyHollow is still not
+            // active, fail closed rather than waiting for another phase change.
+            if !operationActive, scenePhase != .active {
+                session.lock()
+            }
+        }
+    }
+
+    private func shouldLock(for phase: ScenePhase) -> Bool {
+        switch phase {
+        case .active:
+            return false
+        case .background:
+            return true
+        case .inactive:
+            // iOS presents the user-requested Photos deletion confirmation by
+            // temporarily making the app inactive. The opaque privacy shield
+            // remains visible, but the vault key may survive only this scoped
+            // system interaction. A real background transition still locks.
+            return !session.isSystemPhotoOperationActive
+        @unknown default:
+            return true
         }
     }
 }
@@ -60,3 +84,4 @@ private struct PrivacyShieldView: View {
         .accessibilityHidden(true)
     }
 }
+

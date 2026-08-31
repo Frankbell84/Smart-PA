@@ -368,9 +368,11 @@ struct VaultGalleryView: View {
                 let allImportedPhotosAreDeletable = identifiersToDelete.count == importedCount
                 let result: PhotoMoveResult
                 if allImportedPhotosAreDeletable {
+                    session.beginSystemPhotoOperation()
                     result = await PhotoLibraryDeletionService.deleteOriginals(
                         localIdentifiers: identifiersToDelete
                     )
+                    session.endSystemPhotoOperation()
                 } else {
                     result = .copiedOnly
                 }
@@ -500,7 +502,9 @@ struct VaultGalleryView: View {
                 }
             }
 
+            session.beginSystemPhotoOperation()
             let result = await PhotoLibrarySaveService.savePhotos(decryptedPhotos)
+            session.endSystemPhotoOperation()
 
             switch result {
             case .saved(let savedCount):
@@ -547,6 +551,7 @@ private struct DecryptedPhotoView: View {
     let photo: DecryptedPhoto
     let onDelete: () -> Void
 
+    @EnvironmentObject private var session: VaultSession
     @Environment(\.dismiss) private var dismiss
     @State private var isSaving = false
     @State private var message: String?
@@ -604,7 +609,9 @@ private struct DecryptedPhotoView: View {
         isSaving = true
 
         Task {
+            session.beginSystemPhotoOperation()
             let result = await PhotoLibrarySaveService.savePhotos([photo.originalData])
+            session.endSystemPhotoOperation()
             switch result {
             case .saved:
                 message = "Saved to Photos. The encrypted vault copy was kept."
