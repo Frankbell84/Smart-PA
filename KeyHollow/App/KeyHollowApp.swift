@@ -36,20 +36,33 @@ struct KeyHollowApp: App {
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
-            if shouldLock(for: newPhase) {
+            if VaultLifecycleLockPolicy.shouldLock(
+                for: newPhase,
+                systemPhotoOperationActive: session.isSystemPhotoOperationActive
+            ) {
                 session.lock()
             }
         }
         .onChange(of: session.isSystemPhotoOperationActive) { _, operationActive in
-            // If the Photos operation finishes while KeyHollow is still not
-            // active, fail closed rather than waiting for another phase change.
-            if !operationActive, scenePhase != .active {
+            // The Photos completion callback can arrive while the scene is still
+            // inactive, immediately before iOS returns it to active. Locking in
+            // that handoff would force an unnecessary passcode re-entry. A real
+            // app switch reaches background and still fails closed.
+            if !operationActive,
+               VaultLifecycleLockPolicy.shouldLockWhenPhotoOperationEnds(
+                   scenePhase: scenePhase
+               ) {
                 session.lock()
             }
         }
     }
+}
 
-    private func shouldLock(for phase: ScenePhase) -> Bool {
+enum VaultLifecycleLockPolicy {
+    static func shouldLock(
+        for phase: ScenePhase,
+        systemPhotoOperationActive: Bool
+    ) -> Bool {
         switch phase {
         case .active:
             return false
@@ -60,10 +73,14 @@ struct KeyHollowApp: App {
             // temporarily making the app inactive. The opaque privacy shield
             // remains visible, but the vault key may survive only this scoped
             // system interaction. A real background transition still locks.
-            return !session.isSystemPhotoOperationActive
+            return !systemPhotoOperationActive
         @unknown default:
             return true
         }
+    }
+
+    static func shouldLockWhenPhotoOperationEnds(scenePhase: ScenePhase) -> Bool {
+        scenePhase == .background
     }
 }
 
