@@ -88,10 +88,19 @@ The source vault remains untouched throughout this process.
 4. Stream and authenticate every content chunk into a staging directory.
 5. Validate the encrypted manifest and every referenced ciphertext blob.
 6. Ask the user to establish a new LowKey for the destination device.
-7. Create a new device-bound V1 credential envelope.
-8. Commit the fully verified staging directory as one vault operation.
+7. Derive a new device-bound V1 credential envelope and reject any LowKey that
+   already resolves to a local vault.
+8. Move the fully verified staging directory into a fresh destination-vault
+   identifier without replacing any existing directory.
+9. Publish the new LowKey wrapper only after the ciphertext move succeeds.
+10. If credential publication reports an error, remove both the wrapper and
+    the moved ciphertext before reporting failure.
 
-Any failure removes the staging data and leaves existing vaults unchanged.
+Authentication or validation failures remove staging data. A rejected new
+LowKey leaves the validated staging directory available for another LowKey;
+commit failures roll it back. Existing vaults remain unchanged in every case.
+Crash-recovery testing for termination between commit steps remains a release
+gate before this module may leave its isolated feature branch.
 
 ## Required failure tests
 
