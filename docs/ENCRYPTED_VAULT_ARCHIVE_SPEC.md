@@ -57,6 +57,18 @@ Each content chunk will authenticate its archive identifier, sequence number,
 and final-chunk marker. Import must reject missing, duplicated, reordered,
 truncated, or modified chunks.
 
+The authenticated content stream begins with an encrypted payload header and
+catalog. The catalog contains only the random storage names, roles, ciphertext
+sizes, and SHA-256 digests of the existing encrypted manifest, originals, and
+thumbnails. It is never present in the public archive header. Import validates
+every storage name before creating files, rejects path separators and duplicate
+names, and writes only to a protected staging directory. Each ciphertext digest
+must match before the staged payload can be handed to vault-level validation.
+
+Payload extraction is fail-closed: traversal attempts, changed source files,
+digest mismatches, extra bytes, missing bytes, or cancellation remove the entire
+staging directory. No partially extracted directory can become a vault.
+
 ## Atomic export
 
 1. Create a protected temporary file inside the app container.
