@@ -194,7 +194,18 @@ private struct InitialVaultSetupView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Set Up KeyHollow")
+                    .font(.largeTitle.bold())
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+
+            Divider()
+
             Form {
                 Section("Security level") {
                     Picker("Level", selection: $tier) {
@@ -264,7 +275,6 @@ private struct InitialVaultSetupView: View {
                     .disabled(!canCreate || isWorking)
                 }
             }
-            .navigationTitle("Set Up KeyHollow")
         }
     }
 
