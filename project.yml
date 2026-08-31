@@ -48,6 +48,18 @@ targets:
         SWIFT_VERSION: 5.0
         SWIFT_STRICT_CONCURRENCY: complete
 
+  KeyHollowLaunchTests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: KeyHollowLaunchTests
+    dependencies:
+      - target: KeyHollow
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.launch-tests
+        SWIFT_VERSION: 5.0
+
 schemes:
   KeyHollow:
     build:
@@ -58,5 +70,6 @@ schemes:
       config: Debug
       targets:
         - KeyHollowTests
+        - KeyHollowLaunchTests
     archive:
       config: Release
