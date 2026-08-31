@@ -34,7 +34,10 @@ struct VaultGalleryView: View {
     ]
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            galleryHeader
+            Divider()
+
             Group {
                 if records.isEmpty && !isWorking {
                     ContentUnavailableView(
@@ -59,95 +62,55 @@ struct VaultGalleryView: View {
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
             }
-            .navigationTitle("Vault")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Lock") { session.lock() }
-                }
-
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        showingImportOptions = true
-                    } label: {
-                        Image(systemName: "plus")
+        }
+        .confirmationDialog("Import Photos", isPresented: $showingImportOptions, titleVisibility: .visible) {
+            Button("Copy to Vault") {
+                importMode = .copy
+                showingPicker = true
+            }
+            Button("Move to Vault") {
+                importMode = .move
+                showingPicker = true
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Copy keeps the originals in Photos. Move encrypts and verifies the vault copies first, then asks iOS to delete the originals.")
+        }
+        .sheet(isPresented: $showingPicker) {
+            SecurePhotoPicker(selectionLimit: 50) { batch in
+                showingPicker = false
+                guard !batch.photos.isEmpty else {
+                    if batch.failedSelectionCount > 0 {
+                        message = unreadableSelectionMessage(count: batch.failedSelectionCount)
                     }
-                    .disabled(isWorking)
-                    .accessibilityLabel("Import photos")
-
-                    Menu {
-                        Button {
-                            showingNewVault = true
-                        } label: {
-                            Label("Create New Vault", systemImage: "lock.badge.plus")
-                        }
-
-                        Button {
-                            showingSecuritySettings = true
-                        } label: {
-                            Label("Vault Security", systemImage: "shield.lefthalf.filled")
-                        }
-
-                        Button {
-                            session.lock()
-                        } label: {
-                            Label("Lock KeyHollow", systemImage: "lock.fill")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                    .disabled(isWorking)
-                    .accessibilityLabel("Vault options")
+                    return
                 }
+                importPhotos(
+                    batch.photos,
+                    pickerFailureCount: batch.failedSelectionCount
+                )
             }
-            .confirmationDialog("Import Photos", isPresented: $showingImportOptions, titleVisibility: .visible) {
-                Button("Copy to Vault") {
-                    importMode = .copy
-                    showingPicker = true
-                }
-                Button("Move to Vault") {
-                    importMode = .move
-                    showingPicker = true
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Copy keeps the originals in Photos. Move encrypts and verifies the vault copies first, then asks iOS to delete the originals.")
+        }
+        .sheet(isPresented: $showingNewVault) {
+            AdditionalVaultSetupView(service: service)
+                .environmentObject(session)
+        }
+        .sheet(isPresented: $showingSecuritySettings) {
+            VaultSecuritySettingsView(service: service)
+                .environmentObject(session)
+        }
+        .sheet(item: $decryptedPhoto) { photo in
+            DecryptedPhotoView(photo: photo) {
+                delete(photo.record)
             }
-            .sheet(isPresented: $showingPicker) {
-                SecurePhotoPicker(selectionLimit: 50) { batch in
-                    showingPicker = false
-                    guard !batch.photos.isEmpty else {
-                        if batch.failedSelectionCount > 0 {
-                            message = unreadableSelectionMessage(count: batch.failedSelectionCount)
-                        }
-                        return
-                    }
-                    importPhotos(
-                        batch.photos,
-                        pickerFailureCount: batch.failedSelectionCount
-                    )
-                }
-            }
-            .sheet(isPresented: $showingNewVault) {
-                AdditionalVaultSetupView(service: service)
-                    .environmentObject(session)
-            }
-            .sheet(isPresented: $showingSecuritySettings) {
-                VaultSecuritySettingsView(service: service)
-                    .environmentObject(session)
-            }
-            .sheet(item: $decryptedPhoto) { photo in
-                DecryptedPhotoView(photo: photo) {
-                    delete(photo.record)
-                }
-            }
-            .alert("KeyHollow", isPresented: Binding(
-                get: { message != nil },
-                set: { if !$0 { message = nil } }
-            )) {
-                Button("OK") { message = nil }
-            } message: {
-                Text(message ?? "")
-            }
+        }
+        .alert("KeyHollow", isPresented: Binding(
+            get: { message != nil },
+            set: { if !$0 { message = nil } }
+        )) {
+            Button("OK") { message = nil }
+        } message: {
+            Text(message ?? "")
         }
         .task(id: session.activeVaultID) {
             store = nil
@@ -156,6 +119,53 @@ struct VaultGalleryView: View {
             decryptedPhoto = nil
             await initializeStore()
         }
+    }
+
+    private var galleryHeader: some View {
+        HStack(spacing: 18) {
+            Button("Lock") { session.lock() }
+
+            Spacer()
+
+            Button {
+                showingImportOptions = true
+            } label: {
+                Image(systemName: "plus")
+            }
+            .disabled(isWorking)
+            .accessibilityLabel("Import photos")
+
+            Menu {
+                Button {
+                    showingNewVault = true
+                } label: {
+                    Label("Create New Vault", systemImage: "lock.badge.plus")
+                }
+
+                Button {
+                    showingSecuritySettings = true
+                } label: {
+                    Label("Vault Security", systemImage: "shield.lefthalf.filled")
+                }
+
+                Button {
+                    session.lock()
+                } label: {
+                    Label("Lock KeyHollow", systemImage: "lock.fill")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .disabled(isWorking)
+            .accessibilityLabel("Vault options")
+        }
+        .overlay {
+            Text("Vault")
+                .font(.headline)
+                .allowsHitTesting(false)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 12)
     }
 
     @ViewBuilder
@@ -334,18 +344,19 @@ private struct DecryptedPhotoView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.black.ignoresSafeArea()
-                Image(uiImage: photo.image)
-                    .resizable()
-                    .scaledToFit()
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            Image(uiImage: photo.image)
+                .resizable()
+                .scaledToFit()
+
+            VStack {
+                HStack {
                     Button("Done") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
+
+                    Spacer()
+
                     Button(role: .destructive) {
                         dismiss()
                         onDelete()
@@ -353,7 +364,12 @@ private struct DecryptedPhotoView: View {
                         Image(systemName: "trash")
                     }
                 }
+                .padding()
+                .background(.ultraThinMaterial)
+
+                Spacer()
             }
         }
     }
 }
+
