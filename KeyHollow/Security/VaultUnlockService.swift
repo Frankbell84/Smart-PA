@@ -33,6 +33,17 @@ actor VaultUnlockService {
         try await store.hasAnyVaults()
     }
 
+    /// Rolls back any portable-vault install that was interrupted before its
+    /// authenticated transaction journal could be cleared. Call during startup
+    /// before allowing unlock or vault creation.
+    func recoverInterruptedPortableVaultInstalls() async throws {
+        let installer = try PortableVaultRestoreInstaller(
+            credentialStore: store,
+            journalAuthenticationKey: try portableRestoreJournalKey()
+        )
+        try await installer.recoverInterruptedInstalls()
+    }
+
     func createVault(passcode: String) async throws -> UnlockedVault {
         guard PasscodePolicy.isAcceptableNewPasscode(passcode) else {
             throw KeyDerivationError.invalidPasscode
@@ -49,6 +60,35 @@ actor VaultUnlockService {
         try await store.write(created.envelope, locator: locator)
 
         return unlockedVault(from: created.payload)
+    }
+
+    /// Gives a fully validated portable vault a new device-local LowKey
+    /// wrapper. The archive recovery credential is never accepted by the
+    /// normal keypad and no existing vault credential or photo directory is
+    /// replaced.
+    func installValidatedPortableVault(
+        _ restore: ValidatedPortableVaultRestore,
+        newPasscode: String
+    ) async throws -> UnlockedVault {
+        guard PasscodePolicy.isAcceptableNewPasscode(newPasscode) else {
+            throw KeyDerivationError.invalidPasscode
+        }
+
+        let unlockKey = try deriveUnlockKey(passcode: newPasscode)
+        let installer = try PortableVaultRestoreInstaller(
+            credentialStore: store,
+            journalAuthenticationKey: try portableRestoreJournalKey()
+        )
+        do {
+            return try await installer.install(
+                restore,
+                localUnlockKey: unlockKey
+            )
+        } catch PortableVaultRestoreInstallationError.credentialAlreadyUsed {
+            throw VaultUnlockError.passcodeAlreadyUsed
+        } catch {
+            throw VaultUnlockError.mutationFailed
+        }
     }
 
     func unlock(passcode: String) async throws -> UnlockedVault {
@@ -183,6 +223,12 @@ actor VaultUnlockService {
             passcode: passcode,
             installationSalt: installationSalt,
             pepper: pepper
+        )
+    }
+
+    private func portableRestoreJournalKey() throws -> SymmetricKey {
+        try PortableVaultRestoreJournalKeySchedule.key(
+            devicePepper: secrets.loadOrCreate()
         )
     }
 
