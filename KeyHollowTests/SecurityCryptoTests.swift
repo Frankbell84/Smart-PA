@@ -204,6 +204,39 @@ final class SecurityCryptoTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent(record.thumbnailName).path))
     }
 
+    func testDeletingMultiplePhotosPreservesUnselectedEncryptedPhoto() async throws {
+        let root = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let store = try VaultPhotoStore(
+            vaultID: UUID(),
+            vaultKey: SymmetricKey(size: .bits256),
+            storageRoot: root
+        )
+        let first = try await store.importPhoto(
+            originalData: Data("first original".utf8),
+            thumbnailData: Data("first thumbnail".utf8)
+        )
+        let second = try await store.importPhoto(
+            originalData: Data("second original".utf8),
+            thumbnailData: Data("second thumbnail".utf8)
+        )
+        let preserved = try await store.importPhoto(
+            originalData: Data("preserved original".utf8),
+            thumbnailData: Data("preserved thumbnail".utf8)
+        )
+
+        try await store.delete([first, second])
+
+        let manifest = try await store.loadManifest()
+        let preservedData = try await store.loadPhoto(preserved)
+        XCTAssertEqual(manifest.photos, [preserved])
+        XCTAssertEqual(preservedData, Data("preserved original".utf8))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent(first.blobName).path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent(second.blobName).path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent(preserved.blobName).path))
+    }
+
     func testSuccessfulUnlockDoesNotEraseGlobalFailureBudget() async throws {
         let suite = "KeyHollowTests.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suite) else {
@@ -265,3 +298,4 @@ private extension Data {
 
     enum HexError: Error { case invalid }
 }
+

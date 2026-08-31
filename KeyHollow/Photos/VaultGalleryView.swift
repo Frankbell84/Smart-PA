@@ -9,6 +9,7 @@ private enum VaultImportMode {
 private struct DecryptedPhoto: Identifiable {
     let id: UUID
     let record: VaultPhotoRecord
+    let originalData: Data
     let image: UIImage
 }
 
@@ -25,13 +26,17 @@ struct VaultGalleryView: View {
     @State private var showingPicker = false
     @State private var showingNewVault = false
     @State private var showingSecuritySettings = false
+    @State private var showingDeleteSelectionConfirmation = false
     @State private var importMode: VaultImportMode = .copy
+    @State private var isSelecting = false
+    @State private var selectedPhotoIDs: Set<UUID> = []
     @State private var isWorking = false
     @State private var message: String?
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 105, maximum: 180), spacing: 3)
-    ]
+    private let columns = Array(
+        repeating: GridItem(.flexible(), spacing: 3),
+        count: 3
+    )
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,6 +57,8 @@ struct VaultGalleryView: View {
                                 thumbnailCell(record)
                             }
                         }
+                        .padding(.horizontal, 3)
+                        .padding(.vertical, 3)
                     }
                 }
             }
@@ -61,6 +68,11 @@ struct VaultGalleryView: View {
                         .padding()
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
+            }
+
+            if isSelecting {
+                Divider()
+                selectionActionBar
             }
         }
         .confirmationDialog("Import Photos", isPresented: $showingImportOptions, titleVisibility: .visible) {
@@ -104,6 +116,18 @@ struct VaultGalleryView: View {
                 delete(photo.record)
             }
         }
+        .confirmationDialog(
+            "Delete Selected Photos?",
+            isPresented: $showingDeleteSelectionConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(deleteSelectionButtonTitle, role: .destructive) {
+                deleteSelectedPhotos()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently removes the selected encrypted copies from this vault. Photos outside KeyHollow are not affected.")
+        }
         .alert("KeyHollow", isPresented: Binding(
             get: { message != nil },
             set: { if !$0 { message = nil } }
@@ -117,50 +141,67 @@ struct VaultGalleryView: View {
             records = []
             thumbnails = [:]
             decryptedPhoto = nil
+            leaveSelectionMode()
             await initializeStore()
         }
     }
 
     private var galleryHeader: some View {
         HStack(spacing: 18) {
-            Button("Lock") { session.lock() }
+            if isSelecting {
+                Button("Cancel") { leaveSelectionMode() }
 
-            Spacer()
+                Spacer()
 
-            Button {
-                showingImportOptions = true
-            } label: {
-                Image(systemName: "plus")
+                Button(allPhotosSelected ? "Deselect All" : "Select All") {
+                    toggleSelectAll()
+                }
+                .disabled(records.isEmpty || isWorking)
+            } else {
+                Button("Lock") { session.lock() }
+
+                Spacer()
+
+                Button("Select") {
+                    isSelecting = true
+                }
+                .disabled(records.isEmpty || isWorking)
+
+                Button {
+                    showingImportOptions = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .disabled(isWorking)
+                .accessibilityLabel("Import photos")
+
+                Menu {
+                    Button {
+                        showingNewVault = true
+                    } label: {
+                        Label("Create New Vault", systemImage: "lock.badge.plus")
+                    }
+
+                    Button {
+                        showingSecuritySettings = true
+                    } label: {
+                        Label("Vault Security", systemImage: "shield.lefthalf.filled")
+                    }
+
+                    Button {
+                        session.lock()
+                    } label: {
+                        Label("Lock KeyHollow", systemImage: "lock.fill")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .disabled(isWorking)
+                .accessibilityLabel("Vault options")
             }
-            .disabled(isWorking)
-            .accessibilityLabel("Import photos")
-
-            Menu {
-                Button {
-                    showingNewVault = true
-                } label: {
-                    Label("Create New Vault", systemImage: "lock.badge.plus")
-                }
-
-                Button {
-                    showingSecuritySettings = true
-                } label: {
-                    Label("Vault Security", systemImage: "shield.lefthalf.filled")
-                }
-
-                Button {
-                    session.lock()
-                } label: {
-                    Label("Lock KeyHollow", systemImage: "lock.fill")
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
-            .disabled(isWorking)
-            .accessibilityLabel("Vault options")
         }
         .overlay {
-            Text("Vault")
+            Text(isSelecting ? "\(selectedPhotoIDs.count) Selected" : "Vault")
                 .font(.headline)
                 .allowsHitTesting(false)
         }
@@ -168,30 +209,89 @@ struct VaultGalleryView: View {
         .padding(.vertical, 12)
     }
 
+    private var selectionActionBar: some View {
+        HStack {
+            Button {
+                saveSelectedPhotos()
+            } label: {
+                Label("Save to Photos", systemImage: "square.and.arrow.down")
+            }
+            .disabled(selectedPhotoIDs.isEmpty || isWorking)
+
+            Spacer()
+
+            Button(role: .destructive) {
+                showingDeleteSelectionConfirmation = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            .disabled(selectedPhotoIDs.isEmpty || isWorking)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 12)
+        .background(.bar)
+    }
+
     @ViewBuilder
     private func thumbnailCell(_ record: VaultPhotoRecord) -> some View {
         Button {
-            open(record)
+            if isSelecting {
+                toggleSelection(record.id)
+            } else {
+                open(record)
+            }
         } label: {
-            ZStack {
-                Rectangle()
-                    .fill(.secondary.opacity(0.12))
-                    .aspectRatio(1, contentMode: .fit)
+            GeometryReader { proxy in
+                ZStack(alignment: .topTrailing) {
+                    Rectangle()
+                        .fill(.secondary.opacity(0.12))
 
-                if let image = thumbnails[record.id] {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .aspectRatio(1, contentMode: .fill)
-                        .clipped()
-                } else {
-                    Image(systemName: "photo")
-                        .foregroundStyle(.secondary)
+                    if let image = thumbnails[record.id] {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: proxy.size.width, height: proxy.size.height)
+                            .clipped()
+                    } else {
+                        Image(systemName: "photo")
+                            .foregroundStyle(.secondary)
+                            .frame(width: proxy.size.width, height: proxy.size.height)
+                    }
+
+                    if isSelecting {
+                        Image(systemName: selectedPhotoIDs.contains(record.id) ? "checkmark.circle.fill" : "circle")
+                            .font(.title2)
+                            .foregroundStyle(
+                                selectedPhotoIDs.contains(record.id) ? Color.accentColor : Color.white,
+                                Color.white
+                            )
+                            .padding(8)
+                            .shadow(radius: 2)
+                    }
                 }
             }
+            .aspectRatio(1, contentMode: .fit)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Vault photo")
+        .accessibilityValue(
+            isSelecting && selectedPhotoIDs.contains(record.id) ? "Selected" : "Not selected"
+        )
         .contextMenu {
+            Button {
+                savePhotos([record])
+            } label: {
+                Label("Save to Photos", systemImage: "square.and.arrow.down")
+            }
+
+            Button {
+                isSelecting = true
+                selectedPhotoIDs = [record.id]
+            } label: {
+                Label("Select", systemImage: "checkmark.circle")
+            }
+
             Button("Delete from Vault", role: .destructive) {
                 delete(record)
             }
@@ -224,6 +324,11 @@ struct VaultGalleryView: View {
 
         records = manifest.photos
         thumbnails = loaded
+        selectedPhotoIDs.formIntersection(Set(manifest.photos.map(\.id)))
+
+        if records.isEmpty {
+            leaveSelectionMode()
+        }
     }
 
     private func importPhotos(
@@ -313,7 +418,12 @@ struct VaultGalleryView: View {
                     message = "The decrypted photo data could not be displayed."
                     return
                 }
-                decryptedPhoto = DecryptedPhoto(id: record.id, record: record, image: image)
+                decryptedPhoto = DecryptedPhoto(
+                    id: record.id,
+                    record: record,
+                    originalData: data,
+                    image: image
+                )
             } catch {
                 message = "The photo could not be authenticated and decrypted."
             }
@@ -335,6 +445,102 @@ struct VaultGalleryView: View {
             }
         }
     }
+
+    private var selectedRecords: [VaultPhotoRecord] {
+        records.filter { selectedPhotoIDs.contains($0.id) }
+    }
+
+    private var allPhotosSelected: Bool {
+        !records.isEmpty && selectedPhotoIDs.count == records.count
+    }
+
+    private var deleteSelectionButtonTitle: String {
+        let noun = selectedPhotoIDs.count == 1 ? "Photo" : "Photos"
+        return "Delete \(selectedPhotoIDs.count) \(noun) from Vault"
+    }
+
+    private func toggleSelection(_ id: UUID) {
+        if selectedPhotoIDs.contains(id) {
+            selectedPhotoIDs.remove(id)
+        } else {
+            selectedPhotoIDs.insert(id)
+        }
+    }
+
+    private func toggleSelectAll() {
+        if allPhotosSelected {
+            selectedPhotoIDs.removeAll()
+        } else {
+            selectedPhotoIDs = Set(records.map(\.id))
+        }
+    }
+
+    private func leaveSelectionMode() {
+        isSelecting = false
+        selectedPhotoIDs.removeAll()
+    }
+
+    private func saveSelectedPhotos() {
+        savePhotos(selectedRecords)
+    }
+
+    private func savePhotos(_ photos: [VaultPhotoRecord]) {
+        guard let store, !photos.isEmpty, !isWorking else { return }
+        isWorking = true
+
+        Task {
+            var decryptedPhotos: [Data] = []
+            var failedCount = 0
+
+            for photo in photos {
+                do {
+                    decryptedPhotos.append(try await store.loadPhoto(photo))
+                } catch {
+                    failedCount += 1
+                }
+            }
+
+            let result = await PhotoLibrarySaveService.savePhotos(decryptedPhotos)
+
+            switch result {
+            case .saved(let savedCount):
+                let noun = savedCount == 1 ? "photo" : "photos"
+                if failedCount > 0 {
+                    message = "Saved \(savedCount) \(noun) to Photos. \(failedCount) selected photos could not be decrypted."
+                } else {
+                    message = "Saved \(savedCount) \(noun) to Photos. The encrypted vault copies were kept."
+                }
+                leaveSelectionMode()
+            case .permissionDenied:
+                message = "Allow KeyHollow to add photos in iPhone Settings, then try again."
+            case .failed:
+                message = decryptedPhotos.isEmpty
+                    ? "The selected photos could not be authenticated and decrypted."
+                    : "The selected photos could not be saved to Photos."
+            }
+
+            isWorking = false
+        }
+    }
+
+    private func deleteSelectedPhotos() {
+        guard let store, !selectedRecords.isEmpty, !isWorking else { return }
+        let photos = selectedRecords
+        isWorking = true
+
+        Task {
+            defer { isWorking = false }
+            do {
+                try await store.delete(photos)
+                try await reload(using: store)
+                let noun = photos.count == 1 ? "photo" : "photos"
+                message = "Deleted \(photos.count) \(noun) from this vault."
+                leaveSelectionMode()
+            } catch {
+                message = "The selected photos could not be deleted from the vault."
+            }
+        }
+    }
 }
 
 private struct DecryptedPhotoView: View {
@@ -342,6 +548,8 @@ private struct DecryptedPhotoView: View {
     let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var isSaving = false
+    @State private var message: String?
 
     var body: some View {
         ZStack {
@@ -357,6 +565,17 @@ private struct DecryptedPhotoView: View {
 
                     Spacer()
 
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Button {
+                            saveToPhotos()
+                        } label: {
+                            Image(systemName: "square.and.arrow.down")
+                        }
+                        .accessibilityLabel("Save to Photos")
+                    }
+
                     Button(role: .destructive) {
                         dismiss()
                         onDelete()
@@ -369,6 +588,32 @@ private struct DecryptedPhotoView: View {
 
                 Spacer()
             }
+        }
+        .alert("KeyHollow", isPresented: Binding(
+            get: { message != nil },
+            set: { if !$0 { message = nil } }
+        )) {
+            Button("OK") { message = nil }
+        } message: {
+            Text(message ?? "")
+        }
+    }
+
+    private func saveToPhotos() {
+        guard !isSaving else { return }
+        isSaving = true
+
+        Task {
+            let result = await PhotoLibrarySaveService.savePhotos([photo.originalData])
+            switch result {
+            case .saved:
+                message = "Saved to Photos. The encrypted vault copy was kept."
+            case .permissionDenied:
+                message = "Allow KeyHollow to add photos in iPhone Settings, then try again."
+            case .failed:
+                message = "This photo could not be saved to Photos."
+            }
+            isSaving = false
         }
     }
 }

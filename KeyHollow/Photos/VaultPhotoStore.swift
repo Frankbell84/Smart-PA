@@ -121,13 +121,22 @@ actor VaultPhotoStore {
     }
 
     func delete(_ record: VaultPhotoRecord) throws {
+        try delete([record])
+    }
+
+    func delete(_ records: [VaultPhotoRecord]) throws {
+        guard !records.isEmpty else { return }
+
+        let recordIDs = Set(records.map(\.id))
         var manifest = try loadManifest()
-        manifest.photos.removeAll { $0.id == record.id }
+        manifest.photos.removeAll { recordIDs.contains($0.id) }
 
         try saveManifest(manifest)
 
-        try? fileManager.removeItem(at: root.appendingPathComponent(record.blobName))
-        try? fileManager.removeItem(at: root.appendingPathComponent(record.thumbnailName))
+        for record in records {
+            try? fileManager.removeItem(at: root.appendingPathComponent(record.blobName))
+            try? fileManager.removeItem(at: root.appendingPathComponent(record.thumbnailName))
+        }
     }
 
     static func destroyVaultData(vaultID: UUID) throws {
@@ -179,3 +188,4 @@ actor VaultPhotoStore {
         try mutableURL.setResourceValues(values)
     }
 }
+

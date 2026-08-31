@@ -128,6 +128,56 @@ enum PhotoMoveResult {
     case copiedOnly
 }
 
+enum PhotoLibrarySaveResult {
+    case saved(Int)
+    case permissionDenied
+    case failed
+}
+
+enum PhotoLibrarySaveService {
+    static func savePhotos(_ photos: [Data]) async -> PhotoLibrarySaveResult {
+        guard !photos.isEmpty else { return .failed }
+
+        let status = await authorizationStatus()
+        guard status == .authorized || status == .limited else {
+            return .permissionDenied
+        }
+
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                PHPhotoLibrary.shared().performChanges({
+                    for photo in photos {
+                        let request = PHAssetCreationRequest.forAsset()
+                        request.addResource(with: .photo, data: photo, options: nil)
+                    }
+                }) { success, error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else if success {
+                        continuation.resume(returning: ())
+                    } else {
+                        continuation.resume(throwing: CocoaError(.fileWriteUnknown))
+                    }
+                }
+            }
+            return .saved(photos.count)
+        } catch {
+            return .failed
+        }
+    }
+
+    private static func authorizationStatus() async -> PHAuthorizationStatus {
+        let current = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+        guard current == .notDetermined else { return current }
+
+        return await withCheckedContinuation { continuation in
+            PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+                continuation.resume(returning: status)
+            }
+        }
+    }
+}
+
 enum PhotoLibraryDeletionService {
     static func deleteOriginals(localIdentifiers: [String]) async -> PhotoMoveResult {
         let identifiers = Array(Set(localIdentifiers))
@@ -170,3 +220,4 @@ enum PhotoLibraryDeletionService {
         }
     }
 }
+
