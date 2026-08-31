@@ -24,7 +24,7 @@ final class KeyHollowLaunchTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let passcode = "58294176"
+        let passcode = "83057291"
         let passcodeField = app.secureTextFields["Enter 8-digit passcode"]
         XCTAssertTrue(passcodeField.waitForExistence(timeout: 5))
         passcodeField.tap()
@@ -38,8 +38,26 @@ final class KeyHollowLaunchTests: XCTestCase {
         XCTAssertTrue(noRecoveryAcknowledgment.waitForExistence(timeout: 5))
         noRecoveryAcknowledgment.tap()
 
+        let acknowledgmentRegistered = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == '1'"),
+            object: noRecoveryAcknowledgment
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [acknowledgmentRegistered], timeout: 5),
+            .completed,
+            "The no-recovery acknowledgment did not register."
+        )
+
         let createButton = app.buttons["Create Encrypted Vault"]
-        XCTAssertTrue(createButton.isEnabled)
+        let createButtonEnabled = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isEnabled == true"),
+            object: createButton
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [createButtonEnabled], timeout: 5),
+            .completed,
+            "Vault creation did not become available after valid input and acknowledgment."
+        )
         createButton.tap()
 
         // Production Argon2id intentionally uses 64 MiB and three passes. A
