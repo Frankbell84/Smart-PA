@@ -1,4 +1,10 @@
-# KeyHollow App Store Metadata — Draft
+# KeyHollow App Store Metadata
+
+**Public legal pages:**
+
+- Privacy Policy: https://www.keyhollow.com/privacy
+- Support: https://www.keyhollow.com/support
+- Terms of Use: https://www.keyhollow.com/terms
 
 ## Name
 
@@ -43,17 +49,16 @@ Utilities
 
 Photo & Video
 
-## Review notes — draft
+## Review notes
 
 KeyHollow does not require an account. On first launch, create an 8–20 digit vault passcode that does not contain a blocked predictable pattern. Import testing uses Apple's photo picker. The **Move to Vault** flow asks for Photos read/write authorization only after the selected items have been encrypted and verified locally.
 
 The app intentionally does not offer Face ID, Touch ID, or the iPhone device passcode as a vault-passcode replacement.
 
-## Required before submission
+## Release consistency checklist
 
-- Confirm the name and subtitle in App Store Connect.
-- Add final support and privacy-policy HTTPS URLs.
-- Supply final screenshots captured from the signed build.
-- Complete age-rating, app-privacy, and encryption/export-compliance answers against the final build.
-- Replace any draft text that no longer matches tested behavior.
-
+- Confirm the name, subtitle, description, categories, price, and screenshots in App Store Connect.
+- Confirm App Store Connect points to the public support and privacy-policy URLs above.
+- Confirm app-privacy answers state that KeyHollow does not collect data, consistent with the shipped local-only build.
+- Confirm age-rating and encryption/export-compliance answers against the shipped build.
+- Recheck these answers whenever analytics, accounts, cloud features, or other data handling is added.

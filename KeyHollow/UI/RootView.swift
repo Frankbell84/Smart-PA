@@ -68,8 +68,9 @@ private struct LockView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "lock.shield.fill")
-                .font(.system(size: 52))
+            KeyHollowLockMark()
+                .frame(width: 68, height: 48)
+                .accessibilityHidden(true)
 
             Text("KEYHOLLOW")
                 .font(.title.bold())
@@ -176,6 +177,49 @@ private struct LockView: View {
     }
 }
 
+private struct KeyHollowLockMark: View {
+    var body: some View {
+        Canvas { context, size in
+            let stroke = StrokeStyle(
+                lineWidth: max(2.8, size.height * 0.072),
+                lineCap: .round,
+                lineJoin: .round
+            )
+
+            var eye = Path()
+            eye.move(to: CGPoint(x: size.width * 0.06, y: size.height * 0.50))
+            eye.addCurve(
+                to: CGPoint(x: size.width * 0.94, y: size.height * 0.50),
+                control1: CGPoint(x: size.width * 0.27, y: size.height * 0.03),
+                control2: CGPoint(x: size.width * 0.73, y: size.height * 0.03)
+            )
+            eye.addCurve(
+                to: CGPoint(x: size.width * 0.06, y: size.height * 0.50),
+                control1: CGPoint(x: size.width * 0.73, y: size.height * 0.97),
+                control2: CGPoint(x: size.width * 0.27, y: size.height * 0.97)
+            )
+            context.stroke(eye, with: .color(.white), style: stroke)
+
+            let circleRadius = size.height * 0.145
+            let circleCenter = CGPoint(x: size.width * 0.50, y: size.height * 0.38)
+            let circleRect = CGRect(
+                x: circleCenter.x - circleRadius,
+                y: circleCenter.y - circleRadius,
+                width: circleRadius * 2,
+                height: circleRadius * 2
+            )
+
+            var keyhole = Path()
+            keyhole.addEllipse(in: circleRect)
+            keyhole.move(to: CGPoint(x: circleCenter.x - circleRadius * 0.58, y: circleCenter.y + circleRadius * 0.80))
+            keyhole.addLine(to: CGPoint(x: size.width * 0.43, y: size.height * 0.79))
+            keyhole.addLine(to: CGPoint(x: size.width * 0.57, y: size.height * 0.79))
+            keyhole.addLine(to: CGPoint(x: circleCenter.x + circleRadius * 0.58, y: circleCenter.y + circleRadius * 0.80))
+            context.stroke(keyhole, with: .color(.white), style: stroke)
+        }
+    }
+}
+
 private struct InitialVaultSetupView: View {
     @EnvironmentObject private var session: VaultSession
 
@@ -188,6 +232,8 @@ private struct InitialVaultSetupView: View {
     @State private var confirmation = ""
     @State private var message: String?
     @State private var isWorking = false
+    @State private var acknowledgesNoRecovery = false
+    @FocusState private var isPasscodeEntryFocused: Bool
 
     private var requiredLength: Int {
         tier.fixedLength ?? customLength
@@ -231,6 +277,7 @@ private struct InitialVaultSetupView: View {
                     SecureField("Enter \(requiredLength)-digit passcode", text: $passcode)
                         .keyboardType(.numberPad)
                         .textContentType(.newPassword)
+                        .focused($isPasscodeEntryFocused)
                         .onChange(of: passcode) { _, newValue in
                             passcode = sanitize(newValue, limit: requiredLength)
                         }
@@ -238,6 +285,7 @@ private struct InitialVaultSetupView: View {
                     SecureField("Confirm passcode", text: $confirmation)
                         .keyboardType(.numberPad)
                         .textContentType(.newPassword)
+                        .focused($isPasscodeEntryFocused)
                         .onChange(of: confirmation) { _, newValue in
                             confirmation = sanitize(newValue, limit: requiredLength)
                         }
@@ -260,6 +308,14 @@ private struct InitialVaultSetupView: View {
                     }
                 }
 
+                Section("Important: No recovery") {
+                    Text("KeyHollow cannot recover or reset a forgotten vault passcode. Deleting this app or vault, erasing or losing this iPhone, or device failure may permanently eliminate access to the vault's contents.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    Toggle("I understand this vault cannot be recovered", isOn: $acknowledgesNoRecovery)
+                }
+
                 Section {
                     Button {
                         create()
@@ -275,12 +331,21 @@ private struct InitialVaultSetupView: View {
                     .disabled(!canCreate || isWorking)
                 }
             }
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        isPasscodeEntryFocused = false
+                    }
+                }
+            }
         }
     }
 
     private var canCreate: Bool {
         passcode.count == requiredLength &&
         confirmation == passcode &&
+        acknowledgesNoRecovery &&
         PasscodePolicy.isAcceptableNewPasscode(
             passcode,
             tier: tier,

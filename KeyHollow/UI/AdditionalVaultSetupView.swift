@@ -12,6 +12,8 @@ struct AdditionalVaultSetupView: View {
     @State private var confirmation = ""
     @State private var message: String?
     @State private var isWorking = false
+    @State private var acknowledgesNoRecovery = false
+    @FocusState private var isPasscodeEntryFocused: Bool
 
     private var requiredLength: Int {
         tier.fixedLength ?? customLength
@@ -46,6 +48,7 @@ struct AdditionalVaultSetupView: View {
                     SecureField("Enter \(requiredLength)-digit passcode", text: $passcode)
                         .keyboardType(.numberPad)
                         .textContentType(.newPassword)
+                        .focused($isPasscodeEntryFocused)
                         .onChange(of: passcode) { _, newValue in
                             passcode = sanitize(newValue, limit: requiredLength)
                             message = nil
@@ -54,6 +57,7 @@ struct AdditionalVaultSetupView: View {
                     SecureField("Confirm passcode", text: $confirmation)
                         .keyboardType(.numberPad)
                         .textContentType(.newPassword)
+                        .focused($isPasscodeEntryFocused)
                         .onChange(of: confirmation) { _, newValue in
                             confirmation = sanitize(newValue, limit: requiredLength)
                             message = nil
@@ -75,6 +79,14 @@ struct AdditionalVaultSetupView: View {
                         Text(message)
                             .foregroundStyle(.secondary)
                     }
+                }
+
+                Section("Important: No recovery") {
+                    Text("KeyHollow cannot recover or reset a forgotten vault passcode. Deleting this app or vault, erasing or losing this iPhone, or device failure may permanently eliminate access to the vault's contents.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    Toggle("I understand this vault cannot be recovered", isOn: $acknowledgesNoRecovery)
                 }
 
                 Section {
@@ -99,6 +111,13 @@ struct AdditionalVaultSetupView: View {
                     Button("Cancel") { dismiss() }
                         .disabled(isWorking)
                 }
+
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        isPasscodeEntryFocused = false
+                    }
+                }
             }
             .interactiveDismissDisabled(isWorking)
         }
@@ -107,6 +126,7 @@ struct AdditionalVaultSetupView: View {
     private var canCreate: Bool {
         passcode.count == requiredLength &&
         confirmation == passcode &&
+        acknowledgesNoRecovery &&
         PasscodePolicy.isAcceptableNewPasscode(
             passcode,
             tier: tier,
