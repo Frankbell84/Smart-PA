@@ -16,7 +16,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app
         PRODUCT_NAME: KeyHollow
         MARKETING_VERSION: 1.0
-        CURRENT_PROJECT_VERSION: 3
+        CURRENT_PROJECT_VERSION: 4
         VERSIONING_SYSTEM: apple-generic
         SWIFT_VERSION: 5.0
         SWIFT_STRICT_CONCURRENCY: complete
@@ -34,7 +34,7 @@ targets:
         UILaunchScreen: {}
         UIApplicationSupportsIndirectInputEvents: true
         NSPhotoLibraryUsageDescription: KeyHollow needs access only to photos you choose to copy or move into an encrypted vault.
-        NSPhotoLibraryAddUsageDescription: KeyHollow may need Photos access to complete user-requested photo operations.
+        NSPhotoLibraryAddUsageDescription: KeyHollow needs permission to save photos you choose from an encrypted vault back to your Photos library.
         ITSAppUsesNonExemptEncryption: false
 
   KeyHollowTests:
@@ -75,3 +75,4 @@ schemes:
         - KeyHollowLaunchTests
     archive:
       config: Release
+
