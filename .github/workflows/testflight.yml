@@ -1,0 +1,125 @@
+name: Upload KeyHollow to TestFlight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive-and-upload:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      TEAM_ID: P38X56QHU9
+      PROFILE_NAME: KeyHollow App Store
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Install signing certificate and provisioning profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          CERTIFICATE_PATH="$RUNNER_TEMP/keyhollow-distribution.p12"
+          PROFILE_PATH="$RUNNER_TEMP/keyhollow-app-store.mobileprovision"
+          KEYCHAIN_PATH="$RUNNER_TEMP/keyhollow-signing.keychain-db"
+
+          printf '%s' "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          printf '%s' "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/KeyHollow-App-Store.mobileprovision"
+
+      - name: Archive KeyHollow
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project KeyHollow.xcodeproj \
+            -scheme KeyHollow \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/KeyHollow.xcarchive \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY='Apple Distribution' \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            archive
+
+      - name: Create export options
+        run: |
+          /usr/libexec/PlistBuddy -c 'Add :method string app-store-connect' build/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c 'Add :signingStyle string manual' build/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c "Add :teamID string $TEAM_ID" build/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c 'Add :manageAppVersionAndBuildNumber bool false' build/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c 'Add :provisioningProfiles dict' build/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:com.keyhollow.app string $PROFILE_NAME" build/ExportOptions.plist
+
+      - name: Export signed IPA
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/KeyHollow.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist build/ExportOptions.plist
+
+      - name: Upload to App Store Connect
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          API_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode > "$API_KEY_PATH"
+
+          IPA_PATH=$(find build/export -maxdepth 1 -name '*.ipa' -print -quit)
+          if [[ -z "$IPA_PATH" ]]; then
+            echo 'No IPA was produced.'
+            exit 1
+          fi
+
+          xcrun altool \
+            --upload-app \
+            --type ios \
+            --file "$IPA_PATH" \
+            --apiKey "$APP_STORE_CONNECT_API_KEY_ID" \
+            --apiIssuer "$APP_STORE_CONNECT_API_ISSUER_ID"
+
+      - name: Upload signed IPA artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyHollow-TestFlight-IPA
+          path: build/export/*.ipa
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Remove temporary signing keychain
+        if: always()
+        env:
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          security delete-keychain "$RUNNER_TEMP/keyhollow-signing.keychain-db" || true

@@ -5,7 +5,7 @@
 - Native iOS target: KeyHollow
 - Bundle identifier: `com.keyhollow.app`
 - Minimum iOS version: 17.0
-- Version: 0.1.0 (build 1)
+- Version: 1.0 (build 1)
 - Automatic code-signing mode configured
 - Release archive configuration present
 - Simulator CI build
@@ -19,11 +19,12 @@
 
 These cannot be stored or guessed in source control and must be supplied through Xcode/App Store Connect:
 
-1. Active Apple Developer Program membership.
-2. Apple Developer Team selection for the KeyHollow target.
-3. Registration of `com.keyhollow.app` if Apple has not already created it automatically.
-4. Signing certificate/provisioning managed by Xcode or App Store Connect.
-5. An App Store Connect app record using the final KeyHollow name, subject to name availability in App Store Connect.
+1. Active Apple Developer Program membership. **Complete.**
+2. Apple Developer Team `P38X56QHU9`. **Confirmed.**
+3. Registration of `com.keyhollow.app`. **Complete.**
+4. Apple Distribution certificate and App Store provisioning profile. **Pending.**
+5. App Store Connect record for KeyHollow (Apple ID `6807022780`). **Complete.**
+6. App Store Connect API access and upload key for the cloud release workflow. **Pending.**
 
 ## Required product assets before external TestFlight/App Store review
 
