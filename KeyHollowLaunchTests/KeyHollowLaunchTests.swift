@@ -34,6 +34,11 @@ final class KeyHollowLaunchTests: XCTestCase {
         confirmationField.tap()
         confirmationField.typeText(passcode)
 
+        let doneButton = app.buttons["Done"]
+        XCTAssertTrue(doneButton.waitForExistence(timeout: 5))
+        doneButton.tap()
+        XCTAssertFalse(app.keyboards.firstMatch.waitForExistence(timeout: 2))
+
         let noRecoveryAcknowledgment = app.switches["I understand this vault cannot be recovered"]
         XCTAssertTrue(noRecoveryAcknowledgment.waitForExistence(timeout: 5))
         noRecoveryAcknowledgment.tap()

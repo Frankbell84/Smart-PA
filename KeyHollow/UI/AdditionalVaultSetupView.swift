@@ -13,6 +13,7 @@ struct AdditionalVaultSetupView: View {
     @State private var message: String?
     @State private var isWorking = false
     @State private var acknowledgesNoRecovery = false
+    @FocusState private var isPasscodeEntryFocused: Bool
 
     private var requiredLength: Int {
         tier.fixedLength ?? customLength
@@ -47,6 +48,7 @@ struct AdditionalVaultSetupView: View {
                     SecureField("Enter \(requiredLength)-digit passcode", text: $passcode)
                         .keyboardType(.numberPad)
                         .textContentType(.newPassword)
+                        .focused($isPasscodeEntryFocused)
                         .onChange(of: passcode) { _, newValue in
                             passcode = sanitize(newValue, limit: requiredLength)
                             message = nil
@@ -55,6 +57,7 @@ struct AdditionalVaultSetupView: View {
                     SecureField("Confirm passcode", text: $confirmation)
                         .keyboardType(.numberPad)
                         .textContentType(.newPassword)
+                        .focused($isPasscodeEntryFocused)
                         .onChange(of: confirmation) { _, newValue in
                             confirmation = sanitize(newValue, limit: requiredLength)
                             message = nil
@@ -107,6 +110,13 @@ struct AdditionalVaultSetupView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
                         .disabled(isWorking)
+                }
+
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        isPasscodeEntryFocused = false
+                    }
                 }
             }
             .interactiveDismissDisabled(isWorking)
