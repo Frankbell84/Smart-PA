@@ -5,8 +5,10 @@ import CryptoKit
 final class VaultSession: ObservableObject {
     @Published private(set) var isUnlocked = false
     @Published private(set) var activeVaultID: UUID?
+    @Published private(set) var isSystemPhotoOperationActive = false
 
     private var activeKey: SymmetricKey?
+    private var systemPhotoOperationCount = 0
 
     func unlock(vaultID: UUID, key: SymmetricKey) {
         activeVaultID = vaultID
@@ -26,9 +28,20 @@ final class VaultSession: ObservableObject {
         return (activeVaultID, activeKey)
     }
 
+    func beginSystemPhotoOperation() {
+        systemPhotoOperationCount += 1
+        isSystemPhotoOperationActive = true
+    }
+
+    func endSystemPhotoOperation() {
+        systemPhotoOperationCount = max(0, systemPhotoOperationCount - 1)
+        isSystemPhotoOperationActive = systemPhotoOperationCount > 0
+    }
+
     func lock() {
         isUnlocked = false
         activeVaultID = nil
         activeKey = nil
     }
 }
+
