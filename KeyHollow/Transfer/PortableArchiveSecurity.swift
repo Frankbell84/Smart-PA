@@ -185,6 +185,11 @@ struct PortableArchiveSecrets: Codable, Equatable, Sendable {
     let contentKey: Data
 }
 
+struct PreparedEncryptedVaultArchive: Sendable {
+    let header: EncryptedVaultArchiveHeader
+    let secrets: PortableArchiveSecrets
+}
+
 struct EncryptedVaultArchiveHeader: Codable, Equatable, Sendable {
     static let formatIdentifier = "com.keyhollow.encrypted-vault"
     static let currentVersion = 1
@@ -200,6 +205,20 @@ struct EncryptedVaultArchiveHeader: Codable, Equatable, Sendable {
         exportedAt: Date = Date(),
         keyDeriver: any PortableArchiveKeyDeriving = PortableArchiveArgon2idKeyDeriver()
     ) throws -> EncryptedVaultArchiveHeader {
+        try prepare(
+            vaultPayload: vaultPayload,
+            credential: credential,
+            exportedAt: exportedAt,
+            keyDeriver: keyDeriver
+        ).header
+    }
+
+    static func prepare(
+        vaultPayload: VaultPayload,
+        credential: PortableArchiveCredential,
+        exportedAt: Date = Date(),
+        keyDeriver: any PortableArchiveKeyDeriving = PortableArchiveArgon2idKeyDeriver()
+    ) throws -> PreparedEncryptedVaultArchive {
         guard vaultPayload.vaultKey.count == 32 else {
             throw PortableArchiveError.invalidHeader
         }
@@ -227,12 +246,13 @@ struct EncryptedVaultArchiveHeader: Codable, Equatable, Sendable {
             throw PortableArchiveError.invalidHeader
         }
 
-        return EncryptedVaultArchiveHeader(
+        let header = EncryptedVaultArchiveHeader(
             format: formatIdentifier,
             version: currentVersion,
             kdf: kdf,
             sealedSecrets: combined
         )
+        return PreparedEncryptedVaultArchive(header: header, secrets: secrets)
     }
 
     func open(
