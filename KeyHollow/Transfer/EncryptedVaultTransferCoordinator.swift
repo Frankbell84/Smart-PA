@@ -16,7 +16,8 @@ enum PortableVaultRestoreInstallationError: Error, Equatable {
 
 protocol PortableVaultCredentialStoring: Sendable {
     func contains(locator: String) async -> Bool
-    func write(_ envelope: VaultEnvelope, locator: String) async throws
+    func read(locator: String) async throws -> VaultEnvelope?
+    func writeIfAbsent(_ envelope: VaultEnvelope, locator: String) async throws
     func delete(locator: String) async throws
 }
 
@@ -90,29 +91,20 @@ final class ValidatedPortableVaultRestore: @unchecked Sendable {
 /// local unlock path.
 struct PortableVaultRestoreInstaller {
     private let credentialStore: any PortableVaultCredentialStoring
-    private let photoDataRoot: URL
+    private let transactionJournal: PortableVaultRestoreTransactionJournal
 
     init(
         credentialStore: any PortableVaultCredentialStoring,
+        journalAuthenticationKey: SymmetricKey,
+        journalRootOverride: URL? = nil,
         photoDataRootOverride: URL? = nil
     ) throws {
         self.credentialStore = credentialStore
-
-        if let photoDataRootOverride {
-            photoDataRoot = photoDataRootOverride.standardizedFileURL
-        } else {
-            let appSupport = try FileManager.default.url(
-                for: .applicationSupportDirectory,
-                in: .userDomainMask,
-                appropriateFor: nil,
-                create: true
-            )
-            photoDataRoot = appSupport
-                .appendingPathComponent("KeyHollow/PhotoData", isDirectory: true)
-                .standardizedFileURL
-        }
-
-        try Self.prepareProtectedRoot(photoDataRoot)
+        transactionJournal = try PortableVaultRestoreTransactionJournal(
+            authenticationKey: journalAuthenticationKey,
+            journalRootOverride: journalRootOverride,
+            photoDataRootOverride: photoDataRootOverride
+        )
     }
 
     func install(
@@ -125,7 +117,7 @@ struct PortableVaultRestoreInstaller {
             throw PortableVaultRestoreInstallationError.credentialAlreadyUsed
         }
 
-        let destinationURL = photoDataRoot.appendingPathComponent(
+        let destinationURL = transactionJournal.photoDataRoot.appendingPathComponent(
             payload.vaultID.uuidString.lowercased(),
             isDirectory: true
         )
@@ -138,17 +130,27 @@ struct PortableVaultRestoreInstaller {
             using: localUnlockKey
         )
 
+        let transaction = try transactionJournal.begin(
+            destinationVaultID: payload.vaultID,
+            credentialLocator: locator,
+            credentialEnvelope: envelope
+        )
+
         // Move the already validated ciphertext into its fresh vault directory
-        // first. Only then publish the LowKey wrapper. A normal write failure
-        // rolls the moved directory back so no partial vault becomes unlockable.
-        try restore.commitEncryptedFiles(to: destinationURL)
+        // first. Only then publish the LowKey wrapper. The authenticated journal
+        // is removed last, so a process interruption at any earlier point is
+        // rolled back on the next launch instead of exposing a partial vault.
         do {
-            try await credentialStore.write(envelope, locator: locator)
+            try restore.commitEncryptedFiles(to: destinationURL)
+            try await credentialStore.writeIfAbsent(envelope, locator: locator)
+            try transactionJournal.finish(transaction)
         } catch {
-            // A store can fail after its atomic write but before its protection
-            // metadata is finalized. Remove both sides of the transaction.
-            try? await credentialStore.delete(locator: locator)
-            try? FileManager.default.removeItem(at: destinationURL)
+            // If immediate rollback cannot complete, leave the authenticated
+            // journal in place so startup recovery can try again and fail closed.
+            try? await transactionJournal.rollback(
+                transaction,
+                credentialStore: credentialStore
+            )
             throw PortableVaultRestoreInstallationError.credentialCommitFailed
         }
 
@@ -159,23 +161,8 @@ struct PortableVaultRestoreInstaller {
         )
     }
 
-    private static func prepareProtectedRoot(_ root: URL) throws {
-        let fileManager = FileManager.default
-        if !fileManager.fileExists(atPath: root.path) {
-            try fileManager.createDirectory(
-                at: root,
-                withIntermediateDirectories: true,
-                attributes: [.protectionKey: FileProtectionType.complete]
-            )
-        }
-        try fileManager.setAttributes(
-            [.protectionKey: FileProtectionType.complete],
-            ofItemAtPath: root.path
-        )
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = true
-        var protectedRoot = root
-        try protectedRoot.setResourceValues(values)
+    func recoverInterruptedInstalls() async throws {
+        try await transactionJournal.recoverAll(credentialStore: credentialStore)
     }
 }
 

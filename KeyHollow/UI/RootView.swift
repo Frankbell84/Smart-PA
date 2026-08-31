@@ -40,6 +40,7 @@ struct RootView: View {
                     return
                 }
 #endif
+                try await createdService.recoverInterruptedPortableVaultInstalls()
                 let hasVaults = try await createdService.hasAnyVaults()
                 service = createdService
                 setupRequired = !hasVaults

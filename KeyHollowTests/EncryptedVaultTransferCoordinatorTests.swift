@@ -197,6 +197,8 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         let credentialStore = TestPortableVaultCredentialStore()
         let installer = try PortableVaultRestoreInstaller(
             credentialStore: credentialStore,
+            journalAuthenticationKey: testRestoreJournalKey,
+            journalRootOverride: roots.transactions,
             photoDataRootOverride: roots.installed
         )
 
@@ -227,6 +229,7 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         let storedPayload = try XCTUnwrap(storedEnvelope).open(using: localUnlockKey)
         XCTAssertEqual(storedPayload.vaultID, installed.vaultID)
         XCTAssertEqual(storedPayload.vaultKey, restore.destinationVaultPayload.vaultKey)
+        XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: roots.transactions.path).isEmpty)
     }
 
     func testUsedLocalLowKeyDoesNotConsumeValidatedRestore() async throws {
@@ -244,6 +247,8 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         let credentialStore = TestPortableVaultCredentialStore(existingLocators: [locator])
         let installer = try PortableVaultRestoreInstaller(
             credentialStore: credentialStore,
+            journalAuthenticationKey: testRestoreJournalKey,
+            journalRootOverride: roots.transactions,
             photoDataRootOverride: roots.installed
         )
 
@@ -275,6 +280,8 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         let locator = VaultLocator.derive(from: localUnlockKey)
         let installer = try PortableVaultRestoreInstaller(
             credentialStore: credentialStore,
+            journalAuthenticationKey: testRestoreJournalKey,
+            journalRootOverride: roots.transactions,
             photoDataRootOverride: roots.installed
         )
 
@@ -289,6 +296,274 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: roots.installed.path).isEmpty)
         let rolledBackEnvelope = await credentialStore.envelope(for: locator)
         XCTAssertNil(rolledBackEnvelope)
+        XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: roots.transactions.path).isEmpty)
+    }
+
+    func testStartupRecoveryRollsBackInterruptedCredentialAndCiphertext() async throws {
+        let roots = try TestRoots.create()
+        defer { roots.remove() }
+        let credentialStore = TestPortableVaultCredentialStore()
+        let localUnlockKey = SymmetricKey(data: Data(repeating: 0x91, count: 32))
+        let locator = VaultLocator.derive(from: localUnlockKey)
+        let destinationVaultID = UUID()
+        let payload = VaultPayload(
+            vaultID: destinationVaultID,
+            vaultKey: Data(repeating: 0x51, count: 32),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+        let envelope = try VaultEnvelope.seal(
+            payload: payload,
+            using: localUnlockKey
+        )
+        let journal = try PortableVaultRestoreTransactionJournal(
+            authenticationKey: testRestoreJournalKey,
+            journalRootOverride: roots.transactions,
+            photoDataRootOverride: roots.installed
+        )
+        _ = try journal.begin(
+            destinationVaultID: destinationVaultID,
+            credentialLocator: locator,
+            credentialEnvelope: envelope
+        )
+
+        let destinationURL = roots.installed.appendingPathComponent(
+            destinationVaultID.uuidString.lowercased(),
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: destinationURL,
+            withIntermediateDirectories: false
+        )
+        try Data("interrupted encrypted payload".utf8).write(
+            to: destinationURL.appendingPathComponent("manifest.khm")
+        )
+        try await credentialStore.writeIfAbsent(
+            envelope,
+            locator: locator
+        )
+
+        try await journal.recoverAll(credentialStore: credentialStore)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destinationURL.path))
+        let recoveredEnvelope = await credentialStore.envelope(for: locator)
+        XCTAssertNil(recoveredEnvelope)
+        XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: roots.transactions.path).isEmpty)
+    }
+
+    func testTamperedRecoveryJournalFailsClosedWithoutDeletingVaultMaterial() async throws {
+        let roots = try TestRoots.create()
+        defer { roots.remove() }
+        let credentialStore = TestPortableVaultCredentialStore()
+        let localUnlockKey = SymmetricKey(data: Data(repeating: 0x92, count: 32))
+        let locator = VaultLocator.derive(from: localUnlockKey)
+        let destinationVaultID = UUID()
+        let payload = VaultPayload(
+            vaultID: destinationVaultID,
+            vaultKey: Data(repeating: 0x52, count: 32),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+        let envelope = try VaultEnvelope.seal(
+            payload: payload,
+            using: localUnlockKey
+        )
+        let journal = try PortableVaultRestoreTransactionJournal(
+            authenticationKey: testRestoreJournalKey,
+            journalRootOverride: roots.transactions,
+            photoDataRootOverride: roots.installed
+        )
+        _ = try journal.begin(
+            destinationVaultID: destinationVaultID,
+            credentialLocator: locator,
+            credentialEnvelope: envelope
+        )
+
+        let journalURL = try XCTUnwrap(
+            FileManager.default.contentsOfDirectory(
+                at: roots.transactions,
+                includingPropertiesForKeys: nil
+            ).first
+        )
+        var tamperedJournal = try Data(contentsOf: journalURL)
+        tamperedJournal[tamperedJournal.index(before: tamperedJournal.endIndex)] ^= 0x01
+        try tamperedJournal.write(to: journalURL, options: .atomic)
+
+        let destinationURL = roots.installed.appendingPathComponent(
+            destinationVaultID.uuidString.lowercased(),
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: destinationURL,
+            withIntermediateDirectories: false
+        )
+        try await credentialStore.writeIfAbsent(
+            envelope,
+            locator: locator
+        )
+
+        await XCTAssertThrowsErrorAsync {
+            try await journal.recoverAll(credentialStore: credentialStore)
+        }
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: destinationURL.path))
+        let untouchedEnvelope = await credentialStore.envelope(for: locator)
+        XCTAssertNotNil(untouchedEnvelope)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: journalURL.path))
+    }
+
+    func testRecoveryNeverDeletesDifferentEnvelopeAtSameLocator() async throws {
+        let roots = try TestRoots.create()
+        defer { roots.remove() }
+        let credentialStore = TestPortableVaultCredentialStore()
+        let localUnlockKey = SymmetricKey(data: Data(repeating: 0x93, count: 32))
+        let locator = VaultLocator.derive(from: localUnlockKey)
+        let interruptedVaultID = UUID()
+        let interruptedEnvelope = try VaultEnvelope.seal(
+            payload: VaultPayload(
+                vaultID: interruptedVaultID,
+                vaultKey: Data(repeating: 0x53, count: 32),
+                createdAt: Date(timeIntervalSince1970: 1_700_000_000)
+            ),
+            using: localUnlockKey
+        )
+        let journal = try PortableVaultRestoreTransactionJournal(
+            authenticationKey: testRestoreJournalKey,
+            journalRootOverride: roots.transactions,
+            photoDataRootOverride: roots.installed
+        )
+        _ = try journal.begin(
+            destinationVaultID: interruptedVaultID,
+            credentialLocator: locator,
+            credentialEnvelope: interruptedEnvelope
+        )
+
+        let unrelatedEnvelope = try VaultEnvelope.seal(
+            payload: VaultPayload(
+                vaultID: UUID(),
+                vaultKey: Data(repeating: 0x54, count: 32),
+                createdAt: Date(timeIntervalSince1970: 1_700_000_001)
+            ),
+            using: localUnlockKey
+        )
+        try await credentialStore.writeIfAbsent(unrelatedEnvelope, locator: locator)
+
+        let destinationURL = roots.installed.appendingPathComponent(
+            interruptedVaultID.uuidString.lowercased(),
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: destinationURL,
+            withIntermediateDirectories: false
+        )
+
+        try await journal.recoverAll(credentialStore: credentialStore)
+
+        let preservedEnvelopeValue = await credentialStore.envelope(for: locator)
+        let preservedEnvelope = try XCTUnwrap(preservedEnvelopeValue)
+        XCTAssertEqual(preservedEnvelope.version, unrelatedEnvelope.version)
+        XCTAssertEqual(preservedEnvelope.sealedPayload, unrelatedEnvelope.sealedPayload)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destinationURL.path))
+        XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: roots.transactions.path).isEmpty)
+    }
+
+    func testCredentialCreateIfAbsentNeverOverwritesExistingVault() async throws {
+        let roots = try TestRoots.create()
+        defer { roots.remove() }
+        let credentialRoot = roots.parent.appendingPathComponent(
+            "credential-store",
+            isDirectory: true
+        )
+        let store = try VaultStore(rootOverride: credentialRoot)
+        let unlockKey = SymmetricKey(data: Data(repeating: 0x94, count: 32))
+        let locator = VaultLocator.derive(from: unlockKey)
+        let first = try VaultEnvelope.seal(
+            payload: VaultPayload(
+                vaultID: UUID(),
+                vaultKey: Data(repeating: 0x55, count: 32),
+                createdAt: Date(timeIntervalSince1970: 1_700_000_000)
+            ),
+            using: unlockKey
+        )
+        let second = try VaultEnvelope.seal(
+            payload: VaultPayload(
+                vaultID: UUID(),
+                vaultKey: Data(repeating: 0x56, count: 32),
+                createdAt: Date(timeIntervalSince1970: 1_700_000_001)
+            ),
+            using: unlockKey
+        )
+
+        try await store.writeIfAbsent(first, locator: locator)
+        await XCTAssertThrowsErrorAsync {
+            try await store.writeIfAbsent(second, locator: locator)
+        }
+
+        let preservedValue = try await store.read(locator: locator)
+        let preserved = try XCTUnwrap(preservedValue)
+        XCTAssertEqual(preserved.version, first.version)
+        XCTAssertEqual(preserved.sealedPayload, first.sealedPayload)
+    }
+
+    func testIncompleteStartupRollbackKeepsJournalForRetry() async throws {
+        let roots = try TestRoots.create()
+        defer { roots.remove() }
+        let credentialStore = TestPortableVaultCredentialStore(failDeletes: true)
+        let localUnlockKey = SymmetricKey(data: Data(repeating: 0x95, count: 32))
+        let locator = VaultLocator.derive(from: localUnlockKey)
+        let destinationVaultID = UUID()
+        let envelope = try VaultEnvelope.seal(
+            payload: VaultPayload(
+                vaultID: destinationVaultID,
+                vaultKey: Data(repeating: 0x57, count: 32),
+                createdAt: Date(timeIntervalSince1970: 1_700_000_000)
+            ),
+            using: localUnlockKey
+        )
+        let journal = try PortableVaultRestoreTransactionJournal(
+            authenticationKey: testRestoreJournalKey,
+            journalRootOverride: roots.transactions,
+            photoDataRootOverride: roots.installed
+        )
+        _ = try journal.begin(
+            destinationVaultID: destinationVaultID,
+            credentialLocator: locator,
+            credentialEnvelope: envelope
+        )
+        try await credentialStore.writeIfAbsent(envelope, locator: locator)
+
+        await XCTAssertThrowsErrorAsync {
+            try await journal.recoverAll(credentialStore: credentialStore)
+        }
+
+        let retainedEnvelope = await credentialStore.envelope(for: locator)
+        XCTAssertNotNil(retainedEnvelope)
+        XCTAssertEqual(
+            try FileManager.default.contentsOfDirectory(atPath: roots.transactions.path).count,
+            1
+        )
+    }
+
+    func testVaultStoreStartupRemovesOnlyAbandonedPendingCredentials() async throws {
+        let roots = try TestRoots.create()
+        defer { roots.remove() }
+        let credentialRoot = roots.parent.appendingPathComponent(
+            "credential-cleanup",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: credentialRoot,
+            withIntermediateDirectories: false
+        )
+        let pending = credentialRoot.appendingPathComponent(
+            ".pending-interrupted.khvtmp"
+        )
+        let unrelated = credentialRoot.appendingPathComponent("keep-this-file")
+        try Data("pending credential".utf8).write(to: pending)
+        try Data("unrelated".utf8).write(to: unrelated)
+
+        _ = try VaultStore(rootOverride: credentialRoot)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: pending.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: unrelated.path))
     }
 
     private func createArchive(at roots: TestRoots) async throws -> EncryptedVaultExportReceipt {
@@ -345,6 +620,7 @@ private struct TestRoots {
     let source: URL
     let working: URL
     let installed: URL
+    let transactions: URL
     let archive: URL
 
     static func create() throws -> TestRoots {
@@ -353,12 +629,14 @@ private struct TestRoots {
         let source = parent.appendingPathComponent("source", isDirectory: true)
         let working = parent.appendingPathComponent("working", isDirectory: true)
         let installed = parent.appendingPathComponent("installed", isDirectory: true)
+        let transactions = parent.appendingPathComponent("transactions", isDirectory: true)
         try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
         return TestRoots(
             parent: parent,
             source: source,
             working: working,
             installed: installed,
+            transactions: transactions,
             archive: parent.appendingPathComponent("transfer.khvault")
         )
     }
@@ -368,6 +646,10 @@ private struct TestRoots {
     }
 }
 
+private let testRestoreJournalKey = SymmetricKey(
+    data: Data(repeating: 0xc4, count: 32)
+)
+
 private actor TestPortableVaultCredentialStore: PortableVaultCredentialStoring {
     enum StoreError: Error {
         case forcedFailure
@@ -375,25 +657,42 @@ private actor TestPortableVaultCredentialStore: PortableVaultCredentialStoring {
 
     private let existingLocators: Set<String>
     private let failAfterWrite: Bool
+    private let failDeletes: Bool
     private var envelopes: [String: VaultEnvelope] = [:]
 
-    init(existingLocators: Set<String> = [], failAfterWrite: Bool = false) {
+    init(
+        existingLocators: Set<String> = [],
+        failAfterWrite: Bool = false,
+        failDeletes: Bool = false
+    ) {
         self.existingLocators = existingLocators
         self.failAfterWrite = failAfterWrite
+        self.failDeletes = failDeletes
     }
 
     func contains(locator: String) -> Bool {
         existingLocators.contains(locator) || envelopes[locator] != nil
     }
 
-    func write(_ envelope: VaultEnvelope, locator: String) throws {
+    func writeIfAbsent(_ envelope: VaultEnvelope, locator: String) throws {
+        guard envelopes[locator] == nil,
+              !existingLocators.contains(locator) else {
+            throw StoreError.forcedFailure
+        }
         envelopes[locator] = envelope
         if failAfterWrite {
             throw StoreError.forcedFailure
         }
     }
 
-    func delete(locator: String) {
+    func read(locator: String) -> VaultEnvelope? {
+        envelopes[locator]
+    }
+
+    func delete(locator: String) throws {
+        if failDeletes {
+            throw StoreError.forcedFailure
+        }
         envelopes.removeValue(forKey: locator)
     }
 

@@ -33,6 +33,17 @@ actor VaultUnlockService {
         try await store.hasAnyVaults()
     }
 
+    /// Rolls back any portable-vault install that was interrupted before its
+    /// authenticated transaction journal could be cleared. Call during startup
+    /// before allowing unlock or vault creation.
+    func recoverInterruptedPortableVaultInstalls() async throws {
+        let installer = try PortableVaultRestoreInstaller(
+            credentialStore: store,
+            journalAuthenticationKey: try portableRestoreJournalKey()
+        )
+        try await installer.recoverInterruptedInstalls()
+    }
+
     func createVault(passcode: String) async throws -> UnlockedVault {
         guard PasscodePolicy.isAcceptableNewPasscode(passcode) else {
             throw KeyDerivationError.invalidPasscode
@@ -64,7 +75,10 @@ actor VaultUnlockService {
         }
 
         let unlockKey = try deriveUnlockKey(passcode: newPasscode)
-        let installer = try PortableVaultRestoreInstaller(credentialStore: store)
+        let installer = try PortableVaultRestoreInstaller(
+            credentialStore: store,
+            journalAuthenticationKey: try portableRestoreJournalKey()
+        )
         do {
             return try await installer.install(
                 restore,
@@ -209,6 +223,12 @@ actor VaultUnlockService {
             passcode: passcode,
             installationSalt: installationSalt,
             pepper: pepper
+        )
+    }
+
+    private func portableRestoreJournalKey() throws -> SymmetricKey {
+        try PortableVaultRestoreJournalKeySchedule.key(
+            devicePepper: secrets.loadOrCreate()
         )
     }
 
