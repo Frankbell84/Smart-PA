@@ -29,6 +29,8 @@ targets:
       path: KeyHollow/Resources/Info.plist
       properties:
         CFBundleDisplayName: KeyHollow
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UIApplicationSupportsIndirectInputEvents: true
         NSPhotoLibraryUsageDescription: KeyHollow needs access only to photos you choose to copy or move into an encrypted vault.
