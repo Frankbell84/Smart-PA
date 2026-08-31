@@ -43,8 +43,13 @@ final class KeyHollowLaunchTests: XCTestCase {
         // iPhone to finish that work, so this launch regression test verifies
         // the production UI accepts the action and remains alive. Completion,
         // persistence, and decryption are covered by the security test target.
-        XCTAssertTrue(
-            createButton.waitForNonExistence(timeout: 5),
+        let creationStarted = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isEnabled == false"),
+            object: createButton
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [creationStarted], timeout: 5),
+            .completed,
             "Vault creation did not begin."
         )
         Thread.sleep(forTimeInterval: 5)
