@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import SwiftUI
 import XCTest
 @testable import KeyHollow
 
@@ -254,6 +255,34 @@ final class SecurityCryptoTests: XCTestCase {
 
         session.endSystemPhotoOperation()
         XCTAssertFalse(session.isSystemPhotoOperationActive)
+    }
+
+    func testPhotosPromptLifecycleDoesNotLockDuringInactiveHandoff() {
+        XCTAssertFalse(VaultLifecycleLockPolicy.shouldLock(
+            for: .inactive,
+            systemPhotoOperationActive: true
+        ))
+        XCTAssertFalse(VaultLifecycleLockPolicy.shouldLockWhenPhotoOperationEnds(
+            scenePhase: .inactive
+        ))
+        XCTAssertFalse(VaultLifecycleLockPolicy.shouldLock(
+            for: .active,
+            systemPhotoOperationActive: false
+        ))
+    }
+
+    func testPhotosPromptLifecycleStillLocksOnRealBackground() {
+        XCTAssertTrue(VaultLifecycleLockPolicy.shouldLock(
+            for: .background,
+            systemPhotoOperationActive: true
+        ))
+        XCTAssertTrue(VaultLifecycleLockPolicy.shouldLockWhenPhotoOperationEnds(
+            scenePhase: .background
+        ))
+        XCTAssertTrue(VaultLifecycleLockPolicy.shouldLock(
+            for: .inactive,
+            systemPhotoOperationActive: false
+        ))
     }
 
     func testSuccessfulUnlockDoesNotEraseGlobalFailureBudget() async throws {
