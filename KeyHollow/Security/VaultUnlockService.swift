@@ -51,6 +51,32 @@ actor VaultUnlockService {
         return unlockedVault(from: created.payload)
     }
 
+    /// Gives a fully validated portable vault a new device-local LowKey
+    /// wrapper. The archive recovery credential is never accepted by the
+    /// normal keypad and no existing vault credential or photo directory is
+    /// replaced.
+    func installValidatedPortableVault(
+        _ restore: ValidatedPortableVaultRestore,
+        newPasscode: String
+    ) async throws -> UnlockedVault {
+        guard PasscodePolicy.isAcceptableNewPasscode(newPasscode) else {
+            throw KeyDerivationError.invalidPasscode
+        }
+
+        let unlockKey = try deriveUnlockKey(passcode: newPasscode)
+        let installer = try PortableVaultRestoreInstaller(credentialStore: store)
+        do {
+            return try await installer.install(
+                restore,
+                localUnlockKey: unlockKey
+            )
+        } catch PortableVaultRestoreInstallationError.credentialAlreadyUsed {
+            throw VaultUnlockError.passcodeAlreadyUsed
+        } catch {
+            throw VaultUnlockError.mutationFailed
+        }
+    }
+
     func unlock(passcode: String) async throws -> UnlockedVault {
         do {
             try await limiter.checkAllowed()

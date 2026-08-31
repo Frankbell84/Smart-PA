@@ -8,6 +8,20 @@ enum EncryptedVaultTransferError: Error, Equatable {
     case restoredCatalogMismatch
 }
 
+enum PortableVaultRestoreInstallationError: Error, Equatable {
+    case credentialAlreadyUsed
+    case credentialCommitFailed
+    case destinationExists
+}
+
+protocol PortableVaultCredentialStoring: Sendable {
+    func contains(locator: String) async -> Bool
+    func write(_ envelope: VaultEnvelope, locator: String) async throws
+    func delete(locator: String) async throws
+}
+
+extension VaultStore: PortableVaultCredentialStoring {}
+
 struct EncryptedVaultExportReceipt: Equatable, Sendable {
     let archiveURL: URL
     let archiveID: UUID
@@ -15,7 +29,10 @@ struct EncryptedVaultExportReceipt: Equatable, Sendable {
     let archiveByteCount: UInt64
 }
 
-final class ValidatedPortableVaultRestore {
+/// Validation results are immutable. A lock serializes the only two ownership
+/// transitions (commit or discard), allowing this single-use object to cross
+/// into `VaultUnlockService` without racing its protected staging directory.
+final class ValidatedPortableVaultRestore: @unchecked Sendable {
     let archiveID: UUID
     let sourceVaultID: UUID
     let sourceVaultCreatedAt: Date
@@ -24,6 +41,8 @@ final class ValidatedPortableVaultRestore {
     let catalog: PortableArchivePayloadCatalog
 
     private let stagedPayload: PortableArchiveStagedPayload
+    private let ownershipLock = NSLock()
+    private var ownsStagingDirectory = true
 
     var stagingURL: URL { stagedPayload.directoryURL }
 
@@ -47,11 +66,116 @@ final class ValidatedPortableVaultRestore {
     }
 
     func discard() {
+        ownershipLock.lock()
+        defer { ownershipLock.unlock() }
+        guard ownsStagingDirectory else { return }
         stagedPayload.discard()
+        ownsStagingDirectory = false
     }
 
     func commitEncryptedFiles(to destinationURL: URL) throws {
+        ownershipLock.lock()
+        defer { ownershipLock.unlock() }
+        guard ownsStagingDirectory else {
+            throw PortableArchivePayloadError.alreadyFinished
+        }
         try stagedPayload.commit(to: destinationURL)
+        ownsStagingDirectory = false
+    }
+}
+
+/// Installs only an already authenticated and fully validated portable vault.
+/// The caller is responsible for deriving `localUnlockKey` from a newly chosen,
+/// policy-compliant local LowKey. Portable recovery credentials never become a
+/// local unlock path.
+struct PortableVaultRestoreInstaller {
+    private let credentialStore: any PortableVaultCredentialStoring
+    private let photoDataRoot: URL
+
+    init(
+        credentialStore: any PortableVaultCredentialStoring,
+        photoDataRootOverride: URL? = nil
+    ) throws {
+        self.credentialStore = credentialStore
+
+        if let photoDataRootOverride {
+            photoDataRoot = photoDataRootOverride.standardizedFileURL
+        } else {
+            let appSupport = try FileManager.default.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+            photoDataRoot = appSupport
+                .appendingPathComponent("KeyHollow/PhotoData", isDirectory: true)
+                .standardizedFileURL
+        }
+
+        try Self.prepareProtectedRoot(photoDataRoot)
+    }
+
+    func install(
+        _ restore: ValidatedPortableVaultRestore,
+        localUnlockKey: SymmetricKey
+    ) async throws -> UnlockedVault {
+        let payload = restore.destinationVaultPayload
+        let locator = VaultLocator.derive(from: localUnlockKey)
+        guard !(await credentialStore.contains(locator: locator)) else {
+            throw PortableVaultRestoreInstallationError.credentialAlreadyUsed
+        }
+
+        let destinationURL = photoDataRoot.appendingPathComponent(
+            payload.vaultID.uuidString.lowercased(),
+            isDirectory: true
+        )
+        guard !FileManager.default.fileExists(atPath: destinationURL.path) else {
+            throw PortableVaultRestoreInstallationError.destinationExists
+        }
+
+        let envelope = try VaultEnvelope.seal(
+            payload: payload,
+            using: localUnlockKey
+        )
+
+        // Move the already validated ciphertext into its fresh vault directory
+        // first. Only then publish the LowKey wrapper. A normal write failure
+        // rolls the moved directory back so no partial vault becomes unlockable.
+        try restore.commitEncryptedFiles(to: destinationURL)
+        do {
+            try await credentialStore.write(envelope, locator: locator)
+        } catch {
+            // A store can fail after its atomic write but before its protection
+            // metadata is finalized. Remove both sides of the transaction.
+            try? await credentialStore.delete(locator: locator)
+            try? FileManager.default.removeItem(at: destinationURL)
+            throw PortableVaultRestoreInstallationError.credentialCommitFailed
+        }
+
+        return UnlockedVault(
+            vaultID: payload.vaultID,
+            vaultKey: SymmetricKey(data: payload.vaultKey),
+            createdAt: payload.createdAt
+        )
+    }
+
+    private static func prepareProtectedRoot(_ root: URL) throws {
+        let fileManager = FileManager.default
+        if !fileManager.fileExists(atPath: root.path) {
+            try fileManager.createDirectory(
+                at: root,
+                withIntermediateDirectories: true,
+                attributes: [.protectionKey: FileProtectionType.complete]
+            )
+        }
+        try fileManager.setAttributes(
+            [.protectionKey: FileProtectionType.complete],
+            ofItemAtPath: root.path
+        )
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        var protectedRoot = root
+        try protectedRoot.setResourceValues(values)
     }
 }
 
