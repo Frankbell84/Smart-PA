@@ -41,7 +41,9 @@ final class KeyHollowLaunchTests: XCTestCase {
 
         let noRecoveryAcknowledgment = app.switches["I understand this vault cannot be recovered"]
         XCTAssertTrue(noRecoveryAcknowledgment.waitForExistence(timeout: 5))
-        noRecoveryAcknowledgment.tap()
+        noRecoveryAcknowledgment
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
+            .tap()
 
         let acknowledgmentRegistered = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "value == '1'"),
