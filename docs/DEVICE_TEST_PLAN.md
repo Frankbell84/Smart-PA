@@ -14,6 +14,8 @@ This checklist must be executed on a physical iPhone before external TestFlight 
 
 ## Multiple vaults
 
+- From the locked home screen, tap **Create New Vault** without unlocking an existing vault.
+- Confirm the action opens new-vault setup without displaying a vault list, vault count, or any existing-vault details.
 - From Vault A, create Vault B with a different passcode.
 - Import distinct photos into A and B.
 - Lock KeyHollow.

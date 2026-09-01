@@ -61,6 +61,7 @@ private struct LockView: View {
     @State private var digits = ""
     @State private var message: String?
     @State private var isWorking = false
+    @State private var showingNewVault = false
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 18), count: 3)
 
@@ -131,10 +132,23 @@ private struct LockView: View {
             }
             .font(.title2)
 
+            Button {
+                showingNewVault = true
+            } label: {
+                Label("Create New Vault", systemImage: "lock.badge.plus")
+            }
+            .buttonStyle(.bordered)
+            .disabled(isWorking)
+            .accessibilityIdentifier("locked-create-new-vault")
+
             Spacer()
         }
         .padding(.horizontal, 38)
         .disabled(isWorking)
+        .sheet(isPresented: $showingNewVault) {
+            AdditionalVaultSetupView(service: service)
+                .environmentObject(session)
+        }
     }
 
     private func key(_ value: String) -> some View {
