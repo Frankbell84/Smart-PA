@@ -69,7 +69,9 @@ final class KeyHollowLaunchTests: XCTestCase {
 
         // Production Argon2id intentionally uses 64 MiB and three passes. A
         // hosted simulator can take substantially longer than a physical
-        // iPhone to finish that work, so first verify that creation begins.
+        // iPhone to finish that work, so this launch regression test verifies
+        // the production UI accepts the action and remains alive. Completion,
+        // persistence, and decryption are covered by the security test target.
         let creationStarted = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "isEnabled == false"),
             object: createButton
@@ -85,16 +87,17 @@ final class KeyHollowLaunchTests: XCTestCase {
             .runningForeground,
             "KeyHollow exited or crashed after vault creation began."
         )
+    }
 
-        // Once the first vault is ready, lock the app and verify that creating
-        // another independent vault remains available directly from the normal
-        // locked home screen. The control exposes no vault list or count.
-        let lockButton = app.buttons["Lock"]
+    func testLockedHomeOffersNewVaultCreation() {
+        let app = XCUIApplication()
+        app.launchArguments.append("-ui-test-locked-home")
+        app.launch()
+
         XCTAssertTrue(
-            lockButton.waitForExistence(timeout: 180),
-            "The newly created vault did not become ready."
+            app.wait(for: .runningForeground, timeout: 5),
+            "KeyHollow did not reach the locked home screen."
         )
-        lockButton.tap()
 
         let createAnotherVaultButton = app.buttons["locked-create-new-vault"]
         XCTAssertTrue(

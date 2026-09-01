@@ -32,6 +32,14 @@ struct RootView: View {
             guard service == nil else { return }
             do {
                 let createdService = try VaultUnlockService()
+#if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-ui-test-locked-home") {
+                    service = createdService
+                    setupRequired = false
+                    isChecking = false
+                    return
+                }
+#endif
                 let hasVaults = try await createdService.hasAnyVaults()
                 service = createdService
                 setupRequired = !hasVaults
