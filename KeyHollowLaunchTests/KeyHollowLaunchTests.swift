@@ -88,5 +88,28 @@ final class KeyHollowLaunchTests: XCTestCase {
             "KeyHollow exited or crashed after vault creation began."
         )
     }
+
+    func testLockedHomeOffersNewVaultCreation() {
+        let app = XCUIApplication()
+        app.launchArguments.append("-ui-test-locked-home")
+        app.launch()
+
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: 5),
+            "KeyHollow did not reach the locked home screen."
+        )
+
+        let createAnotherVaultButton = app.buttons["locked-create-new-vault"]
+        XCTAssertTrue(
+            createAnotherVaultButton.waitForExistence(timeout: 5),
+            "The locked home screen did not offer new-vault creation."
+        )
+        createAnotherVaultButton.tap()
+
+        XCTAssertTrue(
+            app.navigationBars["New Vault"].waitForExistence(timeout: 5),
+            "New-vault setup did not open from the locked home screen."
+        )
+    }
 }
 
