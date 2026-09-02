@@ -16,7 +16,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.beta
         PRODUCT_NAME: KeyHollow
         MARKETING_VERSION: 2.0
-        CURRENT_PROJECT_VERSION: 3
+        CURRENT_PROJECT_VERSION: 4
         VERSIONING_SYSTEM: apple-generic
         SWIFT_VERSION: 5.0
         SWIFT_STRICT_CONCURRENCY: complete
@@ -84,3 +84,4 @@ schemes:
         - KeyHollowLaunchTests
     archive:
       config: Release
+
