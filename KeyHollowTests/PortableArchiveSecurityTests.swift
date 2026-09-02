@@ -112,6 +112,57 @@ final class PortableArchiveSecurityTests: XCTestCase {
         }
     }
 
+    func testAlteredSaltFailsHeaderAuthentication() throws {
+        let credential = PortableArchiveCredential.passphrase("correct horse battery staple")
+        let original = try EncryptedVaultArchiveHeader.create(
+            vaultPayload: testVaultPayload(),
+            credential: credential,
+            keyDeriver: TestArchiveKeyDeriver()
+        )
+        var alteredSalt = original.kdf.salt
+        alteredSalt[alteredSalt.startIndex] ^= 0x01
+        let alteredKDF = PortableArchiveKDFParameters(
+            algorithm: original.kdf.algorithm,
+            salt: alteredSalt,
+            memoryKiB: original.kdf.memoryKiB,
+            iterations: original.kdf.iterations,
+            parallelism: original.kdf.parallelism,
+            outputByteCount: original.kdf.outputByteCount
+        )
+        let tampered = EncryptedVaultArchiveHeader(
+            format: original.format,
+            version: original.version,
+            kdf: alteredKDF,
+            sealedSecrets: original.sealedSecrets
+        )
+
+        XCTAssertThrowsError(
+            try tampered.open(
+                credential: credential,
+                keyDeriver: TestArchiveKeyDeriver()
+            )
+        ) { error in
+            XCTAssertEqual(error as? PortableArchiveError, .authenticationFailed)
+        }
+    }
+
+    func testGeneratedHeadersUseUniqueAESGCMNonces() throws {
+        let credential = PortableArchiveCredential.passphrase("correct horse battery staple")
+        var observedNonces = Set<Data>()
+
+        for _ in 0..<1_000 {
+            let header = try EncryptedVaultArchiveHeader.create(
+                vaultPayload: testVaultPayload(),
+                credential: credential,
+                keyDeriver: TestArchiveKeyDeriver()
+            )
+            let sealedBox = try AES.GCM.SealedBox(combined: header.sealedSecrets)
+            let nonce = Data(sealedBox.nonce)
+
+            XCTAssertTrue(observedNonces.insert(nonce).inserted, "AES-GCM nonce repeated")
+        }
+    }
+
     func testWeakOrAmbiguousPassphrasesAreRejected() {
         let rejected = [
             "too short",
