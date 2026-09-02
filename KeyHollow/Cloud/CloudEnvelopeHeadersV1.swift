@@ -263,7 +263,7 @@ struct CloudObjectHeaderV1: Equatable, Sendable {
         result.append(try encoded())
         var encoder = CloudBinaryEncoder()
         encoder.append(sequence)
-        encoder.append(isFinal ? 1 : 0)
+        encoder.append(UInt8(isFinal ? 1 : 0))
         encoder.append(declaredPlaintextByteCount)
         result.append(encoder.data)
         return result
