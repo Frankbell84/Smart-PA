@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct EncryptedVaultExportView: View {
     @EnvironmentObject private var session: VaultSession
@@ -50,8 +51,13 @@ struct EncryptedVaultExportView: View {
                         } else {
                             Text(recoveryCode)
                                 .font(.system(.body, design: .monospaced).weight(.semibold))
-                                .textSelection(.enabled)
                                 .privacySensitive()
+
+                            Button {
+                                copyRecoveryCode()
+                            } label: {
+                                Label("Copy Recovery Code", systemImage: "doc.on.doc")
+                            }
 
                             Text("Write this code down and keep it somewhere separate from the .khvault file. KeyHollow cannot recover or reset it.")
                                 .font(.footnote)
@@ -106,6 +112,7 @@ struct EncryptedVaultExportView: View {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Cancel") {
                             focusedField = nil
+                            clearSensitiveState()
                             dismiss()
                         }
                         .disabled(isWorking || pendingExport != nil)
@@ -131,8 +138,18 @@ struct EncryptedVaultExportView: View {
                         finishDocumentExport(item, saved: saved)
                     }
                 }
+                .onDisappear {
+                    guard !isWorking, pendingExport == nil else { return }
+                    clearSensitiveState()
+                }
             }
         }
+    }
+
+    private func clearSensitiveState() {
+        currentPasscode = ""
+        recoveryCode = ""
+        recoveryConfirmation = ""
     }
 
     private var canExport: Bool {
@@ -167,6 +184,19 @@ struct EncryptedVaultExportView: View {
             recoveryCode = ""
             message = "A secure recovery code could not be generated. No export was created."
         }
+    }
+
+    private func copyRecoveryCode() {
+        guard !recoveryCode.isEmpty else { return }
+
+        UIPasteboard.general.setItems(
+            [[UTType.utf8PlainText.identifier: recoveryCode]],
+            options: [
+                .localOnly: true,
+                .expirationDate: Date().addingTimeInterval(120)
+            ]
+        )
+        message = "Recovery code copied on this iPhone for two minutes. Keep it separate from the .khvault file."
     }
 
     private func createExport() {
@@ -206,10 +236,12 @@ struct EncryptedVaultExportView: View {
             } catch VaultUnlockError.invalidCredentials {
                 Self.discardTemporaryExport(at: temporaryDestination)
                 isWorking = false
+                clearSensitiveState()
                 message = "The current passcode was not recognized for this vault."
             } catch {
                 Self.discardTemporaryExport(at: temporaryDestination)
                 isWorking = false
+                clearSensitiveState()
                 message = "The encrypted export could not be created and verified. No incomplete export was kept."
             }
         }
@@ -225,10 +257,13 @@ struct EncryptedVaultExportView: View {
         }
         Self.discardTemporaryExport(at: item.archiveURL)
         pendingExport = nil
+        clearSensitiveState()
 
         if saved {
-            let noun = item.encryptedFileCount == 1 ? "encrypted file" : "encrypted files"
-            message = "Saved a verified .khvault export containing \(item.encryptedFileCount) \(noun) (\(Self.formattedBytes(item.archiveByteCount))). Keep its recovery code separate."
+            message = nil
+            DispatchQueue.main.async {
+                dismiss()
+            }
         } else {
             message = "Export canceled. The temporary .khvault file was deleted."
         }

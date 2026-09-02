@@ -138,6 +138,65 @@ final class PortableArchivePayloadTests: XCTestCase {
         }
     }
 
+    func testCatalogRejectsEntryAndAggregateSizeExhaustion() {
+        let digest = Data(
+            repeating: 0x11,
+            count: PortableArchivePayloadFormat.sha256ByteCount
+        )
+        let oversizedEntry = PortableArchivePayloadCatalog(
+            version: PortableArchivePayloadCatalog.currentVersion,
+            entries: [
+                PortableArchivePayloadEntry(
+                    storageName: "manifest.khm",
+                    role: .manifest,
+                    ciphertextByteCount: PortableArchivePayloadFormat.maximumEntryByteCount + 1,
+                    ciphertextSHA256: digest
+                )
+            ]
+        )
+
+        XCTAssertThrowsError(try oversizedEntry.validate()) { error in
+            XCTAssertEqual(
+                error as? PortableArchivePayloadError,
+                .invalidEntry("manifest.khm")
+            )
+        }
+
+        let excessiveTotalEntries = (0..<5).map { index in
+            PortableArchivePayloadEntry(
+                storageName: index == 0 ? "manifest.khm" : "photo-\(index).khp",
+                role: index == 0 ? .manifest : .original,
+                ciphertextByteCount: PortableArchivePayloadFormat.maximumEntryByteCount,
+                ciphertextSHA256: digest
+            )
+        }
+        let excessiveTotal = PortableArchivePayloadCatalog(
+            version: PortableArchivePayloadCatalog.currentVersion,
+            entries: excessiveTotalEntries
+        )
+
+        XCTAssertThrowsError(try excessiveTotal.validate()) { error in
+            XCTAssertEqual(error as? PortableArchivePayloadError, .invalidCatalog)
+        }
+    }
+
+    func testExtractorRejectsOversizedCatalogBeforeCreatingStagingDirectory() throws {
+        let stagingURL = temporaryURL(label: "oversized-catalog-staging")
+        defer { try? FileManager.default.removeItem(at: stagingURL) }
+
+        var prefix = PortableArchivePayloadFormat.magic
+        prefix.appendPayloadLittleEndianForTesting(PortableArchivePayloadFormat.currentVersion)
+        prefix.appendPayloadLittleEndianForTesting(
+            UInt32(PortableArchivePayloadFormat.maximumCatalogByteCount + 1)
+        )
+        let extractor = try PortableArchivePayloadExtractor(stagingURL: stagingURL)
+
+        XCTAssertThrowsError(try extractor.receive(prefix)) { error in
+            XCTAssertEqual(error as? PortableArchivePayloadError, .invalidCatalogLength)
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stagingURL.path))
+    }
+
     func testPayloadWriterDetectsSourceChangedAfterCatalogCreation() async throws {
         let sourceRoot = temporaryURL(label: "source-change")
         let archiveURL = temporaryURL(label: "source-change-archive")

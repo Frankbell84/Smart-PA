@@ -20,12 +20,14 @@ struct EncryptedVaultImportView: View {
     @State private var systemInteractionOpen = false
     @State private var isWorking = false
     @State private var message: String?
+    @FocusState private var focusedField: ImportField?
 
     private var requiredLength: Int { tier.fixedLength ?? customLength }
 
     var body: some View {
         NavigationStack {
-            Form {
+            ScrollViewReader { proxy in
+                Form {
                 Section {
                     Text("Import creates a new independent local vault. It never replaces, merges with, or deletes an existing vault.")
                         .foregroundStyle(.secondary)
@@ -49,6 +51,11 @@ struct EncryptedVaultImportView: View {
                         .autocorrectionDisabled()
                         .font(.system(.body, design: .monospaced))
                         .privacySensitive()
+                        .submitLabel(.done)
+                        .focused($focusedField, equals: .recoveryCode)
+                        .onSubmit {
+                            dismissKeyboard()
+                        }
                         .onChange(of: recoveryCode) { _, value in
                             recoveryCode = Self.sanitizeRecoveryCode(value)
                         }
@@ -62,6 +69,7 @@ struct EncryptedVaultImportView: View {
                         .foregroundStyle(.green)
                     } else {
                         Button("Authenticate and Verify") {
+                            dismissKeyboard()
                             validateArchive()
                         }
                         .disabled(!canValidate || isWorking)
@@ -89,15 +97,23 @@ struct EncryptedVaultImportView: View {
                         SecureField("Enter \(requiredLength)-digit LowKey", text: $newPasscode)
                             .keyboardType(.numberPad)
                             .textContentType(.newPassword)
+                            .focused($focusedField, equals: .newPasscode)
                             .onChange(of: newPasscode) { _, value in
-                                newPasscode = Self.sanitizePasscode(value, limit: requiredLength)
+                                let sanitized = Self.sanitizePasscode(value, limit: requiredLength)
+                                newPasscode = sanitized
+                                if sanitized.count == requiredLength,
+                                   focusedField == .newPasscode {
+                                    focusedField = .passcodeConfirmation
+                                }
                             }
 
                         SecureField("Confirm new LowKey", text: $passcodeConfirmation)
                             .keyboardType(.numberPad)
                             .textContentType(.newPassword)
+                            .focused($focusedField, equals: .passcodeConfirmation)
                             .onChange(of: passcodeConfirmation) { _, value in
-                                passcodeConfirmation = Self.sanitizePasscode(value, limit: requiredLength)
+                                let sanitized = Self.sanitizePasscode(value, limit: requiredLength)
+                                passcodeConfirmation = sanitized
                             }
 
                         Text("The recovery code authenticates the file only. It will never unlock KeyHollow. This new LowKey is required on this iPhone.")
@@ -117,6 +133,7 @@ struct EncryptedVaultImportView: View {
                             .foregroundStyle(.secondary)
                         Toggle("I understand the new LowKey cannot be recovered", isOn: $acknowledgesNoRecovery)
                     }
+                    .id(ImportSection.acknowledgement)
                 }
 
                 if let message {
@@ -126,39 +143,96 @@ struct EncryptedVaultImportView: View {
                 if validatedRestore != nil {
                     Section {
                         Button("Install as New Vault") {
+                            dismissKeyboard()
                             installRestore()
                         }
                         .frame(maxWidth: .infinity)
                         .disabled(!canInstall || isWorking)
                     }
+                    .id(ImportSection.install)
                 }
-            }
-            .navigationTitle("Import Encrypted Vault")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { cancelAndDismiss() }
-                        .disabled(isWorking)
                 }
-            }
-            .overlay {
-                if isWorking {
-                    ProgressView(validatedRestore == nil ? "Authenticating every file…" : "Installing verified vault…")
-                        .padding()
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .scrollDismissesKeyboard(.interactively)
+                .navigationTitle("Import Encrypted Vault")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cancel") { cancelAndDismiss() }
+                            .disabled(isWorking)
+                    }
+
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button(importKeyboardButtonTitle) {
+                            finishKeyboardEntry(using: proxy)
+                        }
+                        .disabled(
+                            focusedField == .passcodeConfirmation &&
+                            !canContinueFromConfirmation
+                        )
+                    }
                 }
-            }
-            .interactiveDismissDisabled(isWorking)
-            .sheet(isPresented: $showingFilePicker) {
-                EncryptedVaultDocumentImporter { url in
-                    finishFileSelection(url)
+                .overlay {
+                    if isWorking {
+                        ProgressView(validatedRestore == nil ? "Authenticating every file…" : "Installing verified vault…")
+                            .padding()
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+                .interactiveDismissDisabled(isWorking)
+                .sheet(isPresented: $showingFilePicker) {
+                    EncryptedVaultDocumentImporter { url in
+                        finishFileSelection(url)
+                    }
                 }
             }
         }
         .onDisappear {
             guard !showingFilePicker else { return }
+            clearSensitiveState()
             discardUninstalledMaterial()
         }
+    }
+
+    private func clearSensitiveState() {
+        recoveryCode = ""
+        newPasscode = ""
+        passcodeConfirmation = ""
+    }
+
+    private var importKeyboardButtonTitle: String {
+        focusedField == .recoveryCode ? "Done" : "Continue"
+    }
+
+    private var canContinueFromConfirmation: Bool {
+        newPasscode.count == requiredLength &&
+        passcodeConfirmation == newPasscode &&
+        rejectionMessage == nil
+    }
+
+    private func finishKeyboardEntry(using proxy: ScrollViewProxy) {
+        if focusedField == .newPasscode {
+            focusedField = .passcodeConfirmation
+        } else if focusedField == .passcodeConfirmation {
+            advanceToInstallControls(using: proxy)
+        } else {
+            dismissKeyboard()
+        }
+    }
+
+    private func advanceToInstallControls(using proxy: ScrollViewProxy) {
+        guard canContinueFromConfirmation else { return }
+        dismissKeyboard()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            withAnimation {
+                proxy.scrollTo(ImportSection.acknowledgement, anchor: .center)
+            }
+        }
+    }
+
+    private func dismissKeyboard() {
+        focusedField = nil
+        KeyboardDismissal.dismiss()
     }
 
     private var canValidate: Bool {
@@ -183,6 +257,7 @@ struct EncryptedVaultImportView: View {
     }
 
     private func beginFileSelection() {
+        dismissKeyboard()
         message = nil
         systemInteractionOpen = true
         session.beginSystemInteraction()
@@ -216,6 +291,7 @@ struct EncryptedVaultImportView: View {
 
     private func validateArchive() {
         guard canValidate, let selectedArchive, !isWorking else { return }
+        dismissKeyboard()
         let credential = PortableArchiveCredential.recoveryCode(recoveryCode)
         isWorking = true
         message = nil
@@ -233,6 +309,7 @@ struct EncryptedVaultImportView: View {
                 isWorking = false
             } catch {
                 isWorking = false
+                recoveryCode = ""
                 message = "The export could not be authenticated. Check the recovery code and confirm the .khvault file is unchanged."
             }
         }
@@ -240,6 +317,7 @@ struct EncryptedVaultImportView: View {
 
     private func installRestore() {
         guard canInstall, let validatedRestore, !isWorking else { return }
+        dismissKeyboard()
         let passcode = newPasscode
         newPasscode = ""
         passcodeConfirmation = ""
@@ -269,6 +347,8 @@ struct EncryptedVaultImportView: View {
     }
 
     private func cancelAndDismiss() {
+        dismissKeyboard()
+        clearSensitiveState()
         discardUninstalledMaterial()
         dismiss()
     }
@@ -362,6 +442,17 @@ struct EncryptedVaultImportView: View {
     private static func formattedBytes(_ bytes: UInt64) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
     }
+}
+
+private enum ImportField: Hashable {
+    case recoveryCode
+    case newPasscode
+    case passcodeConfirmation
+}
+
+private enum ImportSection: Hashable {
+    case acknowledgement
+    case install
 }
 
 private struct SelectedPortableArchive {

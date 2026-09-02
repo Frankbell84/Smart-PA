@@ -92,7 +92,7 @@ struct PortableArchiveContentChunk: Equatable, Sendable {
         }
     }
 
-    private static func authenticationData(
+    static func authenticationData(
         archiveID: UUID,
         sequence: UInt64,
         isFinal: Bool

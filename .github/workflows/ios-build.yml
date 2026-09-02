@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: macos-15
@@ -17,7 +24,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -103,7 +112,7 @@ jobs:
 
       - name: Upload simulator build
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: KeyHollow-Simulator
           path: build/DerivedData/Build/Products/Debug-iphonesimulator/KeyHollow.app
@@ -112,9 +121,55 @@ jobs:
 
       - name: Upload security test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: KeyHollow-Security-Tests
           path: build/KeyHollowTests.xcresult
           if-no-files-found: warn
           retention-days: 30
+
+  codeql:
+    name: CodeQL (Swift)
+    runs-on: macos-15
+    timeout-minutes: 45
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          languages: swift
+          build-mode: manual
+
+      - name: Build for CodeQL
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project KeyHollow.xcodeproj \
+            -scheme KeyHollow \
+            -sdk iphonesimulator \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath build/CodeQLDerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Analyze Swift with CodeQL
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          category: /language:swift

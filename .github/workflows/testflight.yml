@@ -19,7 +19,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -128,16 +130,26 @@ jobs:
 
       - name: Upload signed IPA artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: KeyHollow-TestFlight-IPA
           path: build/export/*.ipa
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Remove temporary signing keychain
+      - name: Remove temporary signing material
         if: always()
         env:
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
         run: |
+          set -euo pipefail
+
           security delete-keychain "$RUNNER_TEMP/keyhollow-signing.keychain-db" || true
+          rm -f \
+            "$RUNNER_TEMP/keyhollow-distribution.p12" \
+            "$RUNNER_TEMP/keyhollow-app-store.mobileprovision" \
+            "$HOME/Library/MobileDevice/Provisioning Profiles/KeyHollow-App-Store.mobileprovision"
+
+          if [[ -n "${APP_STORE_CONNECT_API_KEY_ID:-}" ]]; then
+            rm -f "$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+          fi
