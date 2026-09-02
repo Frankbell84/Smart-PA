@@ -526,7 +526,7 @@ enum CloudObjectChunkV1 {
         }
         var encoder = CloudBinaryEncoder()
         encoder.append(sequence)
-        encoder.append(isFinal ? 1 : 0)
+        encoder.append(UInt8(isFinal ? 1 : 0))
         encoder.append(plaintextLength)
         encoder.append(UInt32(sealed.count))
         var frame = encoder.data
