@@ -197,8 +197,10 @@ struct EncryptedVaultExportView: View {
 
     private static func makeTemporaryExportURL() throws -> URL {
         let fileManager = FileManager.default
-        let directory = fileManager.temporaryDirectory
+        let exportRoot = fileManager.temporaryDirectory
             .appendingPathComponent("KeyHollowPortableExports", isDirectory: true)
+        try? fileManager.removeItem(at: exportRoot)
+        let directory = exportRoot
             .appendingPathComponent(UUID().uuidString.lowercased(), isDirectory: true)
 
         try fileManager.createDirectory(

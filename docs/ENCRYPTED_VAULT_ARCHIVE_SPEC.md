@@ -1,7 +1,7 @@
 # KeyHollow Encrypted Vault Archive
 
 Status: the isolated archive, validation, rollback engine, and guarded export
-interface are implemented. Import UI and physical-device release gates remain
+and import interfaces are implemented. Physical-device release gates remain
 incomplete. This document does not change the V1 vault format or release
 behavior.
 

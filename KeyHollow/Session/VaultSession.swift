@@ -52,6 +52,8 @@ final class VaultSession: ObservableObject {
         isUnlocked = false
         activeVaultID = nil
         activeKey = nil
+        systemInteractionCount = 0
+        isSystemInteractionActive = false
     }
 }
 

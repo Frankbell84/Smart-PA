@@ -26,6 +26,7 @@ struct VaultGalleryView: View {
     @State private var showingPicker = false
     @State private var showingNewVault = false
     @State private var showingSecuritySettings = false
+    @State private var showingEncryptedImport = false
     @State private var showingDeleteSelectionConfirmation = false
     @State private var importMode: VaultImportMode = .copy
     @State private var isSelecting = false
@@ -111,6 +112,10 @@ struct VaultGalleryView: View {
             VaultSecuritySettingsView(service: service)
                 .environmentObject(session)
         }
+        .sheet(isPresented: $showingEncryptedImport) {
+            EncryptedVaultImportView(service: service)
+                .environmentObject(session)
+        }
         .sheet(item: $decryptedPhoto) { photo in
             DecryptedPhotoView(photo: photo) {
                 delete(photo.record)
@@ -180,6 +185,12 @@ struct VaultGalleryView: View {
                         showingNewVault = true
                     } label: {
                         Label("Create New Vault", systemImage: "lock.badge.plus")
+                    }
+
+                    Button {
+                        showingEncryptedImport = true
+                    } label: {
+                        Label("Import Encrypted Vault", systemImage: "square.and.arrow.down.on.square")
                     }
 
                     Button {

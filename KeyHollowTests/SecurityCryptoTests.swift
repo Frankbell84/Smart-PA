@@ -258,6 +258,10 @@ final class SecurityCryptoTests: XCTestCase {
 
         session.beginSystemInteraction()
         XCTAssertTrue(session.isSystemInteractionActive)
+        session.lock()
+        XCTAssertFalse(session.isSystemInteractionActive)
+
+        session.beginSystemInteraction()
         session.endSystemInteraction()
         XCTAssertFalse(session.isSystemInteractionActive)
     }

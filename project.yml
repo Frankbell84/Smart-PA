@@ -36,6 +36,15 @@ targets:
         NSPhotoLibraryUsageDescription: KeyHollow needs access only to photos you choose to copy or move into an encrypted vault.
         NSPhotoLibraryAddUsageDescription: KeyHollow needs permission to save photos you choose from an encrypted vault back to your Photos library.
         ITSAppUsesNonExemptEncryption: false
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.keyhollow.encrypted-vault
+            UTTypeDescription: KeyHollow Encrypted Vault
+            UTTypeConformsTo:
+              - public.data
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - khvault
+              public.mime-type: application/vnd.keyhollow.khvault
 
   KeyHollowTests:
     type: bundle.unit-test
