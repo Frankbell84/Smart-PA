@@ -22,6 +22,7 @@ final class KeyHollowLaunchTests: XCTestCase {
 
     func testFirstVaultCreationBeginsWithoutCrashing() {
         let app = XCUIApplication()
+        app.launchArguments.append("-ui-test-first-vault")
         app.launch()
 
         let passcode = "83057291"

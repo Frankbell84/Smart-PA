@@ -41,6 +41,14 @@ struct RootView: View {
                 }
 #endif
                 try await createdService.recoverInterruptedPortableVaultInstalls()
+#if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-ui-test-first-vault") {
+                    service = createdService
+                    setupRequired = true
+                    isChecking = false
+                    return
+                }
+#endif
                 let hasVaults = try await createdService.hasAnyVaults()
                 service = createdService
                 setupRequired = !hasVaults
