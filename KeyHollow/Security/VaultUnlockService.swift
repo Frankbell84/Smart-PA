@@ -126,6 +126,34 @@ actor VaultUnlockService {
         }
     }
 
+    /// Re-authenticates the vault that is already open without revealing or
+    /// accepting credentials for any other local vault.
+    func reauthenticateCurrentVault(
+        passcode: String,
+        expectedVaultID: UUID
+    ) async throws -> UnlockedVault {
+        guard PasscodePolicy.isValidForUnlock(passcode) else {
+            throw VaultUnlockError.invalidCredentials
+        }
+
+        let unlockKey = try deriveUnlockKey(passcode: passcode)
+        let locator = VaultLocator.derive(from: unlockKey)
+        guard let envelope = try await store.read(locator: locator) else {
+            throw VaultUnlockError.invalidCredentials
+        }
+
+        let payload: VaultPayload
+        do {
+            payload = try envelope.open(using: unlockKey)
+        } catch {
+            throw VaultUnlockError.invalidCredentials
+        }
+        guard payload.vaultID == expectedVaultID else {
+            throw VaultUnlockError.invalidCredentials
+        }
+        return unlockedVault(from: payload)
+    }
+
     /// Changes only the passcode wrapper. The vault's random data key and all
     /// encrypted photo blobs remain unchanged, avoiding bulk decrypt/re-encrypt.
     /// The current passcode must resolve to the vault that is actually open.

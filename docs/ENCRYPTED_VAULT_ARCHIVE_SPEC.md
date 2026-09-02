@@ -1,8 +1,9 @@
 # KeyHollow Encrypted Vault Archive
 
-Status: the isolated archive, validation, and rollback engine is implemented;
-user-interface and physical-device release gates remain incomplete. This
-document does not change the V1 vault format or release behavior.
+Status: the isolated archive, validation, rollback engine, and guarded export
+interface are implemented. Import UI and physical-device release gates remain
+incomplete. This document does not change the V1 vault format or release
+behavior.
 
 ## Product boundary
 
@@ -10,8 +11,8 @@ document does not change the V1 vault format or release behavior.
 - Never enumerate, count, or identify other vaults.
 - Require the current LowKey before an export can begin.
 - Use a separate portable credential for the exported archive.
-- Offer a generated recovery code as the default and a strong passphrase as
-  the alternative.
+- Offer a generated recovery code as the safe default. Do not expose the
+  passphrase option until it has its own strength and confirmation UI.
 - Never protect a portable archive with the normal numeric LowKey alone.
 - Never delete the source vault automatically after export.
 - Do not require a KeyHollow account, server, or cloud service.

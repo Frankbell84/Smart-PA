@@ -5,10 +5,12 @@ import CryptoKit
 final class VaultSession: ObservableObject {
     @Published private(set) var isUnlocked = false
     @Published private(set) var activeVaultID: UUID?
-    @Published private(set) var isSystemPhotoOperationActive = false
+    @Published private(set) var isSystemInteractionActive = false
 
     private var activeKey: SymmetricKey?
-    private var systemPhotoOperationCount = 0
+    private var systemInteractionCount = 0
+
+    var isSystemPhotoOperationActive: Bool { isSystemInteractionActive }
 
     func unlock(vaultID: UUID, key: SymmetricKey) {
         activeVaultID = vaultID
@@ -28,14 +30,22 @@ final class VaultSession: ObservableObject {
         return (activeVaultID, activeKey)
     }
 
+    func beginSystemInteraction() {
+        systemInteractionCount += 1
+        isSystemInteractionActive = true
+    }
+
+    func endSystemInteraction() {
+        systemInteractionCount = max(0, systemInteractionCount - 1)
+        isSystemInteractionActive = systemInteractionCount > 0
+    }
+
     func beginSystemPhotoOperation() {
-        systemPhotoOperationCount += 1
-        isSystemPhotoOperationActive = true
+        beginSystemInteraction()
     }
 
     func endSystemPhotoOperation() {
-        systemPhotoOperationCount = max(0, systemPhotoOperationCount - 1)
-        isSystemPhotoOperationActive = systemPhotoOperationCount > 0
+        endSystemInteraction()
     }
 
     func lock() {
