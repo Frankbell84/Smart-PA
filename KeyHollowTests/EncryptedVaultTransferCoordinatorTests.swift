@@ -350,6 +350,49 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: roots.transactions.path).isEmpty)
     }
 
+    func testFreshLaunchDoesNotCreateRestoreJournalUntilARecoveryIsPending() throws {
+        let roots = try TestRoots.create()
+        defer { roots.remove() }
+
+        XCTAssertFalse(
+            try PortableVaultRestoreTransactionJournal.recoveryRequired(
+                journalRootOverride: roots.transactions
+            )
+        )
+        XCTAssertFalse(FileManager.default.fileExists(atPath: roots.transactions.path))
+
+        try FileManager.default.createDirectory(
+            at: roots.transactions,
+            withIntermediateDirectories: true
+        )
+        XCTAssertFalse(
+            try PortableVaultRestoreTransactionJournal.recoveryRequired(
+                journalRootOverride: roots.transactions
+            )
+        )
+
+        try Data("pending authenticated transaction".utf8).write(
+            to: roots.transactions.appendingPathComponent("pending.khtxn")
+        )
+        XCTAssertTrue(
+            try PortableVaultRestoreTransactionJournal.recoveryRequired(
+                journalRootOverride: roots.transactions
+            )
+        )
+
+        try FileManager.default.removeItem(
+            at: roots.transactions.appendingPathComponent("pending.khtxn")
+        )
+        try Data("unexpected hidden file".utf8).write(
+            to: roots.transactions.appendingPathComponent(".unexpected")
+        )
+        XCTAssertTrue(
+            try PortableVaultRestoreTransactionJournal.recoveryRequired(
+                journalRootOverride: roots.transactions
+            )
+        )
+    }
+
     func testTamperedRecoveryJournalFailsClosedWithoutDeletingVaultMaterial() async throws {
         let roots = try TestRoots.create()
         defer { roots.remove() }

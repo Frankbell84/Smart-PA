@@ -37,6 +37,9 @@ actor VaultUnlockService {
     /// authenticated transaction journal could be cleared. Call during startup
     /// before allowing unlock or vault creation.
     func recoverInterruptedPortableVaultInstalls() async throws {
+        guard try PortableVaultRestoreTransactionJournal.recoveryRequired() else {
+            return
+        }
         let installer = try PortableVaultRestoreInstaller(
             credentialStore: store,
             journalAuthenticationKey: try portableRestoreJournalKey()

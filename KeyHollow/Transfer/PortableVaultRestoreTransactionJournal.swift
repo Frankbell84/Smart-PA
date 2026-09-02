@@ -63,6 +63,42 @@ struct PortableVaultRestoreTransactionJournal {
     private let authenticationKey: SymmetricKey
     private let fileManager = FileManager.default
 
+    /// Avoids creating Keychain material or protected directories during an
+    /// ordinary launch when no portable restore transaction can exist.
+    static func recoveryRequired(journalRootOverride: URL? = nil) throws -> Bool {
+        let fileManager = FileManager.default
+        let root: URL
+        if let journalRootOverride {
+            root = journalRootOverride.standardizedFileURL
+        } else {
+            let appSupport = try fileManager.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: false
+            )
+            root = appSupport
+                .appendingPathComponent("KeyHollow/RestoreTransactions", isDirectory: true)
+                .standardizedFileURL
+        }
+
+        guard fileManager.fileExists(atPath: root.path) else {
+            return false
+        }
+        let values = try root.resourceValues(
+            forKeys: [.isDirectoryKey, .isSymbolicLinkKey]
+        )
+        guard values.isDirectory == true,
+              values.isSymbolicLink != true else {
+            throw PortableVaultRestoreTransactionError.invalidJournal
+        }
+        return try !fileManager.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: nil,
+            options: [.skipsSubdirectoryDescendants]
+        ).isEmpty
+    }
+
     init(
         authenticationKey: SymmetricKey,
         journalRootOverride: URL? = nil,
@@ -138,7 +174,7 @@ struct PortableVaultRestoreTransactionJournal {
         let urls = try fileManager.contentsOfDirectory(
             at: journalRoot,
             includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
-            options: [.skipsHiddenFiles]
+            options: []
         )
 
         for url in urls {
