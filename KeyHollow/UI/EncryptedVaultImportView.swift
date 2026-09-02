@@ -157,8 +157,15 @@ struct EncryptedVaultImportView: View {
         }
         .onDisappear {
             guard !showingFilePicker else { return }
+            clearSensitiveState()
             discardUninstalledMaterial()
         }
+    }
+
+    private func clearSensitiveState() {
+        recoveryCode = ""
+        newPasscode = ""
+        passcodeConfirmation = ""
     }
 
     private var canValidate: Bool {
@@ -233,6 +240,7 @@ struct EncryptedVaultImportView: View {
                 isWorking = false
             } catch {
                 isWorking = false
+                recoveryCode = ""
                 message = "The export could not be authenticated. Check the recovery code and confirm the .khvault file is unchanged."
             }
         }
@@ -269,6 +277,7 @@ struct EncryptedVaultImportView: View {
     }
 
     private func cancelAndDismiss() {
+        clearSensitiveState()
         discardUninstalledMaterial()
         dismiss()
     }
