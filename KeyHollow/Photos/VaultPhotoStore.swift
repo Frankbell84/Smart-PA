@@ -189,3 +189,87 @@ actor VaultPhotoStore {
     }
 }
 
+extension VaultPhotoStore {
+    /// Captures exactly the encrypted files referenced by one authenticated
+    /// manifest while this actor excludes imports and deletes.
+    func captureCloudSnapshot(
+        sourceVaultCreatedAt: Date,
+        workingRoot: URL
+    ) throws -> CloudLocalSnapshotV1 {
+        let manifest = try loadManifest()
+        let snapshotID = UUID()
+        let snapshotRoot = workingRoot.appendingPathComponent(
+            snapshotID.uuidString.lowercased(),
+            isDirectory: true
+        )
+        try fileManager.createDirectory(at: workingRoot, withIntermediateDirectories: true)
+        try Self.protectAndExclude(workingRoot, fileManager: fileManager)
+        try fileManager.createDirectory(at: snapshotRoot, withIntermediateDirectories: false)
+        var completed = false
+        defer {
+            if !completed {
+                try? fileManager.removeItem(at: snapshotRoot)
+            }
+        }
+        try Self.protectAndExclude(snapshotRoot, fileManager: fileManager)
+
+        var requested: [(CloudManifestEntryRoleV1, String)] = [(.localManifest, "manifest.khm")]
+        var names = Set(["manifest.khm"])
+        for photo in manifest.photos {
+            guard names.insert(photo.blobName).inserted,
+                  names.insert(photo.thumbnailName).inserted else {
+                throw StoreError.invalidManifest
+            }
+            requested.append((.encryptedOriginal, photo.blobName))
+            requested.append((.encryptedThumbnail, photo.thumbnailName))
+        }
+
+        var captured: [CloudLocalSnapshotEntryV1] = []
+        captured.reserveCapacity(requested.count)
+        for (role, name) in requested {
+            let source = root.appendingPathComponent(name)
+            let destination = snapshotRoot.appendingPathComponent(name)
+            guard source.deletingLastPathComponent().standardizedFileURL == root.standardizedFileURL,
+                  fileManager.fileExists(atPath: source.path) else {
+                throw StoreError.invalidManifest
+            }
+            try fileManager.copyItem(at: source, to: destination)
+            try Self.protectAndExclude(destination, fileManager: fileManager)
+            try fileManager.setAttributes(
+                [.posixPermissions: NSNumber(value: Int16(0o400))],
+                ofItemAtPath: destination.path
+            )
+            let data = try Data(contentsOf: destination, options: [.mappedIfSafe])
+            captured.append(
+                CloudLocalSnapshotEntryV1(
+                    role: role,
+                    localStorageName: name,
+                    fileURL: destination,
+                    byteCount: UInt64(data.count),
+                    sha256: CloudObjectContainerV1.sha256(data)
+                )
+            )
+        }
+
+        let keyData = vaultKey.withUnsafeBytes { Data($0) }
+        guard keyData.count == CloudSecretKeyV1.byteCount else {
+            throw StoreError.verificationFailed
+        }
+        let createdAtMilliseconds = sourceVaultCreatedAt.timeIntervalSince1970 * 1_000
+        guard createdAtMilliseconds.isFinite,
+              createdAtMilliseconds >= 1,
+              createdAtMilliseconds <= Double(UInt64.max) else {
+            throw StoreError.verificationFailed
+        }
+
+        completed = true
+        return CloudLocalSnapshotV1(
+            snapshotID: snapshotID,
+            sourceVaultID: vaultID,
+            sourceVaultCreatedAtMilliseconds: UInt64(createdAtMilliseconds.rounded()),
+            localVaultKey: keyData,
+            directoryURL: snapshotRoot,
+            entries: captured
+        )
+    }
+}

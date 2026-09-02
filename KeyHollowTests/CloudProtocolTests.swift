@@ -351,19 +351,20 @@ final class CloudProtocolTests: XCTestCase {
         let encoded = try manifest.encoded()
         let expected = try Data(cloudHex: """
         4b48434d414e31000100000000112233445566778899aabbccddeeffffeeddcc
-        bbaa99887766554433221100102030405060708090a0b0c0d0e0f000010000
-        0000000000007b30fd7790010000010000000100000011111111222233334444
-        555555555555010c0000006d616e69666573742e6b686daaaaaaaabbbbccccdd
-        ddeeeeeeeeeeee01000000000000001c00000000000000000102030405060708
-        090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f9e00000000000000
-        202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f
-        01000000
+        bbaa99887766554433221100102030405060708090a0b0c0d0e0f00001000000
+        00000000007b30fd7790010000010000004b48434c564b310001000000808182
+        838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f414df1
+        238e0100000100000011111111222233334444555555555555010c0000006d61
+        6e69666573742e6b686daaaaaaaabbbbccccddddeeeeeeeeeeee010000000000
+        00001c00000000000000000102030405060708090a0b0c0d0e0f101112131415
+        161718191a1b1c1d1e1f9e00000000000000202122232425262728292a2b2c2d
+        2e2f303132333435363738393a3b3c3d3e3f01000000
         """)
 
         XCTAssertEqual(encoded, expected)
         XCTAssertEqual(
             Data(SHA256.hash(data: encoded)),
-            try Data(cloudHex: "1f8b86ba403f7856f62360660f50ca4c6e7d64758954e63eae26cf6437a4b089")
+            try Data(cloudHex: "0a6e8c0e391e884dcd4262e2c0f6f2e0e630aaf93ae044c27d0816c9e5fad579")
         )
         XCTAssertEqual(try CloudManifestV1(decoding: encoded), manifest)
     }
@@ -384,7 +385,7 @@ final class CloudProtocolTests: XCTestCase {
 
     func testManifestRejectsImpossibleEntryCountBeforeAllocation() throws {
         var encoded = try fixtureManifest().encoded()
-        encoded.replaceSubrange(81..<85, with: Data([0x41, 0x0d, 0x03, 0x00]))
+        encoded.replaceSubrange(133..<137, with: Data([0x41, 0x0d, 0x03, 0x00]))
 
         XCTAssertThrowsError(try CloudManifestV1(decoding: encoded)) { error in
             XCTAssertEqual(
@@ -415,6 +416,7 @@ final class CloudProtocolTests: XCTestCase {
             generation: 1,
             parent: nil,
             createdAtMilliseconds: 1_720_000_000_123,
+            localVaultSecret: fixtureLocalVaultSecret,
             entries: [first, second]
         )
 
@@ -434,6 +436,7 @@ final class CloudProtocolTests: XCTestCase {
             generation: 2,
             parent: nil,
             createdAtMilliseconds: 1_720_000_000_123,
+            localVaultSecret: fixtureLocalVaultSecret,
             entries: [try fixtureManifestEntry()]
         )
         XCTAssertThrowsError(try missingParent.encoded()) { error in
@@ -454,6 +457,7 @@ final class CloudProtocolTests: XCTestCase {
                 storedObjectSHA256: Data(repeating: 0x66, count: 32)
             ),
             createdAtMilliseconds: 1_720_000_000_123,
+            localVaultSecret: fixtureLocalVaultSecret,
             entries: [try fixtureManifestEntry()]
         )
         XCTAssertThrowsError(try wrongParent.encoded()) { error in
@@ -539,6 +543,13 @@ final class CloudProtocolTests: XCTestCase {
         UUID(uuidString: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")!
     }
 
+    private var fixtureLocalVaultSecret: CloudLocalVaultSecretV1 {
+        CloudLocalVaultSecretV1(
+            localVaultKey: Data(0x80...0x9f),
+            sourceVaultCreatedAtMilliseconds: 1_710_000_000_321
+        )
+    }
+
     private func fixtureManifestEntry() throws -> CloudManifestEntryV1 {
         CloudManifestEntryV1(
             entryID: UUID(uuidString: "11111111-2222-3333-4444-555555555555")!,
@@ -565,6 +576,7 @@ final class CloudProtocolTests: XCTestCase {
             generation: 1,
             parent: nil,
             createdAtMilliseconds: 1_720_000_000_123,
+            localVaultSecret: fixtureLocalVaultSecret,
             entries: [try fixtureManifestEntry()]
         )
     }

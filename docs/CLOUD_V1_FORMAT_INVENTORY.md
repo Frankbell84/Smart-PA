@@ -22,7 +22,7 @@ metadata exist only inside an authenticated encrypted cloud manifest.
 | Locator | HMAC-SHA256-derived opaque filename | Never used as a cloud identifier |
 | Unlock KDF | HMAC-SHA256 with 32-byte device pepper, then Argon2id | Remains local only |
 | Argon2id profile | 65,536 KiB, 3 iterations, parallelism 2 | Not reused for cloud recovery without a separate profile identifier |
-| Wrapped payload | Vault UUID, 32-byte vault key, creation date | Vault key may be read only after local authentication and then wrapped under the cloud hierarchy |
+| Wrapped payload | Vault UUID, 32-byte vault key, creation date | After local authentication, the 32-byte key and creation date are carried only inside the CVK-encrypted cloud manifest; they are never server-visible |
 | Persistent protection | Complete file protection; excluded from backup | Unchanged |
 
 The installation salt and device pepper are device-local. Copying `.khv` files
@@ -99,6 +99,8 @@ policy merely to run in the background.
 - Existing `.khvault` version 1 imports and exports remain unchanged.
 - Cloud v1 introduces new protocol identifiers and never overloads a local or
   portable version number.
+- The CVK-encrypted cloud manifest carries the original local vault key and
+  creation timestamp required to authenticate restored build-11 ciphertext.
 - A cloud restore creates a new local LowKey envelope and never overwrites an
   existing vault.
 - The server stores no filename, photo ID, media role, MIME type, caption,

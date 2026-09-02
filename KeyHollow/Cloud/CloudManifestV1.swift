@@ -6,6 +6,58 @@ enum CloudManifestEntryRoleV1: UInt8, Sendable {
     case encryptedThumbnail = 3
 }
 
+/// The build-11 photo store is already encrypted with its independent local
+/// vault key. Cloud recovery must preserve that key without exposing it to the
+/// provider. This value lives only inside the CVK-encrypted cloud manifest.
+struct CloudLocalVaultSecretV1: Equatable, Sendable {
+    static let magic = Data([0x4b, 0x48, 0x43, 0x4c, 0x56, 0x4b, 0x31, 0x00])
+    static let encodedByteCount = 52
+
+    let localVaultKey: Data
+    let sourceVaultCreatedAtMilliseconds: UInt64
+
+    func encoded() throws -> Data {
+        guard localVaultKey.count == CloudSecretKeyV1.byteCount else {
+            throw CloudProtocolError.invalidLength("local vault key")
+        }
+        guard sourceVaultCreatedAtMilliseconds > 0 else {
+            throw CloudProtocolError.invalidValue("source vault creation time")
+        }
+        var encoder = CloudBinaryEncoder()
+        try encoder.append(fixed: Self.magic, byteCount: 8, field: "local vault secret magic")
+        encoder.append(CloudProtocolSuite.version)
+        try encoder.append(
+            fixed: localVaultKey,
+            byteCount: CloudSecretKeyV1.byteCount,
+            field: "local vault key"
+        )
+        encoder.append(sourceVaultCreatedAtMilliseconds)
+        return encoder.data
+    }
+
+    init(localVaultKey: Data, sourceVaultCreatedAtMilliseconds: UInt64) {
+        self.localVaultKey = localVaultKey
+        self.sourceVaultCreatedAtMilliseconds = sourceVaultCreatedAtMilliseconds
+    }
+
+    init(decoding data: Data) throws {
+        var decoder = try CloudBinaryDecoder(data, maximumByteCount: Self.encodedByteCount)
+        try decoder.requireMagic(Self.magic)
+        guard try decoder.readUInt32() == CloudProtocolSuite.version else {
+            throw CloudProtocolError.unsupportedVersion
+        }
+        localVaultKey = try decoder.readFixedData(
+            byteCount: CloudSecretKeyV1.byteCount,
+            field: "local vault key"
+        )
+        sourceVaultCreatedAtMilliseconds = try decoder.readUInt64()
+        try decoder.requireFinished()
+        guard sourceVaultCreatedAtMilliseconds > 0 else {
+            throw CloudProtocolError.invalidValue("source vault creation time")
+        }
+    }
+}
+
 struct CloudManifestParentV1: Equatable, Sendable {
     let generation: UInt64
     let manifestObjectID: UUID
@@ -111,6 +163,7 @@ struct CloudManifestV1: Equatable, Sendable {
     let parent: CloudManifestParentV1?
     let createdAtMilliseconds: UInt64
     let localModelVersion: UInt32
+    let localVaultSecret: CloudLocalVaultSecretV1
     let entries: [CloudManifestEntryV1]
 
     func validate() throws {
@@ -124,6 +177,7 @@ struct CloudManifestV1: Equatable, Sendable {
               localModelVersion == UInt32(VaultPhotoManifest.currentVersion) else {
             throw CloudProtocolError.invalidValue("manifest generation or model")
         }
+        _ = try localVaultSecret.encoded()
         if generation == 1 {
             guard parent == nil else {
                 throw CloudProtocolError.invalidValue("first-generation parent")
@@ -197,6 +251,11 @@ struct CloudManifestV1: Equatable, Sendable {
         }
         encoder.append(createdAtMilliseconds)
         encoder.append(localModelVersion)
+        try encoder.append(
+            fixed: localVaultSecret.encoded(),
+            byteCount: CloudLocalVaultSecretV1.encodedByteCount,
+            field: "local vault secret"
+        )
         encoder.append(UInt32(entries.count))
 
         for entry in entries {
@@ -238,6 +297,7 @@ struct CloudManifestV1: Equatable, Sendable {
         parent: CloudManifestParentV1?,
         createdAtMilliseconds: UInt64,
         localModelVersion: UInt32 = UInt32(VaultPhotoManifest.currentVersion),
+        localVaultSecret: CloudLocalVaultSecretV1,
         entries: [CloudManifestEntryV1]
     ) {
         self.accountID = accountID
@@ -247,6 +307,7 @@ struct CloudManifestV1: Equatable, Sendable {
         self.parent = parent
         self.createdAtMilliseconds = createdAtMilliseconds
         self.localModelVersion = localModelVersion
+        self.localVaultSecret = localVaultSecret
         self.entries = entries
     }
 
@@ -283,6 +344,12 @@ struct CloudManifestV1: Equatable, Sendable {
 
         createdAtMilliseconds = try decoder.readUInt64()
         localModelVersion = try decoder.readUInt32()
+        localVaultSecret = try CloudLocalVaultSecretV1(
+            decoding: decoder.readFixedData(
+                byteCount: CloudLocalVaultSecretV1.encodedByteCount,
+                field: "local vault secret"
+            )
+        )
         let entryCount = Int(try decoder.readUInt32())
         guard entryCount > 0,
               entryCount <= CloudProtocolLimits.manifestEntryCount,

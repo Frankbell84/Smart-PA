@@ -219,7 +219,16 @@ contains, in order:
 | Parent | When present: generation UInt64, manifest object ID UUID, stored-object SHA-256 |
 | Created at | UInt64 milliseconds |
 | Local model version | UInt32; `1` for `VaultPhotoManifest` v1 |
+| Local vault secret | Fixed `CloudLocalVaultSecretV1`, encrypted as part of this manifest |
 | Entries | Bounded array described below |
+
+`CloudLocalVaultSecretV1` is required for a build-11 round trip because the
+opaque `.khm`, `.khp`, and `.kht` objects remain encrypted under the original
+local 256-bit vault key. It contains magic `KHCLVK1` plus NUL, version `1`, the
+32-byte local vault key, and the source vault creation timestamp. This secret
+is never placed in an object header, provider key, control-plane record, log,
+or analytics event. It is visible only after the CVK-authenticated manifest has
+been successfully decrypted.
 
 Each entry contains:
 
