@@ -14,96 +14,122 @@ struct EncryptedVaultExportView: View {
     @State private var pendingExport: PendingEncryptedVaultExport?
     @State private var message: String?
     @State private var systemInteractionOpen = false
+    @FocusState private var focusedField: ExportField?
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Text("This creates a portable .khvault copy of only the vault that is currently open. The vault and its photos remain in KeyHollow.")
-                        .foregroundStyle(.secondary)
-                }
-
-                Section("Verify this vault") {
-                    SecureField("Current passcode", text: $currentPasscode)
-                        .keyboardType(.numberPad)
-                        .textContentType(.password)
-                        .onChange(of: currentPasscode) { _, value in
-                            currentPasscode = String(
-                                value.filter(\.isNumber).prefix(PasscodePolicy.maximumLength)
-                            )
-                        }
-                }
-
-                Section {
-                    if recoveryCode.isEmpty {
-                        Button("Generate Recovery Code") {
-                            generateRecoveryCode()
-                        }
-                        Text("The export uses a new random recovery code—not your KeyHollow passcode.")
-                            .font(.footnote)
+            ScrollViewReader { proxy in
+                Form {
+                    Section {
+                        Text("This creates a portable .khvault copy of only the vault that is currently open. The vault and its photos remain in KeyHollow.")
                             .foregroundStyle(.secondary)
-                    } else {
-                        Text(recoveryCode)
-                            .font(.system(.body, design: .monospaced).weight(.semibold))
-                            .textSelection(.enabled)
-                            .privacySensitive()
+                    }
 
-                        Text("Write this code down and keep it somewhere separate from the .khvault file. KeyHollow cannot recover or reset it.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-
-                        TextField("Enter the final 8 characters", text: $recoveryConfirmation)
-                            .textInputAutocapitalization(.characters)
-                            .autocorrectionDisabled()
-                            .onChange(of: recoveryConfirmation) { _, value in
-                                recoveryConfirmation = String(
-                                    value.uppercased()
-                                        .filter { $0.isLetter || $0.isNumber }
-                                        .prefix(8)
+                    Section("Verify this vault") {
+                        SecureField("Current passcode", text: $currentPasscode)
+                            .keyboardType(.numberPad)
+                            .textContentType(.password)
+                            .focused($focusedField, equals: .currentPasscode)
+                            .onChange(of: currentPasscode) { _, value in
+                                currentPasscode = String(
+                                    value.filter(\.isNumber).prefix(PasscodePolicy.maximumLength)
                                 )
                             }
+                    }
+                    .id(ExportSection.verification)
 
-                        Button("Replace Recovery Code", role: .destructive) {
-                            generateRecoveryCode()
+                    Section {
+                        if recoveryCode.isEmpty {
+                            Button("Generate Recovery Code") {
+                                focusedField = nil
+                                generateRecoveryCode()
+                            }
+                            Text("The export uses a new random recovery code—not your KeyHollow passcode.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(recoveryCode)
+                                .font(.system(.body, design: .monospaced).weight(.semibold))
+                                .textSelection(.enabled)
+                                .privacySensitive()
+
+                            Text("Write this code down and keep it somewhere separate from the .khvault file. KeyHollow cannot recover or reset it.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+
+                            TextField("Enter the final 8 characters", text: $recoveryConfirmation)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .submitLabel(.done)
+                                .focused($focusedField, equals: .recoveryConfirmation)
+                                .onSubmit {
+                                    finishKeyboardEntry(using: proxy)
+                                }
+                                .onChange(of: recoveryConfirmation) { _, value in
+                                    recoveryConfirmation = String(
+                                        value.uppercased()
+                                            .filter { $0.isLetter || $0.isNumber }
+                                            .prefix(8)
+                                    )
+                                }
+
+                            Button("Replace Recovery Code", role: .destructive) {
+                                focusedField = nil
+                                generateRecoveryCode()
+                            }
+                        }
+                    } header: {
+                        Text("Separate recovery code")
+                    } footer: {
+                        Text("Anyone who has both the .khvault file and this recovery code can attempt to restore the vault. Never store them together.")
+                    }
+                    .id(ExportSection.recovery)
+
+                    if let message {
+                        Section { Text(message).foregroundStyle(.secondary) }
+                    }
+
+                    Section {
+                        Button("Create Encrypted Export") {
+                            focusedField = nil
+                            createExport()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .disabled(!canExport || isWorking || pendingExport != nil)
+                    }
+                    .id(ExportSection.createExport)
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .navigationTitle("Export Encrypted Vault")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cancel") {
+                            focusedField = nil
+                            dismiss()
+                        }
+                        .disabled(isWorking || pendingExport != nil)
+                    }
+
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button(focusedField == .currentPasscode ? "Continue" : "Done") {
+                            finishKeyboardEntry(using: proxy)
                         }
                     }
-                } header: {
-                    Text("Separate recovery code")
-                } footer: {
-                    Text("Anyone who has both the .khvault file and this recovery code can attempt to restore the vault. Never store them together.")
                 }
-
-                if let message {
-                    Section { Text(message).foregroundStyle(.secondary) }
-                }
-
-                Section {
-                    Button("Create Encrypted Export") {
-                        createExport()
+                .overlay {
+                    if isWorking {
+                        ProgressView("Encrypting and verifying…")
+                            .padding()
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                     }
-                    .frame(maxWidth: .infinity)
-                    .disabled(!canExport || isWorking || pendingExport != nil)
                 }
-            }
-            .navigationTitle("Export Encrypted Vault")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                        .disabled(isWorking || pendingExport != nil)
-                }
-            }
-            .overlay {
-                if isWorking {
-                    ProgressView("Encrypting and verifying…")
-                        .padding()
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                }
-            }
-            .interactiveDismissDisabled(isWorking || pendingExport != nil)
-            .sheet(item: $pendingExport) { item in
-                EncryptedVaultDocumentExporter(archiveURL: item.archiveURL) { saved in
-                    finishDocumentExport(item, saved: saved)
+                .interactiveDismissDisabled(isWorking || pendingExport != nil)
+                .sheet(item: $pendingExport) { item in
+                    EncryptedVaultDocumentExporter(archiveURL: item.archiveURL) { saved in
+                        finishDocumentExport(item, saved: saved)
+                    }
                 }
             }
         }
@@ -117,6 +143,19 @@ struct EncryptedVaultExportView: View {
 
     private var expectedRecoveryConfirmation: String {
         String(recoveryCode.filter { $0.isLetter || $0.isNumber }.suffix(8))
+    }
+
+    private func finishKeyboardEntry(using proxy: ScrollViewProxy) {
+        let destination: ExportSection = focusedField == .currentPasscode
+            ? .recovery
+            : .createExport
+        focusedField = nil
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            withAnimation {
+                proxy.scrollTo(destination, anchor: .center)
+            }
+        }
     }
 
     private func generateRecoveryCode() {
@@ -226,6 +265,17 @@ struct EncryptedVaultExportView: View {
             at: archiveURL.deletingLastPathComponent()
         )
     }
+}
+
+private enum ExportField: Hashable {
+    case currentPasscode
+    case recoveryConfirmation
+}
+
+private enum ExportSection: Hashable {
+    case verification
+    case recovery
+    case createExport
 }
 
 private struct PendingEncryptedVaultExport: Identifiable {
