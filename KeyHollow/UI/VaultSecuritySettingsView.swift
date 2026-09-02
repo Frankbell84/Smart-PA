@@ -206,56 +206,111 @@ private struct DeleteCurrentVaultView: View {
     @State private var confirmationText = ""
     @State private var message: String?
     @State private var isWorking = false
+    @FocusState private var focusedField: DeleteVaultField?
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Text("Deleting this vault removes its KeyHollow credential envelope and its encrypted photo data. This action cannot be undone.")
-                        .foregroundStyle(.secondary)
-                }
-
-                Section("Verify current passcode") {
-                    SecureField("Current passcode", text: $currentPasscode)
-                        .keyboardType(.numberPad)
-                        .textContentType(.password)
-                        .onChange(of: currentPasscode) { _, value in
-                            currentPasscode = String(value.filter(\.isNumber).prefix(PasscodePolicy.maximumLength))
-                        }
-                }
-
-                Section("Confirm deletion") {
-                    TextField("Type DELETE", text: $confirmationText)
-                        .textInputAutocapitalization(.characters)
-                        .autocorrectionDisabled()
-                }
-
-                if let message {
-                    Section { Text(message).foregroundStyle(.secondary) }
-                }
-
-                Section {
-                    Button("Permanently Delete This Vault", role: .destructive) {
-                        deleteVault()
+            ScrollViewReader { proxy in
+                Form {
+                    Section {
+                        Text("Deleting this vault removes its KeyHollow credential envelope and its encrypted photo data. This action cannot be undone.")
+                            .foregroundStyle(.secondary)
                     }
-                    .frame(maxWidth: .infinity)
-                    .disabled(!canDelete || isWorking)
+
+                    Section("Verify current passcode") {
+                        SecureField("Current passcode", text: $currentPasscode)
+                            .keyboardType(.numberPad)
+                            .textContentType(.password)
+                            .focused($focusedField, equals: .currentPasscode)
+                            .onChange(of: currentPasscode) { _, value in
+                                currentPasscode = String(value.filter(\.isNumber).prefix(PasscodePolicy.maximumLength))
+                            }
+                    }
+
+                    Section("Confirm deletion") {
+                        TextField("Type DELETE", text: $confirmationText)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .submitLabel(.done)
+                            .focused($focusedField, equals: .confirmation)
+                            .onSubmit {
+                                finishDeleteKeyboardEntry(using: proxy)
+                            }
+                            .onChange(of: confirmationText) { _, value in
+                                let normalized = String(
+                                    value.uppercased().filter(\.isLetter).prefix(6)
+                                )
+                                if confirmationText != normalized {
+                                    confirmationText = normalized
+                                }
+                                if normalized == "DELETE", focusedField == .confirmation {
+                                    advanceToDeleteButton(using: proxy)
+                                }
+                            }
+                    }
+                    .id(DeleteVaultSection.confirmation)
+
+                    if let message {
+                        Section { Text(message).foregroundStyle(.secondary) }
+                    }
+
+                    Section {
+                        Button("Permanently Delete This Vault", role: .destructive) {
+                            focusedField = nil
+                            deleteVault()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .disabled(!canDelete || isWorking)
+                    }
+                    .id(DeleteVaultSection.deleteButton)
                 }
-            }
-            .navigationTitle("Delete Vault")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }.disabled(isWorking)
+                .scrollDismissesKeyboard(.interactively)
+                .navigationTitle("Delete Vault")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cancel") {
+                            focusedField = nil
+                            dismiss()
+                        }
+                        .disabled(isWorking)
+                    }
+
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button(focusedField == .currentPasscode ? "Continue" : "Done") {
+                            finishDeleteKeyboardEntry(using: proxy)
+                        }
+                    }
                 }
+                .interactiveDismissDisabled(isWorking)
             }
-            .interactiveDismissDisabled(isWorking)
         }
     }
 
     private var canDelete: Bool {
         PasscodePolicy.isValidForUnlock(currentPasscode) &&
         confirmationText.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == "DELETE"
+    }
+
+    private func finishDeleteKeyboardEntry(using proxy: ScrollViewProxy) {
+        if focusedField == .currentPasscode {
+            focusedField = .confirmation
+            withAnimation {
+                proxy.scrollTo(DeleteVaultSection.confirmation, anchor: .center)
+            }
+        } else {
+            advanceToDeleteButton(using: proxy)
+        }
+    }
+
+    private func advanceToDeleteButton(using proxy: ScrollViewProxy) {
+        focusedField = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            withAnimation {
+                proxy.scrollTo(DeleteVaultSection.deleteButton, anchor: .center)
+            }
+        }
     }
 
     private func deleteVault() {
@@ -288,4 +343,14 @@ private struct DeleteCurrentVaultView: View {
             }
         }
     }
+}
+
+private enum DeleteVaultField: Hashable {
+    case currentPasscode
+    case confirmation
+}
+
+private enum DeleteVaultSection: Hashable {
+    case confirmation
+    case deleteButton
 }
