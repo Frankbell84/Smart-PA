@@ -34,7 +34,7 @@ struct EncryptedVaultExportView: View {
                         }
                 }
 
-                Section("Separate recovery code") {
+                Section {
                     if recoveryCode.isEmpty {
                         Button("Generate Recovery Code") {
                             generateRecoveryCode()
@@ -67,6 +67,8 @@ struct EncryptedVaultExportView: View {
                             generateRecoveryCode()
                         }
                     }
+                } header: {
+                    Text("Separate recovery code")
                 } footer: {
                     Text("Anyone who has both the .khvault file and this recovery code can attempt to restore the vault. Never store them together.")
                 }
