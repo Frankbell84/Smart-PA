@@ -162,6 +162,60 @@ final class PortableArchiveContainerTests: XCTestCase {
         }
     }
 
+    func testChunkCannotBeTransplantedAcrossArchives() throws {
+        let contentKey = SymmetricKey(data: Data(repeating: 0x42, count: 32))
+        let sourceArchiveID = UUID()
+        let destinationArchiveID = UUID()
+        let chunk = try PortableArchiveContentChunk.seal(
+            Data("archive-bound ciphertext".utf8),
+            sequence: 0,
+            isFinal: true,
+            archiveID: sourceArchiveID,
+            contentKey: contentKey
+        )
+
+        XCTAssertThrowsError(
+            try chunk.open(
+                expectedSequence: 0,
+                archiveID: destinationArchiveID,
+                contentKey: contentKey
+            )
+        ) { error in
+            XCTAssertEqual(error as? PortableArchiveContainerError, .authenticationFailed)
+        }
+    }
+
+    func testInvalidMagicIsRejected() throws {
+        let url = temporaryArchiveURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        var bytes = PortableArchiveContainerFormat.magic
+        bytes[bytes.startIndex] ^= 0x01
+        bytes.appendLittleEndianForTesting(PortableArchiveContainerFormat.currentVersion)
+        bytes.appendLittleEndianForTesting(UInt32(1))
+        bytes.append(0)
+        try bytes.write(to: url, options: .atomic)
+
+        XCTAssertThrowsError(try PortableArchiveContainerReader(sourceURL: url)) { error in
+            XCTAssertEqual(error as? PortableArchiveContainerError, .invalidMagic)
+        }
+    }
+
+    func testUnsupportedContainerVersionIsRejected() throws {
+        let url = temporaryArchiveURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        var bytes = PortableArchiveContainerFormat.magic
+        bytes.appendLittleEndianForTesting(PortableArchiveContainerFormat.currentVersion + 1)
+        bytes.appendLittleEndianForTesting(UInt32(1))
+        bytes.append(0)
+        try bytes.write(to: url, options: .atomic)
+
+        XCTAssertThrowsError(try PortableArchiveContainerReader(sourceURL: url)) { error in
+            XCTAssertEqual(error as? PortableArchiveContainerError, .unsupportedVersion)
+        }
+    }
+
     func testOversizedHeaderIsRejectedBeforeReadingIt() throws {
         let url = temporaryArchiveURL()
         defer { try? FileManager.default.removeItem(at: url) }
