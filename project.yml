@@ -13,7 +13,7 @@ targets:
       - path: KeyHollow
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.beta
         PRODUCT_NAME: KeyHollow
         MARKETING_VERSION: 1.0
         CURRENT_PROJECT_VERSION: 9
@@ -28,7 +28,7 @@ targets:
     info:
       path: KeyHollow/Resources/Info.plist
       properties:
-        CFBundleDisplayName: KeyHollow
+        CFBundleDisplayName: KeyHollow Beta
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
@@ -46,7 +46,7 @@ targets:
       - target: KeyHollow
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.beta.tests
         SWIFT_VERSION: 5.0
         SWIFT_STRICT_CONCURRENCY: complete
 
@@ -59,7 +59,7 @@ targets:
       - target: KeyHollow
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.launch-tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.beta.launch-tests
         SWIFT_VERSION: 5.0
 
 schemes:

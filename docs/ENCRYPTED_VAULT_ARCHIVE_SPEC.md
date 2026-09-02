@@ -1,6 +1,7 @@
 # KeyHollow Encrypted Vault Archive
 
-Status: security design draft for the isolated encrypted-transfer module. This
+Status: the isolated archive, validation, and rollback engine is implemented;
+user-interface and physical-device release gates remain incomplete. This
 document does not change the V1 vault format or release behavior.
 
 ## Product boundary
