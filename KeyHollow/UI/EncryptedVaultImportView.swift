@@ -151,6 +151,7 @@ struct EncryptedVaultImportView: View {
                     }
                     .id(ImportSection.install)
                 }
+                }
                 .scrollDismissesKeyboard(.interactively)
                 .navigationTitle("Import Encrypted Vault")
                 .navigationBarTitleDisplayMode(.inline)
