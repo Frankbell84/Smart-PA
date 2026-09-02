@@ -20,6 +20,7 @@ struct EncryptedVaultImportView: View {
     @State private var systemInteractionOpen = false
     @State private var isWorking = false
     @State private var message: String?
+    @FocusState private var focusedField: ImportField?
 
     private var requiredLength: Int { tier.fixedLength ?? customLength }
 
@@ -49,6 +50,11 @@ struct EncryptedVaultImportView: View {
                         .autocorrectionDisabled()
                         .font(.system(.body, design: .monospaced))
                         .privacySensitive()
+                        .submitLabel(.done)
+                        .focused($focusedField, equals: .recoveryCode)
+                        .onSubmit {
+                            dismissKeyboard()
+                        }
                         .onChange(of: recoveryCode) { _, value in
                             recoveryCode = Self.sanitizeRecoveryCode(value)
                         }
@@ -62,6 +68,7 @@ struct EncryptedVaultImportView: View {
                         .foregroundStyle(.green)
                     } else {
                         Button("Authenticate and Verify") {
+                            dismissKeyboard()
                             validateArchive()
                         }
                         .disabled(!canValidate || isWorking)
@@ -89,15 +96,27 @@ struct EncryptedVaultImportView: View {
                         SecureField("Enter \(requiredLength)-digit LowKey", text: $newPasscode)
                             .keyboardType(.numberPad)
                             .textContentType(.newPassword)
+                            .focused($focusedField, equals: .newPasscode)
                             .onChange(of: newPasscode) { _, value in
-                                newPasscode = Self.sanitizePasscode(value, limit: requiredLength)
+                                let sanitized = Self.sanitizePasscode(value, limit: requiredLength)
+                                newPasscode = sanitized
+                                if sanitized.count == requiredLength,
+                                   focusedField == .newPasscode {
+                                    focusedField = .passcodeConfirmation
+                                }
                             }
 
                         SecureField("Confirm new LowKey", text: $passcodeConfirmation)
                             .keyboardType(.numberPad)
                             .textContentType(.newPassword)
+                            .focused($focusedField, equals: .passcodeConfirmation)
                             .onChange(of: passcodeConfirmation) { _, value in
-                                passcodeConfirmation = Self.sanitizePasscode(value, limit: requiredLength)
+                                let sanitized = Self.sanitizePasscode(value, limit: requiredLength)
+                                passcodeConfirmation = sanitized
+                                if sanitized.count == requiredLength,
+                                   sanitized == newPasscode {
+                                    dismissKeyboard()
+                                }
                             }
 
                         Text("The recovery code authenticates the file only. It will never unlock KeyHollow. This new LowKey is required on this iPhone.")
@@ -126,6 +145,7 @@ struct EncryptedVaultImportView: View {
                 if validatedRestore != nil {
                     Section {
                         Button("Install as New Vault") {
+                            dismissKeyboard()
                             installRestore()
                         }
                         .frame(maxWidth: .infinity)
@@ -139,6 +159,13 @@ struct EncryptedVaultImportView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { cancelAndDismiss() }
                         .disabled(isWorking)
+                }
+
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(focusedField == .newPasscode ? "Continue" : "Done") {
+                        finishKeyboardEntry()
+                    }
                 }
             }
             .overlay {
@@ -168,6 +195,19 @@ struct EncryptedVaultImportView: View {
         passcodeConfirmation = ""
     }
 
+    private func finishKeyboardEntry() {
+        if focusedField == .newPasscode {
+            focusedField = .passcodeConfirmation
+        } else {
+            dismissKeyboard()
+        }
+    }
+
+    private func dismissKeyboard() {
+        focusedField = nil
+        KeyboardDismissal.dismiss()
+    }
+
     private var canValidate: Bool {
         selectedArchive != nil &&
         (try? PortableArchiveRecoveryCode.canonicalize(recoveryCode)) != nil
@@ -190,6 +230,7 @@ struct EncryptedVaultImportView: View {
     }
 
     private func beginFileSelection() {
+        dismissKeyboard()
         message = nil
         systemInteractionOpen = true
         session.beginSystemInteraction()
@@ -223,6 +264,7 @@ struct EncryptedVaultImportView: View {
 
     private func validateArchive() {
         guard canValidate, let selectedArchive, !isWorking else { return }
+        dismissKeyboard()
         let credential = PortableArchiveCredential.recoveryCode(recoveryCode)
         isWorking = true
         message = nil
@@ -248,6 +290,7 @@ struct EncryptedVaultImportView: View {
 
     private func installRestore() {
         guard canInstall, let validatedRestore, !isWorking else { return }
+        dismissKeyboard()
         let passcode = newPasscode
         newPasscode = ""
         passcodeConfirmation = ""
@@ -277,6 +320,7 @@ struct EncryptedVaultImportView: View {
     }
 
     private func cancelAndDismiss() {
+        dismissKeyboard()
         clearSensitiveState()
         discardUninstalledMaterial()
         dismiss()
@@ -371,6 +415,12 @@ struct EncryptedVaultImportView: View {
     private static func formattedBytes(_ bytes: UInt64) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
     }
+}
+
+private enum ImportField: Hashable {
+    case recoveryCode
+    case newPasscode
+    case passcodeConfirmation
 }
 
 private struct SelectedPortableArchive {

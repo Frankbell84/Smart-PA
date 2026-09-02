@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct VaultSecuritySettingsView: View {
     @EnvironmentObject private var session: VaultSession
@@ -257,6 +258,7 @@ private struct DeleteCurrentVaultView: View {
                     Section {
                         Button("Permanently Delete This Vault", role: .destructive) {
                             focusedField = nil
+                            KeyboardDismissal.dismiss()
                             deleteVault()
                         }
                         .frame(maxWidth: .infinity)
@@ -271,6 +273,7 @@ private struct DeleteCurrentVaultView: View {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Cancel") {
                             focusedField = nil
+                            KeyboardDismissal.dismiss()
                             dismiss()
                         }
                         .disabled(isWorking)
@@ -306,6 +309,7 @@ private struct DeleteCurrentVaultView: View {
 
     private func advanceToDeleteButton(using proxy: ScrollViewProxy) {
         focusedField = nil
+        KeyboardDismissal.dismiss()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             withAnimation {
                 proxy.scrollTo(DeleteVaultSection.deleteButton, anchor: .center)
@@ -317,6 +321,9 @@ private struct DeleteCurrentVaultView: View {
         guard canDelete,
               let vaultID = session.activeVaultID,
               !isWorking else { return }
+
+        focusedField = nil
+        KeyboardDismissal.dismiss()
 
         let passcode = currentPasscode
         currentPasscode = ""

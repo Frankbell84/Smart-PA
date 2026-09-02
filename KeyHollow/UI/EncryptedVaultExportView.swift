@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct EncryptedVaultExportView: View {
     @EnvironmentObject private var session: VaultSession
@@ -51,6 +52,12 @@ struct EncryptedVaultExportView: View {
                             Text(recoveryCode)
                                 .font(.system(.body, design: .monospaced).weight(.semibold))
                                 .privacySensitive()
+
+                            Button {
+                                copyRecoveryCode()
+                            } label: {
+                                Label("Copy Recovery Code", systemImage: "doc.on.doc")
+                            }
 
                             Text("Write this code down and keep it somewhere separate from the .khvault file. KeyHollow cannot recover or reset it.")
                                 .font(.footnote)
@@ -179,6 +186,19 @@ struct EncryptedVaultExportView: View {
         }
     }
 
+    private func copyRecoveryCode() {
+        guard !recoveryCode.isEmpty else { return }
+
+        UIPasteboard.general.setItems(
+            [[UTType.utf8PlainText.identifier: recoveryCode]],
+            options: [
+                .localOnly: true,
+                .expirationDate: Date().addingTimeInterval(120)
+            ]
+        )
+        message = "Recovery code copied on this iPhone for two minutes. Keep it separate from the .khvault file."
+    }
+
     private func createExport() {
         guard canExport,
               let vaultID = session.activeVaultID,
@@ -240,8 +260,10 @@ struct EncryptedVaultExportView: View {
         clearSensitiveState()
 
         if saved {
-            let noun = item.encryptedFileCount == 1 ? "encrypted file" : "encrypted files"
-            message = "Saved a verified .khvault export containing \(item.encryptedFileCount) \(noun) (\(Self.formattedBytes(item.archiveByteCount))). Keep its recovery code separate."
+            message = nil
+            DispatchQueue.main.async {
+                dismiss()
+            }
         } else {
             message = "Export canceled. The temporary .khvault file was deleted."
         }
