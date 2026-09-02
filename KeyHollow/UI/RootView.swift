@@ -40,6 +40,15 @@ struct RootView: View {
                     return
                 }
 #endif
+                try await createdService.recoverInterruptedPortableVaultInstalls()
+#if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-ui-test-first-vault") {
+                    service = createdService
+                    setupRequired = true
+                    isChecking = false
+                    return
+                }
+#endif
                 let hasVaults = try await createdService.hasAnyVaults()
                 service = createdService
                 setupRequired = !hasVaults
@@ -70,6 +79,7 @@ private struct LockView: View {
     @State private var message: String?
     @State private var isWorking = false
     @State private var showingNewVault = false
+    @State private var showingEncryptedImport = false
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 18), count: 3)
 
@@ -149,12 +159,24 @@ private struct LockView: View {
             .disabled(isWorking)
             .accessibilityIdentifier("locked-create-new-vault")
 
+            Button {
+                showingEncryptedImport = true
+            } label: {
+                Label("Import Encrypted Vault", systemImage: "square.and.arrow.down.on.square")
+            }
+            .buttonStyle(.bordered)
+            .disabled(isWorking)
+
             Spacer()
         }
         .padding(.horizontal, 38)
         .disabled(isWorking)
         .sheet(isPresented: $showingNewVault) {
             AdditionalVaultSetupView(service: service)
+                .environmentObject(session)
+        }
+        .sheet(isPresented: $showingEncryptedImport) {
+            EncryptedVaultImportView(service: service)
                 .environmentObject(session)
         }
     }
@@ -255,6 +277,7 @@ private struct InitialVaultSetupView: View {
     @State private var message: String?
     @State private var isWorking = false
     @State private var acknowledgesNoRecovery = false
+    @State private var showingEncryptedImport = false
     @FocusState private var isPasscodeEntryFocused: Bool
 
     private var requiredLength: Int {
@@ -352,6 +375,13 @@ private struct InitialVaultSetupView: View {
                     }
                     .disabled(!canCreate || isWorking)
                 }
+
+                Section("Already have a KeyHollow export?") {
+                    Button("Import Encrypted Vault") {
+                        showingEncryptedImport = true
+                    }
+                    .disabled(isWorking)
+                }
             }
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
@@ -360,6 +390,10 @@ private struct InitialVaultSetupView: View {
                         isPasscodeEntryFocused = false
                     }
                 }
+            }
+            .sheet(isPresented: $showingEncryptedImport) {
+                EncryptedVaultImportView(service: service)
+                    .environmentObject(session)
             }
         }
     }

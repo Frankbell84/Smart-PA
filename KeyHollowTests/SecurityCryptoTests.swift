@@ -241,47 +241,56 @@ final class SecurityCryptoTests: XCTestCase {
     @MainActor
     func testSystemPhotoOperationScopeIsBalancedAndNestSafe() {
         let session = VaultSession()
-        XCTAssertFalse(session.isSystemPhotoOperationActive)
+        XCTAssertFalse(session.isSystemInteractionActive)
 
         session.beginSystemPhotoOperation()
         session.beginSystemPhotoOperation()
-        XCTAssertTrue(session.isSystemPhotoOperationActive)
+        XCTAssertTrue(session.isSystemInteractionActive)
 
         session.endSystemPhotoOperation()
-        XCTAssertTrue(session.isSystemPhotoOperationActive)
+        XCTAssertTrue(session.isSystemInteractionActive)
 
         session.endSystemPhotoOperation()
-        XCTAssertFalse(session.isSystemPhotoOperationActive)
+        XCTAssertFalse(session.isSystemInteractionActive)
 
         session.endSystemPhotoOperation()
-        XCTAssertFalse(session.isSystemPhotoOperationActive)
+        XCTAssertFalse(session.isSystemInteractionActive)
+
+        session.beginSystemInteraction()
+        XCTAssertTrue(session.isSystemInteractionActive)
+        session.lock()
+        XCTAssertFalse(session.isSystemInteractionActive)
+
+        session.beginSystemInteraction()
+        session.endSystemInteraction()
+        XCTAssertFalse(session.isSystemInteractionActive)
     }
 
     func testPhotosPromptLifecycleDoesNotLockDuringInactiveHandoff() {
         XCTAssertFalse(VaultLifecycleLockPolicy.shouldLock(
             for: .inactive,
-            systemPhotoOperationActive: true
+            systemInteractionActive: true
         ))
-        XCTAssertFalse(VaultLifecycleLockPolicy.shouldLockWhenPhotoOperationEnds(
+        XCTAssertFalse(VaultLifecycleLockPolicy.shouldLockWhenSystemInteractionEnds(
             scenePhase: .inactive
         ))
         XCTAssertFalse(VaultLifecycleLockPolicy.shouldLock(
             for: .active,
-            systemPhotoOperationActive: false
+            systemInteractionActive: false
         ))
     }
 
     func testPhotosPromptLifecycleStillLocksOnRealBackground() {
         XCTAssertTrue(VaultLifecycleLockPolicy.shouldLock(
             for: .background,
-            systemPhotoOperationActive: true
+            systemInteractionActive: true
         ))
-        XCTAssertTrue(VaultLifecycleLockPolicy.shouldLockWhenPhotoOperationEnds(
+        XCTAssertTrue(VaultLifecycleLockPolicy.shouldLockWhenSystemInteractionEnds(
             scenePhase: .background
         ))
         XCTAssertTrue(VaultLifecycleLockPolicy.shouldLock(
             for: .inactive,
-            systemPhotoOperationActive: false
+            systemInteractionActive: false
         ))
     }
 

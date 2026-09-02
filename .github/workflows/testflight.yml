@@ -8,6 +8,9 @@ permissions:
 
 jobs:
   archive-and-upload:
+    # V2 integration branches use a separate beta bundle identifier and must
+    # never upload over the production App Store record.
+    if: github.ref == 'refs/heads/main'
     runs-on: macos-26
     timeout-minutes: 30
     env:

@@ -38,18 +38,18 @@ struct KeyHollowApp: App {
         .onChange(of: scenePhase) { _, newPhase in
             if VaultLifecycleLockPolicy.shouldLock(
                 for: newPhase,
-                systemPhotoOperationActive: session.isSystemPhotoOperationActive
+                systemInteractionActive: session.isSystemInteractionActive
             ) {
                 session.lock()
             }
         }
-        .onChange(of: session.isSystemPhotoOperationActive) { _, operationActive in
-            // The Photos completion callback can arrive while the scene is still
+        .onChange(of: session.isSystemInteractionActive) { _, operationActive in
+            // A system interaction completion can arrive while the scene is still
             // inactive, immediately before iOS returns it to active. Locking in
             // that handoff would force an unnecessary passcode re-entry. A real
             // app switch reaches background and still fails closed.
             if !operationActive,
-               VaultLifecycleLockPolicy.shouldLockWhenPhotoOperationEnds(
+               VaultLifecycleLockPolicy.shouldLockWhenSystemInteractionEnds(
                    scenePhase: scenePhase
                ) {
                 session.lock()
@@ -61,7 +61,7 @@ struct KeyHollowApp: App {
 enum VaultLifecycleLockPolicy {
     static func shouldLock(
         for phase: ScenePhase,
-        systemPhotoOperationActive: Bool
+        systemInteractionActive: Bool
     ) -> Bool {
         switch phase {
         case .active:
@@ -69,17 +69,17 @@ enum VaultLifecycleLockPolicy {
         case .background:
             return true
         case .inactive:
-            // iOS presents the user-requested Photos deletion confirmation by
-            // temporarily making the app inactive. The opaque privacy shield
-            // remains visible, but the vault key may survive only this scoped
-            // system interaction. A real background transition still locks.
-            return !systemPhotoOperationActive
+            // iOS can temporarily make the app inactive while presenting a
+            // user-requested Photos or Files controller. The opaque privacy
+            // shield remains visible, but the vault key may survive only this
+            // scoped interaction. A real background transition still locks.
+            return !systemInteractionActive
         @unknown default:
             return true
         }
     }
 
-    static func shouldLockWhenPhotoOperationEnds(scenePhase: ScenePhase) -> Bool {
+    static func shouldLockWhenSystemInteractionEnds(scenePhase: ScenePhase) -> Bool {
         scenePhase == .background
     }
 }
