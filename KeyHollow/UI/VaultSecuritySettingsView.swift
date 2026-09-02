@@ -8,16 +8,11 @@ struct VaultSecuritySettingsView: View {
 
     @State private var showingChangePasscode = false
     @State private var showingDeleteVault = false
-    @State private var showingEncryptedExport = false
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    Button("Export Encrypted Vault") {
-                        showingEncryptedExport = true
-                    }
-
                     Button("Change This Vault Passcode") {
                         showingChangePasscode = true
                     }
@@ -38,10 +33,6 @@ struct VaultSecuritySettingsView: View {
             }
             .sheet(isPresented: $showingChangePasscode) {
                 ChangeVaultPasscodeView(service: service)
-                    .environmentObject(session)
-            }
-            .sheet(isPresented: $showingEncryptedExport) {
-                EncryptedVaultExportView(service: service)
                     .environmentObject(session)
             }
             .sheet(isPresented: $showingDeleteVault) {
