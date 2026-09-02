@@ -20,7 +20,9 @@ jobs:
 
     steps:
       - name: Checkout isolated beta
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Verify beta isolation boundary
         shell: bash
@@ -133,14 +135,26 @@ jobs:
 
       - name: Upload signed beta IPA artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: KeyHollow-Beta-TestFlight-IPA
           path: build/beta-export/*.ipa
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Remove temporary beta signing keychain
+      - name: Remove temporary beta signing material
         if: always()
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
         run: |
+          set -euo pipefail
+
           security delete-keychain "$RUNNER_TEMP/keyhollow-beta-signing.keychain-db" || true
+          rm -f \
+            "$RUNNER_TEMP/keyhollow-distribution.p12" \
+            "$RUNNER_TEMP/keyhollow-beta-app-store.mobileprovision" \
+            "$HOME/Library/MobileDevice/Provisioning Profiles/KeyHollow-Beta-App-Store.mobileprovision"
+
+          if [[ -n "${APP_STORE_CONNECT_API_KEY_ID:-}" ]]; then
+            rm -f "$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+          fi

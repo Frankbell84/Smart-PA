@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: ios-build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: macos-15
@@ -17,7 +25,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@6f5948dfacef28e207b48d0905cf90c03365536d # v3.37.9
+        with:
+          languages: swift
+          build-mode: manual
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -101,9 +117,14 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             test
 
+      - name: Analyze Swift with CodeQL
+        uses: github/codeql-action/analyze@6f5948dfacef28e207b48d0905cf90c03365536d # v3.37.9
+        with:
+          category: /language:swift
+
       - name: Upload simulator build
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: KeyHollow-Simulator
           path: build/DerivedData/Build/Products/Debug-iphonesimulator/KeyHollow.app
@@ -112,7 +133,7 @@ jobs:
 
       - name: Upload security test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: KeyHollow-Security-Tests
           path: build/KeyHollowTests.xcresult
