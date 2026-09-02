@@ -24,8 +24,10 @@ deleting KeyHollow Beta must not upgrade, replace, or delete the production
 KeyHollow app or its vaults.
 
 The production TestFlight upload workflow is also restricted to `main`. A
-separate signing profile and beta delivery workflow must be created before a
-V2 beta can be installed on physical devices through TestFlight.
+separate beta workflow runs only when the guarded `delivery/v2-beta` branch is
+advanced. It requires the `KeyHollow Beta App Store` profile through the
+separate `BETA_BUILD_PROVISION_PROFILE_BASE64` secret. Ordinary integration
+branch pushes cannot upload a build.
 
 ## Release gates
 
