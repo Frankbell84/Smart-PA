@@ -44,10 +44,11 @@ enum CloudObjectContainerV1 {
                 )
             )
         }
-        guard UInt64(stored.count) == try CloudObjectHeaderV1.storedByteCount(
+        let expectedStoredByteCount = try CloudObjectHeaderV1.storedByteCount(
             plaintextByteCount: header.plaintextByteCount,
             chunkCount: header.chunkCount
-        ) else {
+        )
+        guard UInt64(stored.count) == expectedStoredByteCount else {
             throw CloudProtocolError.invalidLength("stored cloud object")
         }
         return stored
@@ -62,10 +63,11 @@ enum CloudObjectContainerV1 {
         }
         let headerLength = Int(CloudObjectHeaderV1.encodedByteCount)
         let header = try CloudObjectHeaderV1(decoding: Data(stored.prefix(headerLength)))
-        guard UInt64(stored.count) == try CloudObjectHeaderV1.storedByteCount(
+        let expectedStoredByteCount = try CloudObjectHeaderV1.storedByteCount(
             plaintextByteCount: header.plaintextByteCount,
             chunkCount: header.chunkCount
-        ) else {
+        )
+        guard UInt64(stored.count) == expectedStoredByteCount else {
             throw CloudProtocolError.invalidLength("stored cloud object")
         }
 
