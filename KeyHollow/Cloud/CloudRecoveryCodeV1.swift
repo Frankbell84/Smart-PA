@@ -100,9 +100,9 @@ enum CloudRecoveryCodeV1 {
         var input = checksumDomain
         input.append(0)
         input.append(rawBytes)
-        let digest = SHA256.hash(data: input)
-        let first = digest[digest.startIndex]
-        let second = digest[digest.index(after: digest.startIndex)]
+        let digest = Array(SHA256.hash(data: input))
+        let first = digest[0]
+        let second = digest[1]
         let tenBits = (UInt16(first) << 2) | (UInt16(second) >> 6)
         return String(alphabet[Int((tenBits >> 5) & 0x1f)])
             + String(alphabet[Int(tenBits & 0x1f)])
