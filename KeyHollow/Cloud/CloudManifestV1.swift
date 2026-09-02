@@ -185,7 +185,7 @@ struct CloudManifestV1: Equatable, Sendable {
         encoder.append(uuid: vaultID)
         encoder.append(uuid: snapshotID)
         encoder.append(generation)
-        encoder.append(parent == nil ? 0 : 1)
+        encoder.append(UInt8(parent == nil ? 0 : 1))
         if let parent {
             encoder.append(parent.generation)
             encoder.append(uuid: parent.manifestObjectID)
