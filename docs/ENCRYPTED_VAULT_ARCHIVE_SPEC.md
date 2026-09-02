@@ -1,9 +1,8 @@
 # KeyHollow Encrypted Vault Archive
 
-Status: the isolated archive, validation, rollback engine, and guarded export
-and import interfaces are implemented. Physical-device release gates remain
-incomplete. This document does not change the V1 vault format or release
-behavior.
+Status: archive creation, validation, rollback, export, and import are
+implemented. This document records the version 1 format that the code writes
+and reads. Physical-device release gates remain incomplete.
 
 ## Product boundary
 
@@ -39,16 +38,70 @@ authenticated with the sealed payload and strictly bounded before Argon2id is
 run. This prevents a hostile archive from requesting unreasonable memory or
 iteration values during import.
 
-## Planned container
+## Cryptographic profile
 
-The `.khvault` file will be an opaque, versioned binary container:
+- Recovery code: 20 bytes from `SecRandomCopyBytes`, encoded as 32 Crockford
+  Base32 characters and displayed in eight groups of four. The separators add
+  no entropy; the underlying code has 160 bits of randomness.
+- Password KDF: Argon2id v1.3, 65,536 KiB memory, three iterations, parallelism
+  two, 16-byte random salt, and 32-byte output.
+- Secrets and content encryption: AES-256-GCM.
+- AES-GCM combined representation: 12-byte nonce, ciphertext, then 16-byte tag,
+  as produced and consumed by CryptoKit.
+- Nonces: generated independently by CryptoKit for every sealed secrets value
+  and every content chunk. Nonces are not counters and must never be supplied
+  by callers in production.
+- Content key: a fresh 32-byte value from `SecRandomCopyBytes` for each export.
+- Byte order: all fixed-width container integers and authenticated integer
+  fields are unsigned little-endian.
 
-1. fixed KeyHollow magic bytes;
-2. container version;
-3. bounded public-header length;
-4. public header containing only KDF material and the sealed secrets payload;
-5. an encrypted catalog;
-6. sequential authenticated content chunks.
+The public KDF fields are authenticated as AES-GCM associated data. The format
+identifier and container magic are checked against exact constants before any
+plaintext is released. Version 1 readers require the exact KDF profile above;
+an imported file cannot request weaker or more expensive parameters.
+
+## Container layout
+
+The `.khvault` file is an opaque, versioned binary container:
+
+| Offset | Length | Encoding | Meaning |
+|---:|---:|---|---|
+| 0 | 8 | bytes | `4b485641554c5400` (`KHVAULT` plus NUL) |
+| 8 | 4 | UInt32 LE | container version, currently `1` |
+| 12 | 4 | UInt32 LE | JSON public-header byte count, `1...65,536` |
+| 16 | variable | UTF-8 JSON | `EncryptedVaultArchiveHeader` |
+| next | repeated | binary frames | authenticated content chunks |
+
+Each frame is `sequence: UInt64 LE`, `final: UInt8`, `sealedLength: UInt32
+LE`, and `sealedContent`. Only flag values zero and one are accepted. Sealed
+content is at least 28 bytes and at most 1,048,640 bytes. Plaintext chunks are
+at most 1,048,576 bytes, and exactly one final chunk is required. No byte may
+follow it.
+
+The public header has exactly four logical fields: format identifier, archive
+version, KDF parameters, and AES-GCM combined sealed secrets. Its JSON key
+ordering is not a protocol guarantee. Readers decode by field name and reject
+an invalid format, version, KDF profile, salt length, or sealed box.
+
+The sealed secrets contain the archive UUID, source-vault UUID, source-vault
+creation date, export date, 32-byte vault key, and 32-byte content key. This
+plaintext is never written outside authenticated encryption.
+
+### Header associated data
+
+The byte string is the UTF-8 domain `keyhollow.encrypted-vault.header`, NUL,
+the UTF-8 KDF identifier `argon2id-v1.3`, NUL, then archive version, memory,
+iterations, parallelism, and output length as UInt32 LE values, followed by the
+16-byte salt. Any change to a KDF field or salt causes authentication failure
+or strict validation failure.
+
+### Content-chunk associated data
+
+The byte string is the UTF-8 domain
+`keyhollow.encrypted-vault.content-chunk.v1`, NUL, the lowercase archive UUID,
+NUL, sequence as UInt64 LE, and the final flag byte. This binds every chunk to
+one archive and one exact position and prevents reordering, relabeling, or
+cross-archive transplantation.
 
 The content stream will package the already-encrypted vault manifest, photo
 blobs, and thumbnails. Outer content encryption hides catalog metadata while
@@ -59,10 +112,12 @@ Each content chunk will authenticate its archive identifier, sequence number,
 and final-chunk marker. Import must reject missing, duplicated, reordered,
 truncated, or modified chunks.
 
-The authenticated content stream begins with an encrypted payload header and
-catalog. The catalog contains only the random storage names, roles, ciphertext
-sizes, and SHA-256 digests of the existing encrypted manifest, originals, and
-thumbnails. It is never present in the public archive header. Import validates
+The authenticated content stream begins with a 16-byte payload prefix: magic
+`4b485041594c4400` (`KHPAYLD` plus NUL), UInt32 LE version `1`, and UInt32 LE
+catalog length. The encrypted catalog contains only the random storage names,
+roles, ciphertext sizes, and SHA-256 digests of the existing encrypted
+manifest, originals, and thumbnails. It is never present in the public archive
+header. Import validates
 every storage name before creating files, rejects path separators and duplicate
 names, and writes only to a protected staging directory. Each ciphertext digest
 must match before the staged payload can be handed to vault-level validation.
@@ -70,6 +125,14 @@ must match before the staged payload can be handed to vault-level validation.
 Payload extraction is fail-closed: traversal attempts, changed source files,
 digest mismatches, extra bytes, missing bytes, or cancellation remove the entire
 staging directory. No partially extracted directory can become a vault.
+
+Current parser limits are 32 MiB for the catalog, 200,001 entries, 1 TiB for an
+individual encrypted entry, and 4 TiB total declared ciphertext. Before import,
+the coordinator also requires free space equal to twice the selected archive
+size plus 64 MiB. These are safety ceilings, not recommended vault sizes.
+
+Published deterministic compatibility vectors are in
+`docs/ENCRYPTED_VAULT_TEST_VECTORS.md` and are enforced by the unit suite.
 
 ## Atomic export
 

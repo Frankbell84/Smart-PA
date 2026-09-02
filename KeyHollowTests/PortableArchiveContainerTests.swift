@@ -185,6 +185,50 @@ final class PortableArchiveContainerTests: XCTestCase {
         }
     }
 
+    func testDeterministicContentChunkVectorRemainsCompatible() throws {
+        let archiveID = try XCTUnwrap(
+            UUID(uuidString: "00112233-4455-6677-8899-aabbccddeeff")
+        )
+        let expectedAAD = try Data(hex: """
+        6b6579686f6c6c6f772e656e637279707465642d7661756c742e636f6e74656e
+        742d6368756e6b2e76310030303131323233332d343435352d363637372d383839
+        392d61616262636364646565666600070000000000000001
+        """)
+        XCTAssertEqual(
+            PortableArchiveContentChunk.authenticationData(
+                archiveID: archiveID,
+                sequence: 7,
+                isFinal: true
+            ),
+            expectedAAD
+        )
+
+        let key = SymmetricKey(data: Data(0x20...0x3f))
+        let plaintext = Data("KeyHollow chunk vector\n".utf8)
+        let nonce = try AES.GCM.Nonce(data: Data(0xa0...0xab))
+        let sealed = try AES.GCM.seal(
+            plaintext,
+            using: key,
+            nonce: nonce,
+            authenticating: expectedAAD
+        )
+        let expectedCombined = try Data(hex: """
+        a0a1a2a3a4a5a6a7a8a9aaab3559dd7cabbbecc5d608ced253331d86e71aa273
+        53c62cb860d30739de0ee6010cdbe5c75d4698
+        """)
+        XCTAssertEqual(sealed.combined, expectedCombined)
+
+        let chunk = PortableArchiveContentChunk(
+            sequence: 7,
+            isFinal: true,
+            sealedContent: expectedCombined
+        )
+        XCTAssertEqual(
+            try chunk.open(expectedSequence: 7, archiveID: archiveID, contentKey: key),
+            plaintext
+        )
+    }
+
     func testInvalidMagicIsRejected() throws {
         let url = temporaryArchiveURL()
         defer { try? FileManager.default.removeItem(at: url) }
@@ -305,4 +349,23 @@ private extension Data {
             append(contentsOf: bytes)
         }
     }
+
+    init(hex: String) throws {
+        let compact = hex.filter { !$0.isWhitespace }
+        guard compact.count.isMultiple(of: 2) else { throw HexError.invalid }
+        var bytes: [UInt8] = []
+        bytes.reserveCapacity(compact.count / 2)
+        var index = compact.startIndex
+        while index < compact.endIndex {
+            let next = compact.index(index, offsetBy: 2)
+            guard let byte = UInt8(compact[index..<next], radix: 16) else {
+                throw HexError.invalid
+            }
+            bytes.append(byte)
+            index = next
+        }
+        self = Data(bytes)
+    }
+
+    enum HexError: Error { case invalid }
 }
