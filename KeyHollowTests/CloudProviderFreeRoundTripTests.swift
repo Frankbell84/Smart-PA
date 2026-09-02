@@ -57,7 +57,7 @@ final class CloudProviderFreeRoundTripTests: XCTestCase {
         )
 
         let published = fixture.root.appendingPathComponent("published", isDirectory: true)
-        restore.commitEncryptedFiles(to: published)
+        try restore.commitEncryptedFiles(to: published)
         let reopened = try VaultPhotoStore(
             vaultID: UUID(),
             vaultKey: fixture.localVaultKey,
