@@ -15,18 +15,24 @@ struct UnlockedVault {
 }
 
 actor VaultUnlockService {
-    private let secrets = DevicePepperStore()
+    private let secrets: DeviceSecretProviding
     private let kdf: PasswordKeyDeriving
     private let limiter: UnlockAttemptLimiter
     private let store: VaultStore
+    private let photoStorageRootOverride: URL?
 
     init(
         kdf: PasswordKeyDeriving = ProductionArgon2idKDF(),
-        limiter: UnlockAttemptLimiter = UnlockAttemptLimiter()
+        limiter: UnlockAttemptLimiter = UnlockAttemptLimiter(),
+        secrets: DeviceSecretProviding = DevicePepperStore(),
+        vaultStorageRootOverride: URL? = nil,
+        photoStorageRootOverride: URL? = nil
     ) throws {
         self.kdf = kdf
         self.limiter = limiter
-        self.store = try VaultStore()
+        self.secrets = secrets
+        self.store = try VaultStore(rootOverride: vaultStorageRootOverride)
+        self.photoStorageRootOverride = photoStorageRootOverride
     }
 
     func hasAnyVaults() async throws -> Bool {
@@ -239,7 +245,10 @@ actor VaultUnlockService {
         // ciphertext remains inaccessible through KeyHollow.
         try await store.delete(locator: currentLocator)
         do {
-            try VaultPhotoStore.destroyVaultData(vaultID: payload.vaultID)
+            try VaultPhotoStore.destroyVaultData(
+                vaultID: payload.vaultID,
+                storageRoot: photoStorageRootOverride
+            )
         } catch {
             // Credential destruction succeeded, so do not recreate the envelope.
             // Surface the cleanup failure without restoring access to deleted data.

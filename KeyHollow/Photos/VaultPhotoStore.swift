@@ -139,16 +139,22 @@ actor VaultPhotoStore {
         }
     }
 
-    static func destroyVaultData(vaultID: UUID) throws {
+    static func destroyVaultData(vaultID: UUID, storageRoot: URL? = nil) throws {
         let fileManager = FileManager.default
-        let appSupport = try fileManager.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-        let target = appSupport
-            .appendingPathComponent("KeyHollow/PhotoData", isDirectory: true)
+        let photoDataRoot: URL
+        if let storageRoot {
+            photoDataRoot = storageRoot
+        } else {
+            let appSupport = try fileManager.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+            photoDataRoot = appSupport
+                .appendingPathComponent("KeyHollow/PhotoData", isDirectory: true)
+        }
+        let target = photoDataRoot
             .appendingPathComponent(vaultID.uuidString.lowercased(), isDirectory: true)
 
         guard fileManager.fileExists(atPath: target.path) else { return }
