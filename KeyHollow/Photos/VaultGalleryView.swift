@@ -6,6 +6,14 @@ private enum VaultImportMode {
     case move
 }
 
+private struct VaultImportProgress {
+    let mode: VaultImportMode
+    let total: Int
+    var importedCount = 0
+    var failedCount = 0
+    var identifiersToDelete: [String] = []
+}
+
 private struct DecryptedPhoto: Identifiable {
     let id: UUID
     let record: VaultPhotoRecord
@@ -34,6 +42,9 @@ struct VaultGalleryView: View {
     @State private var selectedPhotoIDs: Set<UUID> = []
     @State private var isWorking = false
     @State private var message: String?
+    @State private var importProgress: VaultImportProgress?
+
+    private let maximumCachedThumbnails = 48
 
     private let columns = Array(
         repeating: GridItem(.flexible(), spacing: 3),
@@ -91,18 +102,8 @@ struct VaultGalleryView: View {
             Text("Copy keeps the originals in Photos. Move encrypts and verifies the vault copies first, then asks iOS to delete the originals.")
         }
         .sheet(isPresented: $showingPicker) {
-            SecurePhotoPicker(selectionLimit: 50) { batch in
-                showingPicker = false
-                guard !batch.photos.isEmpty else {
-                    if batch.failedSelectionCount > 0 {
-                        message = unreadableSelectionMessage(count: batch.failedSelectionCount)
-                    }
-                    return
-                }
-                importPhotos(
-                    batch.photos,
-                    pickerFailureCount: batch.failedSelectionCount
-                )
+            SecurePhotoPicker(selectionLimit: 50) { event in
+                await handleImportEvent(event)
             }
         }
         .sheet(isPresented: $showingNewVault) {
@@ -318,6 +319,9 @@ struct VaultGalleryView: View {
                 delete(record)
             }
         }
+        .task(id: record.id) {
+            await loadThumbnailIfNeeded(record)
+        }
     }
 
     private func initializeStore() async {
@@ -325,7 +329,7 @@ struct VaultGalleryView: View {
               let context = session.activeVaultContext() else { return }
 
         do {
-            let createdStore = try VaultPhotoStore(vaultID: context.id, vaultKey: context.key)
+            let createdStore = try VaultPhotoStore(vaultID: context.id, access: context.access)
             store = createdStore
             try await reload(using: createdStore)
         } catch {
@@ -335,17 +339,10 @@ struct VaultGalleryView: View {
 
     private func reload(using store: VaultPhotoStore) async throws {
         let manifest = try await store.loadManifest()
-        var loaded: [UUID: UIImage] = [:]
-
-        for record in manifest.photos {
-            if let data = try? await store.loadThumbnail(record),
-               let image = UIImage(data: data) {
-                loaded[record.id] = image
-            }
-        }
 
         records = manifest.photos
-        thumbnails = loaded
+        let validIDs = Set(manifest.photos.map(\.id))
+        thumbnails = thumbnails.filter { validIDs.contains($0.key) }
         selectedPhotoIDs.formIntersection(Set(manifest.photos.map(\.id)))
 
         if records.isEmpty {
@@ -353,67 +350,115 @@ struct VaultGalleryView: View {
         }
     }
 
-    private func importPhotos(
-        _ photos: [PickedVaultPhoto],
-        pickerFailureCount: Int
-    ) {
-        guard let store, !isWorking else { return }
-        isWorking = true
+    @MainActor
+    private func handleImportEvent(_ event: PickedVaultPhotoEvent) async {
+        switch event {
+        case .started(let total):
+            guard !isWorking else { return }
+            isWorking = true
+            importProgress = VaultImportProgress(mode: importMode, total: total)
 
-        Task {
-            var importedCount = 0
-            var failedCount = pickerFailureCount
-            var identifiersToDelete: [String] = []
-
-            for photo in photos {
-                do {
-                    _ = try await store.importPhoto(
-                        originalData: photo.originalData,
-                        thumbnailData: photo.thumbnailData
-                    )
-                    importedCount += 1
-                    if importMode == .move, let identifier = photo.sourceAssetIdentifier {
-                        identifiersToDelete.append(identifier)
-                    }
-                } catch {
-                    failedCount += 1
-                }
-            }
-
+        case .photo(let photo):
+            guard var progress = importProgress,
+                  let store,
+                  session.isUnlocked,
+                  !Task.isCancelled else { return }
             do {
-                try await reload(using: store)
+                _ = try await store.importPhoto(
+                    originalData: photo.originalData,
+                    thumbnailData: photo.thumbnailData
+                )
+                progress.importedCount += 1
+                if progress.mode == .move, let identifier = photo.sourceAssetIdentifier {
+                    progress.identifiersToDelete.append(identifier)
+                }
             } catch {
-                message = "Photos were encrypted, but the gallery could not be refreshed."
+                progress.failedCount += 1
             }
+            importProgress = progress
 
-            if importMode == .move, importedCount > 0 {
-                let allImportedPhotosAreDeletable = identifiersToDelete.count == importedCount
-                let result: PhotoMoveResult
-                if allImportedPhotosAreDeletable {
-                    session.beginSystemPhotoOperation()
-                    result = await PhotoLibraryDeletionService.deleteOriginals(
-                        localIdentifiers: identifiersToDelete
-                    )
-                    session.endSystemPhotoOperation()
-                } else {
-                    result = .copiedOnly
-                }
+        case .failed:
+            importProgress?.failedCount += 1
 
-                switch result {
-                case .deleted:
-                    message = importResultMessage(action: "Moved", importedCount: importedCount, failedCount: failedCount)
-                case .copiedOnly:
-                    let base = importResultMessage(action: "Encrypted", importedCount: importedCount, failedCount: failedCount)
-                    message = "\(base) iOS did not delete every original, so KeyHollow treats this batch as copied."
-                }
-            } else if importedCount > 0 {
-                message = importResultMessage(action: "Copied", importedCount: importedCount, failedCount: failedCount)
-            } else {
-                message = "No photos were imported."
+        case .finished:
+            showingPicker = false
+            guard let progress = importProgress else {
+                isWorking = false
+                return
             }
-
-            isWorking = false
+            importProgress = nil
+            await finishImport(progress)
         }
+    }
+
+    @MainActor
+    private func finishImport(_ progress: VaultImportProgress) async {
+        guard let store, session.isUnlocked, !Task.isCancelled else {
+            isWorking = false
+            return
+        }
+
+        do {
+            try await reload(using: store)
+        } catch {
+            message = "Photos were encrypted, but the gallery could not be refreshed."
+        }
+
+        if progress.mode == .move, progress.importedCount > 0 {
+            let allImportedPhotosAreDeletable =
+                progress.identifiersToDelete.count == progress.importedCount
+            let result: PhotoMoveResult
+            if allImportedPhotosAreDeletable {
+                session.beginSystemPhotoOperation()
+                result = await PhotoLibraryDeletionService.deleteOriginals(
+                    localIdentifiers: progress.identifiersToDelete
+                )
+                session.endSystemPhotoOperation()
+            } else {
+                result = .copiedOnly
+            }
+
+            switch result {
+            case .deleted:
+                message = importResultMessage(
+                    action: "Moved",
+                    importedCount: progress.importedCount,
+                    failedCount: progress.failedCount
+                )
+            case .copiedOnly:
+                let base = importResultMessage(
+                    action: "Encrypted",
+                    importedCount: progress.importedCount,
+                    failedCount: progress.failedCount
+                )
+                message = "\(base) iOS did not delete every original, so KeyHollow treats this batch as copied."
+            }
+        } else if progress.importedCount > 0 {
+            message = importResultMessage(
+                action: "Copied",
+                importedCount: progress.importedCount,
+                failedCount: progress.failedCount
+            )
+        } else if progress.failedCount > 0 {
+            message = unreadableSelectionMessage(count: progress.failedCount)
+        }
+        isWorking = false
+    }
+
+    @MainActor
+    private func loadThumbnailIfNeeded(_ record: VaultPhotoRecord) async {
+        guard thumbnails[record.id] == nil,
+              let store,
+              session.isUnlocked else { return }
+        guard let data = try? await store.loadThumbnail(record),
+              !Task.isCancelled,
+              let image = UIImage(data: data) else { return }
+
+        if thumbnails.count >= maximumCachedThumbnails,
+           let eviction = thumbnails.keys.first(where: { $0 != record.id }) {
+            thumbnails.removeValue(forKey: eviction)
+        }
+        thumbnails[record.id] = image
     }
 
     private func importResultMessage(action: String, importedCount: Int, failedCount: Int) -> String {
@@ -434,10 +479,11 @@ struct VaultGalleryView: View {
         guard let store, !isWorking else { return }
         isWorking = true
 
-        Task {
+        session.startSensitiveTask { _ in
             defer { isWorking = false }
             do {
                 let data = try await store.loadPhoto(record)
+                guard !Task.isCancelled else { return }
                 guard let image = UIImage(data: data) else {
                     message = "The decrypted photo data could not be displayed."
                     return
@@ -448,6 +494,8 @@ struct VaultGalleryView: View {
                     originalData: data,
                     image: image
                 )
+            } catch is CancellationError {
+                return
             } catch {
                 message = "The photo could not be authenticated and decrypted."
             }
@@ -459,11 +507,13 @@ struct VaultGalleryView: View {
         decryptedPhoto = nil
         isWorking = true
 
-        Task {
+        session.startSensitiveTask { _ in
             defer { isWorking = false }
             do {
                 try await store.delete(record)
                 try await reload(using: store)
+            } catch is CancellationError {
+                return
             } catch {
                 message = "The photo could not be deleted from the vault."
             }
@@ -512,40 +562,52 @@ struct VaultGalleryView: View {
         guard let store, !photos.isEmpty, !isWorking else { return }
         isWorking = true
 
-        Task {
-            var decryptedPhotos: [Data] = []
+        session.startSensitiveTask { _ in
+            var savedCount = 0
             var failedCount = 0
+            var permissionDenied = false
+
+            session.beginSystemPhotoOperation()
+            defer {
+                session.endSystemPhotoOperation()
+                isWorking = false
+            }
 
             for photo in photos {
+                guard !Task.isCancelled else { return }
                 do {
-                    decryptedPhotos.append(try await store.loadPhoto(photo))
+                    // One decrypted original is resident at a time and is
+                    // released before the next record is loaded.
+                    let decryptedPhoto = try await store.loadPhoto(photo)
+                    let result = await PhotoLibrarySaveService.savePhoto(decryptedPhoto)
+                    switch result {
+                    case .saved:
+                        savedCount += 1
+                    case .permissionDenied:
+                        permissionDenied = true
+                    case .failed:
+                        failedCount += 1
+                    }
                 } catch {
                     failedCount += 1
                 }
+                if permissionDenied { break }
             }
 
-            session.beginSystemPhotoOperation()
-            let result = await PhotoLibrarySaveService.savePhotos(decryptedPhotos)
-            session.endSystemPhotoOperation()
-
-            switch result {
-            case .saved(let savedCount):
+            guard !Task.isCancelled else { return }
+            if permissionDenied {
+                message = "Allow KeyHollow to add photos in iPhone Settings, then try again."
+            } else if savedCount > 0 {
                 let noun = savedCount == 1 ? "photo" : "photos"
                 if failedCount > 0 {
-                    message = "Saved \(savedCount) \(noun) to Photos. \(failedCount) selected photos could not be decrypted."
+                    message = "Saved \(savedCount) \(noun) to Photos. \(failedCount) selected photos could not be decrypted or saved."
                 } else {
                     message = "Saved \(savedCount) \(noun) to Photos. The encrypted vault copies were kept."
                 }
                 leaveSelectionMode()
-            case .permissionDenied:
-                message = "Allow KeyHollow to add photos in iPhone Settings, then try again."
-            case .failed:
-                message = decryptedPhotos.isEmpty
-                    ? "The selected photos could not be authenticated and decrypted."
-                    : "The selected photos could not be saved to Photos."
+            } else {
+                message = "The selected photos could not be authenticated, decrypted, or saved."
             }
-
-            isWorking = false
         }
     }
 
@@ -554,14 +616,17 @@ struct VaultGalleryView: View {
         let photos = selectedRecords
         isWorking = true
 
-        Task {
+        session.startSensitiveTask { _ in
             defer { isWorking = false }
             do {
                 try await store.delete(photos)
                 try await reload(using: store)
+                guard !Task.isCancelled else { return }
                 let noun = photos.count == 1 ? "photo" : "photos"
                 message = "Deleted \(photos.count) \(noun) from this vault."
                 leaveSelectionMode()
+            } catch is CancellationError {
+                return
             } catch {
                 message = "The selected photos could not be deleted from the vault."
             }
@@ -630,10 +695,14 @@ private struct DecryptedPhotoView: View {
         guard !isSaving else { return }
         isSaving = true
 
-        Task {
+        session.startSensitiveTask { _ in
             session.beginSystemPhotoOperation()
-            let result = await PhotoLibrarySaveService.savePhotos([photo.originalData])
-            session.endSystemPhotoOperation()
+            defer {
+                session.endSystemPhotoOperation()
+                isSaving = false
+            }
+            let result = await PhotoLibrarySaveService.savePhoto(photo.originalData)
+            guard !Task.isCancelled else { return }
             switch result {
             case .saved:
                 message = "Saved to Photos. The encrypted vault copy was kept."
@@ -642,7 +711,6 @@ private struct DecryptedPhotoView: View {
             case .failed:
                 message = "This photo could not be saved to Photos."
             }
-            isSaving = false
         }
     }
 }

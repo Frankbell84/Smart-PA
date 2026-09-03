@@ -201,29 +201,35 @@ struct EncryptedVaultExportView: View {
 
     private func createExport() {
         guard canExport,
-              let vaultID = session.activeVaultID,
+              let context = session.activeVaultContext(),
               !isWorking else { return }
 
+        let vaultID = context.id
         let passcode = currentPasscode
         let credential = PortableArchiveCredential.recoveryCode(recoveryCode)
         currentPasscode = ""
         message = nil
         isWorking = true
 
-        Task {
+        let started = session.startSensitiveTask { access in
             var temporaryDestination: URL?
             do {
-                let unlocked = try await service.reauthenticateCurrentVault(
+                try Task.checkCancellation()
+                let reauthenticated = try await service.reauthenticateCurrentVault(
                     passcode: passcode,
                     expectedVaultID: vaultID
                 )
+                try Task.checkCancellation()
                 let destination = try Self.makeTemporaryExportURL()
                 temporaryDestination = destination
                 let receipt = try await EncryptedVaultTransferCoordinator().exportVault(
-                    unlockedVault: unlocked,
+                    vaultID: reauthenticated.vaultID,
+                    createdAt: reauthenticated.createdAt,
+                    access: access,
                     credential: credential,
                     destinationURL: destination
                 )
+                try Task.checkCancellation()
 
                 isWorking = false
                 systemInteractionOpen = true
@@ -233,6 +239,10 @@ struct EncryptedVaultExportView: View {
                     encryptedFileCount: receipt.encryptedFileCount,
                     archiveByteCount: receipt.archiveByteCount
                 )
+            } catch is CancellationError {
+                Self.discardTemporaryExport(at: temporaryDestination)
+                isWorking = false
+                clearSensitiveState()
             } catch VaultUnlockError.invalidCredentials {
                 Self.discardTemporaryExport(at: temporaryDestination)
                 isWorking = false
@@ -244,6 +254,10 @@ struct EncryptedVaultExportView: View {
                 clearSensitiveState()
                 message = "The encrypted export could not be created and verified. No incomplete export was kept."
             }
+        }
+        if started == nil {
+            isWorking = false
+            clearSensitiveState()
         }
     }
 
