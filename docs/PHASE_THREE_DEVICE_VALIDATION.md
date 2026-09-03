@@ -7,6 +7,8 @@ complete.
 
 ## Automated pre-device gate
 
+- Run the architecture boundary check so interface, Photos, network, or remote
+  SDK concerns cannot leak into the local security and persistence core.
 - Round-trip a 50-photo encrypted vault in CI.
 - Verify all 101 encrypted vault entries: one manifest, 50 originals, and 50
   thumbnails.
@@ -82,6 +84,7 @@ Repeat during Copy, Move, export, validation, import, and Save to Photos:
 
 ## Exit criteria
 
-Phase Three is ready for independent security review only when the automated
-gate is green and every physical-device scenario above passes without data
-loss, plaintext persistence, unauthorized access, or an unexplained crash.
+Phase Three is ready for independent security review only when the architecture
+and automated gates are green and every physical-device scenario above passes
+without data loss, plaintext persistence, unauthorized access, or an
+unexplained crash.

@@ -28,6 +28,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify architecture boundaries
+        run: python3 scripts/check_architecture_boundaries.py
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
