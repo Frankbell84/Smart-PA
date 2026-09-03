@@ -10,10 +10,12 @@ final class VaultLifecycleBaselineTests: XCTestCase {
         defer { fixture.cleanUp() }
 
         var service = try fixture.makeService()
-        XCTAssertFalse(try await service.hasAnyVaults())
+        var hasVaults = try await service.hasAnyVaults()
+        XCTAssertFalse(hasVaults)
 
         let created = try await service.createVault(passcode: fixture.originalPasscode)
-        XCTAssertTrue(try await service.hasAnyVaults())
+        hasVaults = try await service.hasAnyVaults()
+        XCTAssertTrue(hasVaults)
 
         let vaultPhotoRoot = fixture.photoRoot.appendingPathComponent(
             created.vaultID.uuidString.lowercased(),
@@ -28,7 +30,8 @@ final class VaultLifecycleBaselineTests: XCTestCase {
             originalData: Data("lifecycle original".utf8),
             thumbnailData: Data("lifecycle thumbnail".utf8)
         )
-        XCTAssertEqual(try await photoStore.loadPhoto(photo), Data("lifecycle original".utf8))
+        let reopenedPhoto = try await photoStore.loadPhoto(photo)
+        XCTAssertEqual(reopenedPhoto, Data("lifecycle original".utf8))
 
         let session = VaultSession()
         session.unlock(vaultID: created.vaultID, key: created.vaultKey)
@@ -40,7 +43,8 @@ final class VaultLifecycleBaselineTests: XCTestCase {
 
         // A new service instance models terminating and relaunching the app.
         service = try fixture.makeService()
-        XCTAssertTrue(try await service.hasAnyVaults())
+        hasVaults = try await service.hasAnyVaults()
+        XCTAssertTrue(hasVaults)
         XCTAssertTrue(fixture.credentialFiles().contains { $0.pathExtension == "khv" })
         XCTAssertFalse(fixture.credentialFiles().contains { $0.pathExtension == "khvtmp" })
 
@@ -69,7 +73,8 @@ final class VaultLifecycleBaselineTests: XCTestCase {
             currentPasscode: fixture.replacementPasscode,
             expectedVaultID: created.vaultID
         )
-        XCTAssertFalse(try await service.hasAnyVaults())
+        hasVaults = try await service.hasAnyVaults()
+        XCTAssertFalse(hasVaults)
         XCTAssertFalse(FileManager.default.fileExists(atPath: vaultPhotoRoot.path))
         await assertInvalidCredentials {
             try await service.unlock(passcode: fixture.replacementPasscode)
@@ -85,7 +90,8 @@ final class VaultLifecycleBaselineTests: XCTestCase {
             _ = try await service.createVault(passcode: "12345678")
             XCTFail("A predictable LowKey created a vault")
         } catch KeyDerivationError.invalidPasscode {}
-        XCTAssertFalse(try await service.hasAnyVaults())
+        var hasVaults = try await service.hasAnyVaults()
+        XCTAssertFalse(hasVaults)
 
         let created = try await service.createVault(passcode: fixture.originalPasscode)
         do {
@@ -95,6 +101,8 @@ final class VaultLifecycleBaselineTests: XCTestCase {
 
         let reopened = try await service.unlock(passcode: fixture.originalPasscode)
         XCTAssertEqual(reopened.vaultID, created.vaultID)
+        hasVaults = try await service.hasAnyVaults()
+        XCTAssertTrue(hasVaults)
         XCTAssertEqual(fixture.credentialFiles().filter { $0.pathExtension == "khv" }.count, 1)
     }
 
@@ -122,14 +130,10 @@ final class VaultLifecycleBaselineTests: XCTestCase {
             )
         }
 
-        XCTAssertEqual(
-            try await service.unlock(passcode: fixture.originalPasscode).vaultID,
-            first.vaultID
-        )
-        XCTAssertEqual(
-            try await service.unlock(passcode: fixture.secondVaultPasscode).vaultID,
-            second.vaultID
-        )
+        let reopenedFirst = try await service.unlock(passcode: fixture.originalPasscode)
+        let reopenedSecond = try await service.unlock(passcode: fixture.secondVaultPasscode)
+        XCTAssertEqual(reopenedFirst.vaultID, first.vaultID)
+        XCTAssertEqual(reopenedSecond.vaultID, second.vaultID)
         XCTAssertEqual(fixture.credentialFiles().filter { $0.pathExtension == "khv" }.count, 2)
     }
 
