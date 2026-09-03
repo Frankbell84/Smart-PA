@@ -139,7 +139,9 @@ final class VaultSession: ObservableObject {
 
         let id = UUID()
         let task = Task { @MainActor [weak self] in
-            await operation(capability)
+            if !Task.isCancelled {
+                await operation(capability)
+            }
             self?.sensitiveTasks[id] = nil
         }
         sensitiveTasks[id] = task
@@ -155,7 +157,9 @@ final class VaultSession: ObservableObject {
     ) -> UUID {
         let id = UUID()
         let task = Task { @MainActor [weak self] in
-            await operation()
+            if !Task.isCancelled {
+                await operation()
+            }
             self?.sensitiveTasks[id] = nil
         }
         sensitiveTasks[id] = task

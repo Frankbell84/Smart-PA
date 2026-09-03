@@ -182,12 +182,13 @@ enum PhotoLibrarySaveService {
     static let maximumResidentFullSizePhotos = 1
 
     static func savePhoto(_ photo: Data) async -> PhotoLibrarySaveResult {
-        guard !photo.isEmpty else { return .failed }
+        guard !photo.isEmpty, !Task.isCancelled else { return .failed }
 
         let status = await authorizationStatus()
         guard status == .authorized || status == .limited else {
             return .permissionDenied
         }
+        guard !Task.isCancelled else { return .failed }
 
         do {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -225,10 +226,11 @@ enum PhotoLibrarySaveService {
 enum PhotoLibraryDeletionService {
     static func deleteOriginals(localIdentifiers: [String]) async -> PhotoMoveResult {
         let identifiers = Array(Set(localIdentifiers))
-        guard !identifiers.isEmpty else { return .copiedOnly }
+        guard !identifiers.isEmpty, !Task.isCancelled else { return .copiedOnly }
 
         let status = await authorizationStatus()
         guard status == .authorized || status == .limited else { return .copiedOnly }
+        guard !Task.isCancelled else { return .copiedOnly }
 
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
         guard assets.count == identifiers.count else { return .copiedOnly }
