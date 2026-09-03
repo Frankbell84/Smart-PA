@@ -50,12 +50,7 @@ actor VaultPhotoStore {
         guard fileManager.fileExists(atPath: target.path) else { return .empty }
 
         let ciphertext = try Data(contentsOf: target, options: [.mappedIfSafe])
-        let plaintext = try access.withKey { vaultKey in
-            try CryptoBox.open(
-                ciphertext,
-                using: VaultPhotoKeySchedule.manifestKey(from: vaultKey)
-            )
-        }
+        let plaintext = try access.open(ciphertext, for: .manifest)
         try Task.checkCancellation()
 
         let manifest = try JSONDecoder().decode(VaultPhotoManifest.self, from: plaintext)
@@ -77,18 +72,8 @@ actor VaultPhotoStore {
             thumbnailName: thumbnailName
         )
 
-        let (originalCiphertext, thumbnailCiphertext) = try access.withKey { vaultKey in
-            (
-                try CryptoBox.seal(
-                    originalData,
-                    using: VaultPhotoKeySchedule.photoKey(from: vaultKey, id: id)
-                ),
-                try CryptoBox.seal(
-                    thumbnailData,
-                    using: VaultPhotoKeySchedule.thumbnailKey(from: vaultKey, id: id)
-                )
-            )
-        }
+        let originalCiphertext = try access.seal(originalData, for: .photo(id))
+        let thumbnailCiphertext = try access.seal(thumbnailData, for: .thumbnail(id))
         try Task.checkCancellation()
 
         let originalURL = root.appendingPathComponent(blobName)
@@ -99,18 +84,14 @@ actor VaultPhotoStore {
             try Task.checkCancellation()
             try secureWrite(thumbnailCiphertext, to: thumbnailURL)
 
-            let (verifiedOriginal, verifiedThumbnail) = try access.withKey { vaultKey in
-                (
-                    try CryptoBox.open(
-                        Data(contentsOf: originalURL),
-                        using: VaultPhotoKeySchedule.photoKey(from: vaultKey, id: id)
-                    ),
-                    try CryptoBox.open(
-                        Data(contentsOf: thumbnailURL),
-                        using: VaultPhotoKeySchedule.thumbnailKey(from: vaultKey, id: id)
-                    )
-                )
-            }
+            let verifiedOriginal = try access.open(
+                Data(contentsOf: originalURL),
+                for: .photo(id)
+            )
+            let verifiedThumbnail = try access.open(
+                Data(contentsOf: thumbnailURL),
+                for: .thumbnail(id)
+            )
             try Task.checkCancellation()
 
             guard verifiedOriginal == originalData,
@@ -132,12 +113,7 @@ actor VaultPhotoStore {
     func loadPhoto(_ record: VaultPhotoRecord) throws -> Data {
         try Task.checkCancellation()
         let ciphertext = try Data(contentsOf: root.appendingPathComponent(record.blobName))
-        let plaintext = try access.withKey { vaultKey in
-            try CryptoBox.open(
-                ciphertext,
-                using: VaultPhotoKeySchedule.photoKey(from: vaultKey, id: record.id)
-            )
-        }
+        let plaintext = try access.open(ciphertext, for: .photo(record.id))
         try Task.checkCancellation()
         return plaintext
     }
@@ -145,12 +121,7 @@ actor VaultPhotoStore {
     func loadThumbnail(_ record: VaultPhotoRecord) throws -> Data {
         try Task.checkCancellation()
         let ciphertext = try Data(contentsOf: root.appendingPathComponent(record.thumbnailName))
-        let plaintext = try access.withKey { vaultKey in
-            try CryptoBox.open(
-                ciphertext,
-                using: VaultPhotoKeySchedule.thumbnailKey(from: vaultKey, id: record.id)
-            )
-        }
+        let plaintext = try access.open(ciphertext, for: .thumbnail(record.id))
         try Task.checkCancellation()
         return plaintext
     }
@@ -203,12 +174,7 @@ actor VaultPhotoStore {
     private func saveManifest(_ manifest: VaultPhotoManifest) throws {
         try Task.checkCancellation()
         let plaintext = try JSONEncoder().encode(manifest)
-        let ciphertext = try access.withKey { vaultKey in
-            try CryptoBox.seal(
-                plaintext,
-                using: VaultPhotoKeySchedule.manifestKey(from: vaultKey)
-            )
-        }
+        let ciphertext = try access.seal(plaintext, for: .manifest)
         try Task.checkCancellation()
         try secureWrite(ciphertext, to: manifestURL)
     }

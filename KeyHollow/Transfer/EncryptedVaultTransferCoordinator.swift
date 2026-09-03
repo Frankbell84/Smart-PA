@@ -224,15 +224,6 @@ struct EncryptedVaultTransferCoordinator {
             throw EncryptedVaultTransferError.invalidDestination
         }
 
-        var vaultKeyData = try access.withKey { vaultKey in
-            vaultKey.withUnsafeBytes { Data($0) }
-        }
-        defer {
-            vaultKeyData.resetBytes(in: vaultKeyData.startIndex..<vaultKeyData.endIndex)
-        }
-        guard vaultKeyData.count == 32 else {
-            throw EncryptedVaultTransferError.invalidSourceVault
-        }
         let sourceStore = try VaultPhotoStore(
             vaultID: vaultID,
             access: access,
@@ -244,12 +235,8 @@ struct EncryptedVaultTransferCoordinator {
             manifest: sourceManifest
         )
 
-        let prepared = try EncryptedVaultArchiveHeader.prepare(
-            vaultPayload: VaultPayload(
-                vaultID: vaultID,
-                vaultKey: vaultKeyData,
-                createdAt: createdAt
-            ),
+        let prepared = try access.preparePortableArchive(
+            createdAt: createdAt,
             credential: credential,
             keyDeriver: keyDeriver
         )
@@ -268,7 +255,7 @@ struct EncryptedVaultTransferCoordinator {
             try Task.checkCancellation()
             try PortableArchivePayloadWriter.write(source: source, to: writer)
             try Task.checkCancellation()
-            _ = try access.withKey { _ in () }
+            try access.checkAccess()
             try writer.finish()
         } catch {
             writer.cancel()
@@ -284,11 +271,11 @@ struct EncryptedVaultTransferCoordinator {
         defer { verified.discard() }
 
         try Task.checkCancellation()
-        _ = try access.withKey { _ in () }
+        try access.checkAccess()
 
         guard verified.archiveID == prepared.secrets.archiveID,
               verified.sourceVaultID == vaultID,
-              verified.destinationVaultPayload.vaultKey == vaultKeyData,
+              verified.destinationVaultPayload.vaultKey == prepared.secrets.vaultKey,
               verified.catalog == source.catalog,
               verified.manifest.version == sourceManifest.version,
               verified.manifest.photos == sourceManifest.photos else {

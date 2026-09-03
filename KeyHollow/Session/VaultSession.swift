@@ -5,6 +5,12 @@ enum VaultAccessError: Error, Equatable {
     case revoked
 }
 
+enum VaultKeyPurpose {
+    case manifest
+    case photo(UUID)
+    case thumbnail(UUID)
+}
+
 /// A narrow, revocable boundary around a vault key.
 ///
 /// Callers never receive a key to retain. A revocation waits for any currently
@@ -21,11 +27,57 @@ final class VaultAccessCapability: @unchecked Sendable {
         self.vaultKey = vaultKey
     }
 
-    func withKey<T>(_ operation: (SymmetricKey) throws -> T) throws -> T {
+    private func withKey<T>(_ operation: (SymmetricKey) throws -> T) throws -> T {
         lock.lock()
         defer { lock.unlock() }
         guard let vaultKey else { throw VaultAccessError.revoked }
         return try operation(vaultKey)
+    }
+
+    func seal(_ plaintext: Data, for purpose: VaultKeyPurpose) throws -> Data {
+        try withKey { vaultKey in
+            try CryptoBox.seal(plaintext, using: derivedKey(from: vaultKey, for: purpose))
+        }
+    }
+
+    func open(_ ciphertext: Data, for purpose: VaultKeyPurpose) throws -> Data {
+        try withKey { vaultKey in
+            try CryptoBox.open(ciphertext, using: derivedKey(from: vaultKey, for: purpose))
+        }
+    }
+
+    func preparePortableArchive(
+        createdAt: Date,
+        credential: PortableArchiveCredential,
+        keyDeriver: any PortableArchiveKeyDeriving
+    ) throws -> PreparedEncryptedVaultArchive {
+        try withKey { vaultKey in
+            let keyData = vaultKey.withUnsafeBytes { Data($0) }
+            return try EncryptedVaultArchiveHeader.prepare(
+                vaultPayload: VaultPayload(
+                    vaultID: vaultID,
+                    vaultKey: keyData,
+                    createdAt: createdAt
+                ),
+                credential: credential,
+                keyDeriver: keyDeriver
+            )
+        }
+    }
+
+    func checkAccess() throws {
+        _ = try withKey { _ in () }
+    }
+
+    private func derivedKey(from vaultKey: SymmetricKey, for purpose: VaultKeyPurpose) -> SymmetricKey {
+        switch purpose {
+        case .manifest:
+            VaultPhotoKeySchedule.manifestKey(from: vaultKey)
+        case .photo(let id):
+            VaultPhotoKeySchedule.photoKey(from: vaultKey, id: id)
+        case .thumbnail(let id):
+            VaultPhotoKeySchedule.thumbnailKey(from: vaultKey, id: id)
+        }
     }
 
     func revoke() {
@@ -63,19 +115,8 @@ final class VaultSession: ObservableObject {
         isUnlocked = true
     }
 
-    /// A compatibility probe for lifecycle tests. The closure cannot return or
-    /// retain the key; production storage uses `activeVaultContext()` instead.
-    @discardableResult
-    func withActiveKey(_ operation: (SymmetricKey) -> Void) -> Bool {
-        guard isUnlocked, let activeCapability else { return false }
-        do {
-            try activeCapability.withKey(operation)
-            return true
-        } catch VaultAccessError.revoked {
-            return false
-        } catch {
-            return false
-        }
+    var hasActiveAccess: Bool {
+        isUnlocked && activeCapability?.isRevoked == false
     }
 
     func activeVaultContext() -> (id: UUID, access: VaultAccessCapability)? {
