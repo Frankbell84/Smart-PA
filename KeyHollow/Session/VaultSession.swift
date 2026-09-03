@@ -46,6 +46,7 @@ final class VaultSession: ObservableObject {
     @Published private(set) var isUnlocked = false
     @Published private(set) var activeVaultID: UUID?
     @Published private(set) var isSystemInteractionActive = false
+    @Published private(set) var securityEpoch: UInt64 = 0
 
     private var activeCapability: VaultAccessCapability?
     private var systemInteractionCount = 0
@@ -102,6 +103,22 @@ final class VaultSession: ObservableObject {
         return id
     }
 
+    /// Tracks cryptographic work that does not use the currently unlocked
+    /// vault capability, such as authenticating an encrypted portable vault.
+    /// Background locking cancels this work even when the keypad is showing.
+    @discardableResult
+    func startProtectedTask(
+        _ operation: @escaping @MainActor () async -> Void
+    ) -> UUID {
+        let id = UUID()
+        let task = Task { @MainActor [weak self] in
+            await operation()
+            self?.sensitiveTasks[id] = nil
+        }
+        sensitiveTasks[id] = task
+        return id
+    }
+
     func beginSystemInteraction() {
         systemInteractionCount += 1
         isSystemInteractionActive = true
@@ -129,6 +146,7 @@ final class VaultSession: ObservableObject {
         activeCapability = nil
         systemInteractionCount = 0
         isSystemInteractionActive = false
+        securityEpoch &+= 1
 
         // Revoke synchronously. Because capability key use is serialized under
         // the same lock, this returns only after an in-flight atomic key use has

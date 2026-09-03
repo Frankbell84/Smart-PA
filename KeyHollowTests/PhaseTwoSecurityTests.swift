@@ -101,6 +101,40 @@ final class PhaseTwoSecurityTests: XCTestCase {
         XCTAssertEqual(PhotoLibrarySaveService.maximumResidentFullSizePhotos, 1)
     }
 
+    @MainActor
+    func testPhotoBatchProcessorStopsAfterCancellationAndReleasesCurrentItem() async {
+        var consumed: [Int] = []
+        var loaded: [Int] = []
+        let reachedCutoff = expectation(description: "fifth item consumed")
+
+        let task = Task { @MainActor in
+            await SequentialPhotoBatchProcessor.process(
+                Array(0..<100),
+                load: { value in
+                    loaded.append(value)
+                    return value
+                },
+                consume: { value in
+                    consumed.append(value)
+                    if value == 4 {
+                        reachedCutoff.fulfill()
+                        while !Task.isCancelled { await Task.yield() }
+                    }
+                },
+                didFail: {}
+            )
+        }
+
+        // The production cancellation source is VaultSession.lock(). This
+        // focused test cancels at a deterministic item boundary.
+        await fulfillment(of: [reachedCutoff])
+        task.cancel()
+        await task.value
+
+        XCTAssertEqual(loaded, Array(0...4))
+        XCTAssertEqual(consumed, Array(0...4))
+    }
+
     private func temporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "KeyHollowPhaseTwoTests-\(UUID().uuidString)",

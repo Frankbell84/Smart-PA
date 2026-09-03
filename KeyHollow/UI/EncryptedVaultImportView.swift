@@ -10,7 +10,7 @@ struct EncryptedVaultImportView: View {
 
     @State private var selectedArchive: SelectedPortableArchive?
     @State private var recoveryCode = ""
-    @State private var validatedRestore: ValidatedPortableVaultRestore?
+    @State private var validatedPhotoCount: Int?
     @State private var tier: PasscodeTier = .enhanced
     @State private var customLength = 10
     @State private var newPasscode = ""
@@ -37,7 +37,7 @@ struct EncryptedVaultImportView: View {
                     Button(selectedArchive == nil ? "Choose .khvault File" : "Choose a Different File") {
                         beginFileSelection()
                     }
-                    .disabled(isWorking || validatedRestore != nil)
+                    .disabled(isWorking || validatedPhotoCount != nil)
 
                     if let selectedArchive {
                         LabeledContent("Selected", value: selectedArchive.displayName)
@@ -59,11 +59,11 @@ struct EncryptedVaultImportView: View {
                         .onChange(of: recoveryCode) { _, value in
                             recoveryCode = Self.sanitizeRecoveryCode(value)
                         }
-                        .disabled(validatedRestore != nil)
+                        .disabled(validatedPhotoCount != nil)
 
-                    if let validatedRestore {
+                    if let validatedPhotoCount {
                         Label(
-                            "Authenticated and verified: \(validatedRestore.manifest.photos.count) photos",
+                            "Authenticated and verified: \(validatedPhotoCount) photos",
                             systemImage: "checkmark.shield.fill"
                         )
                         .foregroundStyle(.green)
@@ -76,7 +76,7 @@ struct EncryptedVaultImportView: View {
                     }
                 }
 
-                if validatedRestore != nil {
+                if validatedPhotoCount != nil {
                     Section("3. Create a new local LowKey") {
                         Picker("Security level", selection: $tier) {
                             ForEach(PasscodeTier.allCases) { tier in
@@ -140,7 +140,7 @@ struct EncryptedVaultImportView: View {
                     Section { Text(message).foregroundStyle(.secondary) }
                 }
 
-                if validatedRestore != nil {
+                if validatedPhotoCount != nil {
                     Section {
                         Button("Install as New Vault") {
                             dismissKeyboard()
@@ -174,7 +174,7 @@ struct EncryptedVaultImportView: View {
                 }
                 .overlay {
                     if isWorking {
-                        ProgressView(validatedRestore == nil ? "Authenticating every file…" : "Installing verified vault…")
+                        ProgressView(validatedPhotoCount == nil ? "Authenticating every file…" : "Re-authenticating and installing…")
                             .padding()
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                     }
@@ -191,6 +191,13 @@ struct EncryptedVaultImportView: View {
             guard !showingFilePicker else { return }
             clearSensitiveState()
             discardUninstalledMaterial()
+        }
+        .onChange(of: session.securityEpoch) { _, _ in
+            guard !systemInteractionOpen else { return }
+            clearSensitiveState()
+            discardUninstalledMaterial()
+            isWorking = false
+            message = "Import canceled because KeyHollow locked."
         }
     }
 
@@ -296,16 +303,18 @@ struct EncryptedVaultImportView: View {
         isWorking = true
         message = nil
 
-        Task {
+        session.startProtectedTask {
             do {
                 let restore = try await EncryptedVaultTransferCoordinator().stageAndValidateRestore(
                     archiveURL: selectedArchive.url,
                     credential: credential
                 )
-                Self.discardTemporaryArchive(selectedArchive)
-                self.selectedArchive = nil
-                recoveryCode = ""
-                validatedRestore = restore
+                let photoCount = restore.manifest.photos.count
+                restore.discard()
+                guard !Task.isCancelled else { return }
+                validatedPhotoCount = photoCount
+                isWorking = false
+            } catch is CancellationError {
                 isWorking = false
             } catch {
                 isWorking = false
@@ -316,30 +325,51 @@ struct EncryptedVaultImportView: View {
     }
 
     private func installRestore() {
-        guard canInstall, let validatedRestore, !isWorking else { return }
+        guard canInstall,
+              validatedPhotoCount != nil,
+              let selectedArchive,
+              !isWorking else { return }
         dismissKeyboard()
         let passcode = newPasscode
+        let credential = PortableArchiveCredential.recoveryCode(recoveryCode)
         newPasscode = ""
         passcodeConfirmation = ""
         isWorking = true
         message = nil
 
-        Task {
+        session.startProtectedTask {
+            var restore: ValidatedPortableVaultRestore?
             do {
+                // Re-authenticate immediately before installation so the
+                // decrypted vault key is never retained while the user enters
+                // a new LowKey.
+                let authenticated = try await EncryptedVaultTransferCoordinator().stageAndValidateRestore(
+                    archiveURL: selectedArchive.url,
+                    credential: credential
+                )
+                restore = authenticated
+                try Task.checkCancellation()
                 let unlocked = try await service.installValidatedPortableVault(
-                    validatedRestore,
+                    authenticated,
                     newPasscode: passcode
                 )
-                self.validatedRestore = nil
+                restore = nil
+                Self.discardTemporaryArchive(selectedArchive)
+                self.selectedArchive = nil
+                validatedPhotoCount = nil
+                recoveryCode = ""
                 isWorking = false
                 session.unlock(vaultID: unlocked.vaultID, key: unlocked.vaultKey)
                 dismiss()
+            } catch is CancellationError {
+                restore?.discard()
+                isWorking = false
             } catch VaultUnlockError.passcodeAlreadyUsed {
+                restore?.discard()
                 isWorking = false
                 message = "That LowKey is already in use. Choose a different unpredictable LowKey."
             } catch {
-                validatedRestore.discard()
-                self.validatedRestore = nil
+                restore?.discard()
                 isWorking = false
                 message = "The vault could not be installed safely. The incomplete install was rolled back; select the export and try again."
             }
@@ -354,8 +384,7 @@ struct EncryptedVaultImportView: View {
     }
 
     private func discardUninstalledMaterial() {
-        validatedRestore?.discard()
-        validatedRestore = nil
+        validatedPhotoCount = nil
         if let selectedArchive {
             Self.discardTemporaryArchive(selectedArchive)
         }
