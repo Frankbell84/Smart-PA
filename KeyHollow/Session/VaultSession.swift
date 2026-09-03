@@ -66,12 +66,14 @@ final class VaultSession: ObservableObject {
     /// A compatibility probe for lifecycle tests. The closure cannot return or
     /// retain the key; production storage uses `activeVaultContext()` instead.
     @discardableResult
-    func withActiveKey(_ operation: (SymmetricKey) throws -> Void) rethrows -> Bool {
+    func withActiveKey(_ operation: (SymmetricKey) -> Void) -> Bool {
         guard isUnlocked, let activeCapability else { return false }
         do {
             try activeCapability.withKey(operation)
             return true
         } catch VaultAccessError.revoked {
+            return false
+        } catch {
             return false
         }
     }
