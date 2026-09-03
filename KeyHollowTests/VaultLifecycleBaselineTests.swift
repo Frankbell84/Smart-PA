@@ -39,7 +39,7 @@ final class VaultLifecycleBaselineTests: XCTestCase {
         session.lock()
         XCTAssertFalse(session.isUnlocked)
         XCTAssertNil(session.activeVaultID)
-        XCTAssertNil(session.withActiveKey { $0 })
+        XCTAssertFalse(session.withActiveKey { _ in })
 
         // A new service instance models terminating and relaunching the app.
         service = try fixture.makeService()

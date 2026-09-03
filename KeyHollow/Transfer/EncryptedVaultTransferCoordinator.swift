@@ -178,6 +178,37 @@ struct EncryptedVaultTransferCoordinator {
         workingRootOverride: URL? = nil,
         keyDeriver: any PortableArchiveKeyDeriving = PortableArchiveArgon2idKeyDeriver()
     ) async throws -> EncryptedVaultExportReceipt {
+        try await exportVault(
+            vaultID: unlockedVault.vaultID,
+            createdAt: unlockedVault.createdAt,
+            access: VaultAccessCapability(
+                vaultID: unlockedVault.vaultID,
+                vaultKey: unlockedVault.vaultKey
+            ),
+            credential: credential,
+            destinationURL: destinationURL,
+            sourceRootOverride: sourceRootOverride,
+            workingRootOverride: workingRootOverride,
+            keyDeriver: keyDeriver
+        )
+    }
+
+    /// Production export uses the active session capability so backgrounding
+    /// or an explicit lock revokes its access and cancels the registered task.
+    func exportVault(
+        vaultID: UUID,
+        createdAt: Date,
+        access: VaultAccessCapability,
+        credential: PortableArchiveCredential,
+        destinationURL: URL,
+        sourceRootOverride: URL? = nil,
+        workingRootOverride: URL? = nil,
+        keyDeriver: any PortableArchiveKeyDeriving = PortableArchiveArgon2idKeyDeriver()
+    ) async throws -> EncryptedVaultExportReceipt {
+        try Task.checkCancellation()
+        guard access.vaultID == vaultID else {
+            throw VaultAccessError.revoked
+        }
         guard destinationURL.pathExtension.lowercased() == "khvault" else {
             throw EncryptedVaultTransferError.invalidDestination
         }
@@ -186,20 +217,25 @@ struct EncryptedVaultTransferCoordinator {
         }
 
         let sourceRoot = try Self.photoRoot(
-            vaultID: unlockedVault.vaultID,
+            vaultID: vaultID,
             override: sourceRootOverride
         )
         guard !Self.isDescendant(destinationURL, of: sourceRoot) else {
             throw EncryptedVaultTransferError.invalidDestination
         }
 
-        let vaultKeyData = unlockedVault.vaultKey.withUnsafeBytes { Data($0) }
+        var vaultKeyData = try access.withKey { vaultKey in
+            vaultKey.withUnsafeBytes { Data($0) }
+        }
+        defer {
+            vaultKeyData.resetBytes(in: vaultKeyData.startIndex..<vaultKeyData.endIndex)
+        }
         guard vaultKeyData.count == 32 else {
             throw EncryptedVaultTransferError.invalidSourceVault
         }
         let sourceStore = try VaultPhotoStore(
-            vaultID: unlockedVault.vaultID,
-            vaultKey: unlockedVault.vaultKey,
+            vaultID: vaultID,
+            access: access,
             storageRoot: sourceRoot
         )
         let sourceManifest = try await sourceStore.loadManifest()
@@ -210,9 +246,9 @@ struct EncryptedVaultTransferCoordinator {
 
         let prepared = try EncryptedVaultArchiveHeader.prepare(
             vaultPayload: VaultPayload(
-                vaultID: unlockedVault.vaultID,
+                vaultID: vaultID,
                 vaultKey: vaultKeyData,
-                createdAt: unlockedVault.createdAt
+                createdAt: createdAt
             ),
             credential: credential,
             keyDeriver: keyDeriver
@@ -229,7 +265,10 @@ struct EncryptedVaultTransferCoordinator {
             }
         }
         do {
+            try Task.checkCancellation()
             try PortableArchivePayloadWriter.write(source: source, to: writer)
+            try Task.checkCancellation()
+            _ = try access.withKey { _ in () }
             try writer.finish()
         } catch {
             writer.cancel()
@@ -244,8 +283,11 @@ struct EncryptedVaultTransferCoordinator {
         )
         defer { verified.discard() }
 
+        try Task.checkCancellation()
+        _ = try access.withKey { _ in () }
+
         guard verified.archiveID == prepared.secrets.archiveID,
-              verified.sourceVaultID == unlockedVault.vaultID,
+              verified.sourceVaultID == vaultID,
               verified.destinationVaultPayload.vaultKey == vaultKeyData,
               verified.catalog == source.catalog,
               verified.manifest.version == sourceManifest.version,
