@@ -329,6 +329,7 @@ struct EncryptedVaultTransferCoordinator {
             // Authenticate every inner AES-GCM blob. Decrypted media exists only
             // transiently in memory and is never written during this validation.
             for photo in manifest.photos {
+                try Task.checkCancellation()
                 _ = try await stagedStore.loadPhoto(photo)
                 _ = try await stagedStore.loadThumbnail(photo)
             }

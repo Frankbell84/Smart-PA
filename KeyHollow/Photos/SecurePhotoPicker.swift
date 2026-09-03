@@ -21,7 +21,7 @@ enum SequentialPhotoBatchProcessor {
     static let maximumConcurrentItems = 1
 
     @MainActor
-    static func process<Element, Value>(
+    static func process<Element: Sendable, Value: Sendable>(
         _ elements: [Element],
         load: (Element) async throws -> Value,
         consume: (Value) async -> Void,

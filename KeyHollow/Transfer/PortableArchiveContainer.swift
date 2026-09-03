@@ -328,6 +328,7 @@ final class PortableArchiveContainerReader {
             var foundFinalChunk = false
 
             while !foundFinalChunk {
+                try Task.checkCancellation()
                 let prefix: Data
                 do {
                     prefix = try Self.readExactly(
@@ -360,6 +361,7 @@ final class PortableArchiveContainerReader {
                     contentKey: contentKey
                 )
                 try receive(plaintext)
+                try Task.checkCancellation()
                 foundFinalChunk = chunk.isFinal
 
                 let (incremented, overflow) = expectedSequence.addingReportingOverflow(1)
@@ -388,6 +390,7 @@ final class PortableArchiveContainerReader {
         result.reserveCapacity(count)
 
         while result.count < count {
+            try Task.checkCancellation()
             let requested = count - result.count
             guard let part = try handle.read(upToCount: requested), !part.isEmpty else {
                 throw PortableArchiveContainerError.truncated

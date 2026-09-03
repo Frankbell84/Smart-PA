@@ -404,6 +404,7 @@ final class PortableArchivePayloadExtractor {
         }
 
         while !isComplete, !buffer.isEmpty {
+            try Task.checkCancellation()
             guard let catalog,
                   currentEntryIndex < catalog.entries.count,
                   let handle = currentEntryHandle else {
