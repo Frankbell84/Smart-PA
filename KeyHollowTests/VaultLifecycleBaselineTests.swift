@@ -59,9 +59,10 @@ final class VaultLifecycleBaselineTests: XCTestCase {
         )
         XCTAssertEqual(changed.vaultID, created.vaultID)
         XCTAssertEqual(changed.vaultKey.bytes, created.vaultKey.bytes)
-        await assertInvalidCredentials {
-            try await service.unlock(passcode: fixture.originalPasscode)
-        }
+        do {
+            _ = try await service.unlock(passcode: fixture.originalPasscode)
+            XCTFail("The previous LowKey remained valid after a successful change")
+        } catch VaultUnlockError.invalidCredentials {}
 
         let reopenedWithNewPasscode = try await service.unlock(
             passcode: fixture.replacementPasscode
@@ -76,9 +77,10 @@ final class VaultLifecycleBaselineTests: XCTestCase {
         hasVaults = try await service.hasAnyVaults()
         XCTAssertFalse(hasVaults)
         XCTAssertFalse(FileManager.default.fileExists(atPath: vaultPhotoRoot.path))
-        await assertInvalidCredentials {
-            try await service.unlock(passcode: fixture.replacementPasscode)
-        }
+        do {
+            _ = try await service.unlock(passcode: fixture.replacementPasscode)
+            XCTFail("A deleted vault remained accessible")
+        } catch VaultUnlockError.invalidCredentials {}
     }
 
     func testRejectedCreationAndDuplicatePasscodeDoNotChangePersistedVaults() async throws {
@@ -123,12 +125,13 @@ final class VaultLifecycleBaselineTests: XCTestCase {
             XCTFail("A passcode change replaced another vault credential")
         } catch VaultUnlockError.passcodeAlreadyUsed {}
 
-        await assertInvalidCredentials {
+        do {
             try await service.deleteVault(
                 currentPasscode: fixture.originalPasscode,
                 expectedVaultID: second.vaultID
             )
-        }
+            XCTFail("A mismatched vault identity was deleted")
+        } catch VaultUnlockError.invalidCredentials {}
 
         let reopenedFirst = try await service.unlock(passcode: fixture.originalPasscode)
         let reopenedSecond = try await service.unlock(passcode: fixture.secondVaultPasscode)
@@ -137,20 +140,6 @@ final class VaultLifecycleBaselineTests: XCTestCase {
         XCTAssertEqual(fixture.credentialFiles().filter { $0.pathExtension == "khv" }.count, 2)
     }
 
-    private func assertInvalidCredentials(
-        _ operation: () async throws -> Void,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) async {
-        do {
-            try await operation()
-            XCTFail("Invalid credentials were accepted", file: file, line: line)
-        } catch VaultUnlockError.invalidCredentials {
-            return
-        } catch {
-            XCTFail("Unexpected error: \(error)", file: file, line: line)
-        }
-    }
 }
 
 private final class LifecycleFixture: @unchecked Sendable {
