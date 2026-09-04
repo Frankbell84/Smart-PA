@@ -1,6 +1,7 @@
 import Foundation
 import CryptoKit
 import KeyHollowPhotoCore
+import KeyHollowTransferCore
 import KeyHollowVaultCore
 
 enum VaultUnlockError: Error, Equatable {
@@ -96,10 +97,11 @@ actor VaultUnlockService {
             journalAuthenticationKey: try portableRestoreJournalKey()
         )
         do {
-            return try await installer.install(
+            let payload = try await installer.install(
                 restore,
                 localUnlockKey: unlockKey
             )
+            return unlockedVault(from: payload)
         } catch PortableVaultRestoreInstallationError.credentialAlreadyUsed {
             throw VaultUnlockError.passcodeAlreadyUsed
         } catch {

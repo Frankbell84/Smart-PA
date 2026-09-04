@@ -49,14 +49,20 @@ analytics, advertising, authentication, or purchase SDKs.
 - Extract encrypted photo models, key scheduling, manifests, and blob storage.
 - Keep Photos and PhotosUI imports outside this module.
 - Preserve encrypted on-device formats byte-for-byte.
-- Status: implemented on the isolated branch and awaiting Mac validation.
+- Status: validated by the Mac simulator build, complete regression suite,
+  50-photo encrypted-transfer stress test, launch tests, and Swift security
+  analysis.
 
 ### Milestone 4: Portable vault transfer
 
 - Extract `.khvault` container, payload, security, streaming, journal, and
   rollback behavior.
 - Preserve archive compatibility byte-for-byte.
-- Depend only on vault-domain interfaces and the cryptographic core.
+- Depend only on encrypted-photo and vault-domain interfaces plus the
+  cryptographic core.
+- Replace direct app-session and `UnlockedVault` dependencies with a narrow,
+  revocable export-access interface and a neutral vault payload result.
+- Status: implemented on the isolated branch and awaiting Mac validation.
 
 ### Milestone 5: Platform adapters and app composition
 

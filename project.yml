@@ -56,6 +56,27 @@ targets:
         DEFINES_MODULE: YES
         SKIP_INSTALL: YES
 
+  KeyHollowTransferCore:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/Transfer/PortableArchiveContainer.swift
+      - path: KeyHollow/Transfer/PortableArchiveSecurity.swift
+      - path: KeyHollow/Transfer/PortableArchivePayload.swift
+      - path: KeyHollow/Transfer/PortableVaultRestoreTransactionJournal.swift
+      - path: KeyHollow/Transfer/EncryptedVaultTransferCoordinator.swift
+    dependencies:
+      - target: KeyHollowCryptoCore
+      - target: KeyHollowPhotoCore
+      - target: KeyHollowVaultCore
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowTransferCore
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
   KeyHollow:
     type: application
     platform: iOS
@@ -71,10 +92,16 @@ targets:
           - Photos/VaultPhotoModels.swift
           - Photos/VaultPhotoStore.swift
           - Storage/VaultStore.swift
+          - Transfer/PortableArchiveContainer.swift
+          - Transfer/PortableArchiveSecurity.swift
+          - Transfer/PortableArchivePayload.swift
+          - Transfer/PortableVaultRestoreTransactionJournal.swift
+          - Transfer/EncryptedVaultTransferCoordinator.swift
           - ThirdParty/Argon2id
     dependencies:
       - target: KeyHollowCryptoCore
       - target: KeyHollowPhotoCore
+      - target: KeyHollowTransferCore
       - target: KeyHollowVaultCore
     settings:
       base:
@@ -122,6 +149,8 @@ targets:
         link: false
       - target: KeyHollowPhotoCore
         link: false
+      - target: KeyHollowTransferCore
+        link: false
       - target: KeyHollowVaultCore
         link: false
     settings:
@@ -148,6 +177,7 @@ schemes:
       targets:
         KeyHollowCryptoCore: all
         KeyHollowPhotoCore: all
+        KeyHollowTransferCore: all
         KeyHollowVaultCore: all
         KeyHollow: all
         KeyHollowTests: [test]

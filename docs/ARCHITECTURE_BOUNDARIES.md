@@ -43,6 +43,13 @@ and blob persistence. It receives cryptographic operations through a narrow
 interface, allowing the app session to retain revocation ownership without the
 storage module importing session, UI, Photos, or transfer code.
 
+`KeyHollowTransferCore` owns the `.khvault` security header, authenticated
+streaming container, encrypted payload catalog, restore staging, transaction
+journal, rollback, and transfer coordinator. It receives only a narrow,
+revocable export-access interface from the app session and returns a neutral
+vault payload after installation. It does not import the app session,
+`UnlockedVault`, UI, Photos, networking, or remote services.
+
 ## Change policy
 
 1. New functionality enters through a feature branch and draft review.

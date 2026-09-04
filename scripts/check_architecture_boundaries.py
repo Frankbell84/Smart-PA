@@ -57,6 +57,13 @@ PHOTO_MODULE_FILES = {
     "KeyHollow/Photos/VaultPhotoModels.swift",
     "KeyHollow/Photos/VaultPhotoStore.swift",
 }
+TRANSFER_MODULE_FILES = {
+    "KeyHollow/Transfer/PortableArchiveContainer.swift",
+    "KeyHollow/Transfer/PortableArchiveSecurity.swift",
+    "KeyHollow/Transfer/PortableArchivePayload.swift",
+    "KeyHollow/Transfer/PortableVaultRestoreTransactionJournal.swift",
+    "KeyHollow/Transfer/EncryptedVaultTransferCoordinator.swift",
+}
 
 
 def relative(file: Path) -> str:
@@ -126,6 +133,26 @@ def main() -> int:
                 f"project.yml: compiled photo-storage boundary is missing {marker!r}"
             )
 
+    required_transfer_module_markers = (
+        "KeyHollowTransferCore:",
+        "- path: KeyHollow/Transfer/PortableArchiveContainer.swift",
+        "- path: KeyHollow/Transfer/PortableArchiveSecurity.swift",
+        "- path: KeyHollow/Transfer/PortableArchivePayload.swift",
+        "- path: KeyHollow/Transfer/PortableVaultRestoreTransactionJournal.swift",
+        "- path: KeyHollow/Transfer/EncryptedVaultTransferCoordinator.swift",
+        "- target: KeyHollowTransferCore",
+        "- Transfer/PortableArchiveContainer.swift",
+        "- Transfer/PortableArchiveSecurity.swift",
+        "- Transfer/PortableArchivePayload.swift",
+        "- Transfer/PortableVaultRestoreTransactionJournal.swift",
+        "- Transfer/EncryptedVaultTransferCoordinator.swift",
+    )
+    for marker in required_transfer_module_markers:
+        if marker not in project:
+            violations.append(
+                f"project.yml: compiled transfer boundary is missing {marker!r}"
+            )
+
     for file in swift_files:
         path = relative(file)
         source = file.read_text(encoding="utf-8")
@@ -161,6 +188,21 @@ def main() -> int:
             if unexpected:
                 violations.append(
                     f"{path}: photo-storage module imports outside its allowlist: "
+                    f"{', '.join(sorted(unexpected))}"
+                )
+
+        if path in TRANSFER_MODULE_FILES:
+            unexpected = imported - {
+                "CryptoKit",
+                "Foundation",
+                "KeyHollowCryptoCore",
+                "KeyHollowPhotoCore",
+                "KeyHollowVaultCore",
+                "Security",
+            }
+            if unexpected:
+                violations.append(
+                    f"{path}: transfer module imports outside its allowlist: "
                     f"{', '.join(sorted(unexpected))}"
                 )
 
@@ -202,8 +244,8 @@ def main() -> int:
 
     print(
         "Architecture boundaries passed: KeyHollowCryptoCore, "
-        "KeyHollowVaultCore, and KeyHollowPhotoCore remain separately "
-        "compiled, and core storage, cryptography, session, and transfer code "
+        "KeyHollowVaultCore, KeyHollowPhotoCore, and KeyHollowTransferCore "
+        "remain separately compiled, and core storage, cryptography, session, and transfer code "
         "remain free of UI, Photos, network, and remote SDK concerns."
     )
     return 0

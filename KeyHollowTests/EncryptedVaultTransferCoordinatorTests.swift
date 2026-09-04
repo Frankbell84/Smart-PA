@@ -3,6 +3,7 @@ import Foundation
 import XCTest
 @testable import KeyHollow
 @testable import KeyHollowPhotoCore
+@testable import KeyHollowTransferCore
 @testable import KeyHollowVaultCore
 
 final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
@@ -37,11 +38,9 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         )
         let coordinator = EncryptedVaultTransferCoordinator()
         let receipt = try await coordinator.exportVault(
-            unlockedVault: UnlockedVault(
-                vaultID: vaultID,
-                vaultKey: vaultKey,
-                createdAt: Date(timeIntervalSince1970: 1_700_000_000)
-            ),
+            vaultID: vaultID,
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            access: VaultAccessCapability(vaultID: vaultID, vaultKey: vaultKey),
             credential: credential,
             destinationURL: roots.archive,
             sourceRootOverride: roots.source,
@@ -132,11 +131,9 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         let coordinator = EncryptedVaultTransferCoordinator()
         await XCTAssertThrowsErrorAsync {
             _ = try await coordinator.exportVault(
-                unlockedVault: UnlockedVault(
-                    vaultID: vaultID,
-                    vaultKey: key,
-                    createdAt: Date(timeIntervalSince1970: 1_700_000_000)
-                ),
+                vaultID: vaultID,
+                createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+                access: VaultAccessCapability(vaultID: vaultID, vaultKey: key),
                 credential: .passphrase("correct horse battery staple"),
                 destinationURL: roots.archive,
                 sourceRootOverride: roots.source,
@@ -168,11 +165,9 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         let coordinator = EncryptedVaultTransferCoordinator()
         await XCTAssertThrowsErrorAsync {
             _ = try await coordinator.exportVault(
-                unlockedVault: UnlockedVault(
-                    vaultID: vaultID,
-                    vaultKey: key,
-                    createdAt: Date()
-                ),
+                vaultID: vaultID,
+                createdAt: Date(),
+                access: VaultAccessCapability(vaultID: vaultID, vaultKey: key),
                 credential: .passphrase("correct horse battery staple"),
                 destinationURL: unsafeDestination,
                 sourceRootOverride: roots.source,
@@ -220,7 +215,7 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: destinationURL.path))
         let installedStore = try VaultPhotoStore(
             vaultID: installed.vaultID,
-            vaultKey: installed.vaultKey,
+            vaultKey: SymmetricKey(data: installed.vaultKey),
             storageRoot: destinationURL
         )
         let manifest = try await installedStore.loadManifest()
@@ -624,11 +619,9 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
             thumbnailData: Data("thumbnail".utf8)
         )
         return try await EncryptedVaultTransferCoordinator().exportVault(
-            unlockedVault: UnlockedVault(
-                vaultID: vaultID,
-                vaultKey: key,
-                createdAt: Date(timeIntervalSince1970: 1_700_000_000)
-            ),
+            vaultID: vaultID,
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            access: VaultAccessCapability(vaultID: vaultID, vaultKey: key),
             credential: .recoveryCode("0123-4567-89AB-CDEF-GHJK-MNPQ-RSTV-WXYZ"),
             destinationURL: roots.archive,
             sourceRootOverride: roots.source,

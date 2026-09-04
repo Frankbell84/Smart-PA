@@ -11,7 +11,10 @@
 - The owner reported that all tested behavior works.
 - A dedicated rollback checkpoint branch preserves the exact validated merge.
 - A separate modular-architecture branch has been created from that checkpoint.
-- The first extraction, `KeyHollowCryptoCore`, is implemented locally and awaiting the Mac build gate.
+- Three independently compiled boundaries are fully validated:
+  `KeyHollowCryptoCore`, `KeyHollowVaultCore`, and `KeyHollowPhotoCore`.
+- The fourth boundary, `KeyHollowTransferCore`, is implemented on the isolated
+  branch and awaiting its Mac build, regression, and Swift security gates.
 
 ## What Phase Three accomplished
 
@@ -51,7 +54,12 @@
 
 ## Current architectural reality
 
-The important responsibilities are logically separated and protected by source-boundary checks. The first independently compiled boundary, `KeyHollowCryptoCore`, is now being extracted on the modular branch. It contains only the authenticated-encryption primitive and the vendored Argon2id implementation. Storage, session, transfer, Photos, and UI remain in the app target until later incremental moves.
+The important responsibilities are logically separated and protected by
+source-boundary checks. Cryptography, vault-domain persistence, and encrypted
+photo storage are now independently compiled and fully validated. Portable
+vault transfer is independently compiled on the isolated branch and is waiting
+for its remote validation gate. The app session retains revocation and task
+lifetime; UI and Apple Photos integration remain outside the core modules.
 
 ## Next goal
 
@@ -59,9 +67,11 @@ Complete and validate modularization without mixing the structural refactor with
 
 ### Approved order when work resumes
 
-1. Run the Mac build and test gate for `KeyHollowCryptoCore`.
-2. Fix only extraction-related failures; do not change behavior.
-3. Move one additional responsibility at a time into independently compiled modules.
+1. Run the Mac build, full regression, architecture, and Swift security gates
+   for `KeyHollowTransferCore`.
+2. Fix only extraction-related failures; do not change behavior or archive
+   compatibility.
+3. Isolate the Apple Photos adapter and app composition one boundary at a time.
 4. Run the full automated and architecture gates after every move.
 5. Upload the completed modular candidate to TestFlight.
 6. Repeat the physical-iPhone validation before merging the modular refactor.
