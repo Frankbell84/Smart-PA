@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "KeyHollow"
+PROJECT_FILE = ROOT / "project.yml"
 
 PRESENTATION_FILES = {
     "KeyHollow/App/KeyHollowApp.swift",
@@ -60,6 +61,21 @@ def main() -> int:
     violations: list[str] = []
     swift_files = sorted(SOURCE_ROOT.rglob("*.swift"))
 
+    project = PROJECT_FILE.read_text(encoding="utf-8")
+    required_crypto_module_markers = (
+        "KeyHollowCryptoCore:",
+        "- path: KeyHollow/Security/CryptoBox.swift",
+        "- path: KeyHollow/ThirdParty/Argon2id",
+        "- target: KeyHollowCryptoCore",
+        "- Security/CryptoBox.swift",
+        "- ThirdParty/Argon2id",
+    )
+    for marker in required_crypto_module_markers:
+        if marker not in project:
+            violations.append(
+                f"project.yml: compiled crypto boundary is missing {marker!r}"
+            )
+
     for file in swift_files:
         path = relative(file)
         source = file.read_text(encoding="utf-8")
@@ -102,8 +118,9 @@ def main() -> int:
         return 1
 
     print(
-        "Architecture boundaries passed: core storage, cryptography, session, "
-        "and transfer code remain free of UI, Photos, network, and remote SDK concerns."
+        "Architecture boundaries passed: KeyHollowCryptoCore remains separately "
+        "compiled, and core storage, cryptography, session, and transfer code remain "
+        "free of UI, Photos, network, and remote SDK concerns."
     )
     return 0
 

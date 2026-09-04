@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import KeyHollowCryptoCore
 
 enum KeyDerivationError: Error {
     case invalidPasscode

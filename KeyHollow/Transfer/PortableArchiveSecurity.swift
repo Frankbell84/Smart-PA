@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import KeyHollowCryptoCore
 import Security
 
 enum PortableArchiveError: Error, Equatable {

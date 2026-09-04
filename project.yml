@@ -6,11 +6,32 @@ options:
   createIntermediateGroups: true
 
 targets:
+  KeyHollowCryptoCore:
+    type: framework
+    platform: iOS
+    sources:
+      - path: KeyHollow/Security/CryptoBox.swift
+      - path: KeyHollow/ThirdParty/Argon2id
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.crypto-core
+        PRODUCT_NAME: KeyHollowCryptoCore
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        MACH_O_TYPE: staticlib
+        SKIP_INSTALL: YES
+
   KeyHollow:
     type: application
     platform: iOS
     sources:
       - path: KeyHollow
+        excludes:
+          - Security/CryptoBox.swift
+          - ThirdParty/Argon2id
+    dependencies:
+      - target: KeyHollowCryptoCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app
@@ -53,6 +74,7 @@ targets:
       - path: KeyHollowTests
     dependencies:
       - target: KeyHollow
+      - target: KeyHollowCryptoCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.tests
@@ -75,6 +97,7 @@ schemes:
   KeyHollow:
     build:
       targets:
+        KeyHollowCryptoCore: all
         KeyHollow: all
         KeyHollowTests: [test]
     test:

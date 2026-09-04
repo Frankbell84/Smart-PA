@@ -3,6 +3,7 @@ import Foundation
 import SwiftUI
 import XCTest
 @testable import KeyHollow
+@testable import KeyHollowCryptoCore
 
 final class SecurityCryptoTests: XCTestCase {
     func testPasscodesRequireAtLeastEightDigitsEverywhere() {

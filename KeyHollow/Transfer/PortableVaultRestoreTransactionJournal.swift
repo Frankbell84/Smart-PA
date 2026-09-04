@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import KeyHollowCryptoCore
 
 enum PortableVaultRestoreTransactionError: Error, Equatable {
     case invalidJournal

@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import KeyHollowCryptoCore
 
 enum VaultAccessError: Error, Equatable {
     case revoked

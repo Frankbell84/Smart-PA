@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import KeyHollowCryptoCore
 import Security
 
 struct VaultPayload: Codable, Sendable {

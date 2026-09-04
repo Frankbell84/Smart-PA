@@ -29,10 +29,12 @@ The CI architecture check fails when:
   SDK enters the current local-only application.
 
 These rules make accidental coupling visible at review time. They do not claim
-that folders are separate compiled Swift modules. A later module extraction can
-strengthen compile-time isolation, but it should happen only after the current
-device-validation gate and in its own review so it cannot destabilize the
-tested core.
+that every folder is a separate compiled Swift module. The first compiled
+boundary is now `KeyHollowCryptoCore`, which owns the authenticated-encryption
+primitive and vendored Argon2id implementation. The app can import that module;
+the module cannot import the app, UI, Photos, storage, session, or transfer code.
+Additional module extraction remains incremental and must continue in its own
+review so it cannot destabilize the tested core.
 
 ## Change policy
 
