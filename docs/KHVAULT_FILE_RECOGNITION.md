@@ -2,9 +2,9 @@
 
 ## User outcome
 
-iOS can identify a `.khvault` file as a KeyHollow encrypted vault and offer
-KeyHollow as an app that can open it. Opening the file routes directly to the
-existing encrypted-vault import screen with that file already selected.
+iOS can identify a `.khvault` file as a KeyHollow encrypted vault. Tapping the
+file in Files launches KeyHollow and routes directly to the existing encrypted-
+vault import screen with that file already selected.
 
 ## Security boundary
 
@@ -12,8 +12,10 @@ existing encrypted-vault import screen with that file already selected.
 extension is `.khvault`. It does not parse, decrypt, authenticate, move, or
 install vault data.
 
-The existing import flow remains authoritative. It copies the incoming file
-into protected temporary storage, checks available capacity, authenticates the
+The existing import flow remains authoritative. Open-in-place access is used
+only long enough to copy the incoming file into protected temporary storage;
+KeyHollow never edits or deletes the original. It checks available capacity,
+authenticates the
 complete archive with the recovery code, re-authenticates immediately before
 installation, and rolls back an incomplete install. A recognized filename is
 never treated as proof that the file is a valid KeyHollow archive.

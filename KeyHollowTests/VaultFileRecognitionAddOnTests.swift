@@ -47,6 +47,10 @@ final class VaultFileRecognitionAddOnTests: XCTestCase {
 
         XCTAssertEqual(keyHollowType["CFBundleTypeRole"] as? String, "Viewer")
         XCTAssertEqual(keyHollowType["LSHandlerRank"] as? String, "Owner")
+        XCTAssertEqual(
+            Bundle.main.object(forInfoDictionaryKey: "LSSupportsOpeningDocumentsInPlace") as? Bool,
+            true
+        )
     }
 
     func testDocumentHandlerUsesTheExportedKHVaultType() throws {
@@ -58,9 +62,12 @@ final class VaultFileRecognitionAddOnTests: XCTestCase {
             declaration["UTTypeIdentifier"] as? String ==
                 "com.keyhollow.encrypted-vault"
         })
+        let conformances = try XCTUnwrap(exportedType["UTTypeConformsTo"] as? [String])
         let tags = try XCTUnwrap(exportedType["UTTypeTagSpecification"] as? [String: Any])
         let extensions = try XCTUnwrap(tags["public.filename-extension"] as? [String])
 
+        XCTAssertTrue(conformances.contains("public.content"))
+        XCTAssertTrue(conformances.contains("public.data"))
         XCTAssertEqual(extensions, ["khvault"])
     }
 }
