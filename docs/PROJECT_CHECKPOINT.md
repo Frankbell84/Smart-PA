@@ -13,8 +13,8 @@
 - A separate modular-architecture branch has been created from that checkpoint.
 - Three independently compiled boundaries are fully validated:
   `KeyHollowCryptoCore`, `KeyHollowVaultCore`, and `KeyHollowPhotoCore`.
-- The fourth boundary, `KeyHollowTransferCore`, is implemented on the isolated
-  branch and awaiting its Mac build, regression, and Swift security gates.
+- The fourth boundary, `KeyHollowTransferCore`, is fully validated by its Mac
+  build, regression, stress, launch, and Swift security gates.
 
 ## What Phase Three accomplished
 
@@ -56,9 +56,8 @@
 
 The important responsibilities are logically separated and protected by
 source-boundary checks. Cryptography, vault-domain persistence, and encrypted
-photo storage are now independently compiled and fully validated. Portable
-vault transfer is independently compiled on the isolated branch and is waiting
-for its remote validation gate. The app session retains revocation and task
+photo storage, and portable vault transfer are now independently compiled and
+fully validated. The app session retains revocation and task
 lifetime; UI and Apple Photos integration remain outside the core modules.
 
 ## Next goal
@@ -67,14 +66,14 @@ Complete and validate modularization without mixing the structural refactor with
 
 ### Approved order when work resumes
 
-1. Run the Mac build, full regression, architecture, and Swift security gates
-   for `KeyHollowTransferCore`.
+1. Isolate the Apple Photos adapter and final app composition one boundary at
+   a time.
 2. Fix only extraction-related failures; do not change behavior or archive
    compatibility.
-3. Isolate the Apple Photos adapter and app composition one boundary at a time.
-4. Run the full automated and architecture gates after every move.
-5. Upload the completed modular candidate to TestFlight.
-6. Repeat the physical-iPhone validation before merging the modular refactor.
+3. Run the full automated, architecture, and Swift security gates after every
+   move.
+4. Upload the completed modular candidate to TestFlight.
+5. Repeat the physical-iPhone validation before merging the modular refactor.
 
 ## Proposed module sequence
 

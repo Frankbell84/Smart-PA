@@ -62,7 +62,8 @@ analytics, advertising, authentication, or purchase SDKs.
   cryptographic core.
 - Replace direct app-session and `UnlockedVault` dependencies with a narrow,
   revocable export-access interface and a neutral vault payload result.
-- Status: implemented on the isolated branch and awaiting Mac validation.
+- Status: validated by the Mac simulator build, complete regression suite,
+  stress and launch coverage, and Swift security analysis.
 
 ### Milestone 5: Platform adapters and app composition
 
