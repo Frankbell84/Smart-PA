@@ -2,6 +2,11 @@ name: Upload KeyHollow to TestFlight
 
 on:
   workflow_dispatch:
+    inputs:
+      build_number:
+        description: Build number confirmed against App Store Connect
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -27,12 +32,26 @@ jobs:
 
       - name: Verify production identity
         shell: bash
+        env:
+          REQUESTED_BUILD_NUMBER: ${{ inputs.build_number }}
         run: |
           set -euo pipefail
           grep -Eq '^[[:space:]]*PRODUCT_BUNDLE_IDENTIFIER:[[:space:]]*com\.keyhollow\.app[[:space:]]*$' project.yml
           grep -Eq '^[[:space:]]*CFBundleDisplayName:[[:space:]]*KeyHollow[[:space:]]*$' project.yml
           grep -Eq '^[[:space:]]*MARKETING_VERSION:[[:space:]]*1\.0[[:space:]]*$' project.yml
-          grep -Eq '^[[:space:]]*CURRENT_PROJECT_VERSION:[[:space:]]*13[[:space:]]*$' project.yml
+          PROJECT_BUILD=$(awk -F: '/^[[:space:]]*CURRENT_PROJECT_VERSION:/ { gsub(/[[:space:]]/, "", $2); print $2; exit }' project.yml)
+          if [[ "$PROJECT_BUILD" != "$REQUESTED_BUILD_NUMBER" ]]; then
+            echo "Requested Build $REQUESTED_BUILD_NUMBER does not match project Build $PROJECT_BUILD."
+            exit 1
+          fi
+
+      - name: Verify build number against App Store Connect
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          APP_STORE_CONNECT_APP_ID: 6807022780
+        run: node scripts/verify_testflight_build_number.mjs "${{ inputs.build_number }}"
 
       - name: Install XcodeGen
         run: brew install xcodegen
