@@ -98,7 +98,9 @@ targets:
     dependencies:
       - target: KeyHollow
       - target: KeyHollowCryptoCore
+        link: false
       - target: KeyHollowVaultCore
+        link: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.tests
