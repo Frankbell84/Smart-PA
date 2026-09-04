@@ -8,9 +8,11 @@ permissions:
 
 jobs:
   archive-and-upload:
-    # V2 integration branches use a separate beta bundle identifier and must
-    # never upload over the production App Store record.
-    if: github.ref == 'refs/heads/main'
+    # Production delivery may run from main or the exact isolated candidate
+    # branch after its review gates pass. No other feature branch can upload.
+    if: >-
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/delivery/phase-three-production'
     runs-on: macos-26
     timeout-minutes: 30
     env:
@@ -22,6 +24,15 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
+
+      - name: Verify production identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app$' project.yml
+          grep -q 'CFBundleDisplayName: KeyHollow$' project.yml
+          grep -q 'MARKETING_VERSION: 1.0$' project.yml
+          grep -q 'CURRENT_PROJECT_VERSION: 12$' project.yml
 
       - name: Install XcodeGen
         run: brew install xcodegen

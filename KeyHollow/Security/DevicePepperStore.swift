@@ -6,10 +6,15 @@ enum DevicePepperError: Error {
     case invalidData
 }
 
+protocol DeviceSecretProviding: Sendable {
+    func loadOrCreate() throws -> Data
+    func loadOrCreateInstallationSalt() throws -> Data
+}
+
 /// Stores random device-local secrets used as additional KDF input.
 /// These secrets never unlock a vault by themselves and are not protected by
 /// Face ID/Touch ID. `ThisDeviceOnly` prevents migration to another device.
-final class DevicePepperStore {
+final class DevicePepperStore: DeviceSecretProviding, @unchecked Sendable {
     private let service = "com.keyhollow.security"
     private let pepperAccount = "device-pepper-v1"
     private let installationSaltAccount = "installation-salt-v1"

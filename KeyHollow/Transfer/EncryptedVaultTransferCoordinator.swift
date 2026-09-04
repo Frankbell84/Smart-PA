@@ -178,6 +178,37 @@ struct EncryptedVaultTransferCoordinator {
         workingRootOverride: URL? = nil,
         keyDeriver: any PortableArchiveKeyDeriving = PortableArchiveArgon2idKeyDeriver()
     ) async throws -> EncryptedVaultExportReceipt {
+        try await exportVault(
+            vaultID: unlockedVault.vaultID,
+            createdAt: unlockedVault.createdAt,
+            access: VaultAccessCapability(
+                vaultID: unlockedVault.vaultID,
+                vaultKey: unlockedVault.vaultKey
+            ),
+            credential: credential,
+            destinationURL: destinationURL,
+            sourceRootOverride: sourceRootOverride,
+            workingRootOverride: workingRootOverride,
+            keyDeriver: keyDeriver
+        )
+    }
+
+    /// Production export uses the active session capability so backgrounding
+    /// or an explicit lock revokes its access and cancels the registered task.
+    func exportVault(
+        vaultID: UUID,
+        createdAt: Date,
+        access: VaultAccessCapability,
+        credential: PortableArchiveCredential,
+        destinationURL: URL,
+        sourceRootOverride: URL? = nil,
+        workingRootOverride: URL? = nil,
+        keyDeriver: any PortableArchiveKeyDeriving = PortableArchiveArgon2idKeyDeriver()
+    ) async throws -> EncryptedVaultExportReceipt {
+        try Task.checkCancellation()
+        guard access.vaultID == vaultID else {
+            throw VaultAccessError.revoked
+        }
         guard destinationURL.pathExtension.lowercased() == "khvault" else {
             throw EncryptedVaultTransferError.invalidDestination
         }
@@ -186,20 +217,16 @@ struct EncryptedVaultTransferCoordinator {
         }
 
         let sourceRoot = try Self.photoRoot(
-            vaultID: unlockedVault.vaultID,
+            vaultID: vaultID,
             override: sourceRootOverride
         )
         guard !Self.isDescendant(destinationURL, of: sourceRoot) else {
             throw EncryptedVaultTransferError.invalidDestination
         }
 
-        let vaultKeyData = unlockedVault.vaultKey.withUnsafeBytes { Data($0) }
-        guard vaultKeyData.count == 32 else {
-            throw EncryptedVaultTransferError.invalidSourceVault
-        }
         let sourceStore = try VaultPhotoStore(
-            vaultID: unlockedVault.vaultID,
-            vaultKey: unlockedVault.vaultKey,
+            vaultID: vaultID,
+            access: access,
             storageRoot: sourceRoot
         )
         let sourceManifest = try await sourceStore.loadManifest()
@@ -208,12 +235,8 @@ struct EncryptedVaultTransferCoordinator {
             manifest: sourceManifest
         )
 
-        let prepared = try EncryptedVaultArchiveHeader.prepare(
-            vaultPayload: VaultPayload(
-                vaultID: unlockedVault.vaultID,
-                vaultKey: vaultKeyData,
-                createdAt: unlockedVault.createdAt
-            ),
+        let prepared = try access.preparePortableArchive(
+            createdAt: createdAt,
             credential: credential,
             keyDeriver: keyDeriver
         )
@@ -229,7 +252,10 @@ struct EncryptedVaultTransferCoordinator {
             }
         }
         do {
+            try Task.checkCancellation()
             try PortableArchivePayloadWriter.write(source: source, to: writer)
+            try Task.checkCancellation()
+            try access.checkAccess()
             try writer.finish()
         } catch {
             writer.cancel()
@@ -244,9 +270,12 @@ struct EncryptedVaultTransferCoordinator {
         )
         defer { verified.discard() }
 
+        try Task.checkCancellation()
+        try access.checkAccess()
+
         guard verified.archiveID == prepared.secrets.archiveID,
-              verified.sourceVaultID == unlockedVault.vaultID,
-              verified.destinationVaultPayload.vaultKey == vaultKeyData,
+              verified.sourceVaultID == vaultID,
+              verified.destinationVaultPayload.vaultKey == prepared.secrets.vaultKey,
               verified.catalog == source.catalog,
               verified.manifest.version == sourceManifest.version,
               verified.manifest.photos == sourceManifest.photos else {
@@ -300,6 +329,7 @@ struct EncryptedVaultTransferCoordinator {
             // Authenticate every inner AES-GCM blob. Decrypted media exists only
             // transiently in memory and is never written during this validation.
             for photo in manifest.photos {
+                try Task.checkCancellation()
                 _ = try await stagedStore.loadPhoto(photo)
                 _ = try await stagedStore.loadThumbnail(photo)
             }

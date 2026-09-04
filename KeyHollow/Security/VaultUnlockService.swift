@@ -14,19 +14,30 @@ struct UnlockedVault {
     let createdAt: Date
 }
 
+struct ReauthenticatedVault {
+    let vaultID: UUID
+    let createdAt: Date
+}
+
 actor VaultUnlockService {
-    private let secrets = DevicePepperStore()
+    private let secrets: DeviceSecretProviding
     private let kdf: PasswordKeyDeriving
     private let limiter: UnlockAttemptLimiter
     private let store: VaultStore
+    private let photoStorageRootOverride: URL?
 
     init(
         kdf: PasswordKeyDeriving = ProductionArgon2idKDF(),
-        limiter: UnlockAttemptLimiter = UnlockAttemptLimiter()
+        limiter: UnlockAttemptLimiter = UnlockAttemptLimiter(),
+        secrets: DeviceSecretProviding = DevicePepperStore(),
+        vaultStorageRootOverride: URL? = nil,
+        photoStorageRootOverride: URL? = nil
     ) throws {
         self.kdf = kdf
         self.limiter = limiter
-        self.store = try VaultStore()
+        self.secrets = secrets
+        self.store = try VaultStore(rootOverride: vaultStorageRootOverride)
+        self.photoStorageRootOverride = photoStorageRootOverride
     }
 
     func hasAnyVaults() async throws -> Bool {
@@ -131,7 +142,7 @@ actor VaultUnlockService {
     func reauthenticateCurrentVault(
         passcode: String,
         expectedVaultID: UUID
-    ) async throws -> UnlockedVault {
+    ) async throws -> ReauthenticatedVault {
         guard PasscodePolicy.isValidForUnlock(passcode) else {
             throw VaultUnlockError.invalidCredentials
         }
@@ -151,7 +162,12 @@ actor VaultUnlockService {
         guard payload.vaultID == expectedVaultID else {
             throw VaultUnlockError.invalidCredentials
         }
-        return unlockedVault(from: payload)
+        // Deliberately do not return a second copy of the vault key. The active
+        // session capability remains the only key source used by export.
+        return ReauthenticatedVault(
+            vaultID: payload.vaultID,
+            createdAt: payload.createdAt
+        )
     }
 
     /// Changes only the passcode wrapper. The vault's random data key and all
@@ -239,7 +255,10 @@ actor VaultUnlockService {
         // ciphertext remains inaccessible through KeyHollow.
         try await store.delete(locator: currentLocator)
         do {
-            try VaultPhotoStore.destroyVaultData(vaultID: payload.vaultID)
+            try VaultPhotoStore.destroyVaultData(
+                vaultID: payload.vaultID,
+                storageRoot: photoStorageRootOverride
+            )
         } catch {
             // Credential destruction succeeded, so do not recreate the envelope.
             // Surface the cleanup failure without restoring access to deleted data.

@@ -187,6 +187,7 @@ struct PortableArchivePayloadSource: Sendable {
         while let data = try handle.read(
             upToCount: PortableArchivePayloadFormat.fileReadByteCount
         ), !data.isEmpty {
+            try Task.checkCancellation()
             hasher.update(data: data)
         }
         return Data(hasher.finalize())
@@ -212,6 +213,7 @@ enum PortableArchivePayloadWriter {
         try containerWriter.append(encodedCatalog)
 
         for entry in source.catalog.entries {
+            try Task.checkCancellation()
             let fileURL = source.rootURL.appendingPathComponent(
                 entry.storageName,
                 isDirectory: false
@@ -224,6 +226,7 @@ enum PortableArchivePayloadWriter {
                 while let data = try handle.read(
                     upToCount: PortableArchivePayloadFormat.fileReadByteCount
                 ), !data.isEmpty {
+                    try Task.checkCancellation()
                     let (newCount, overflow) = writtenByteCount.addingReportingOverflow(
                         UInt64(data.count)
                     )
@@ -401,6 +404,7 @@ final class PortableArchivePayloadExtractor {
         }
 
         while !isComplete, !buffer.isEmpty {
+            try Task.checkCancellation()
             guard let catalog,
                   currentEntryIndex < catalog.entries.count,
                   let handle = currentEntryHandle else {

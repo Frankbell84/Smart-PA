@@ -10,31 +10,46 @@ struct PickedVaultPhoto: Identifiable, @unchecked Sendable {
     let thumbnailData: Data
 }
 
-struct PickedVaultPhotoBatch: @unchecked Sendable {
-    let photos: [PickedVaultPhoto]
-    let failedSelectionCount: Int
+enum PickedVaultPhotoEvent: @unchecked Sendable {
+    case started(total: Int)
+    case photo(PickedVaultPhoto)
+    case failed
+    case finished
 }
 
-private final class PickedPhotoCollector: @unchecked Sendable {
-    private let lock = NSLock()
-    private var storage: [PickedVaultPhoto] = []
+enum SequentialPhotoBatchProcessor {
+    static let maximumConcurrentItems = 1
 
-    func append(_ photo: PickedVaultPhoto) {
-        lock.lock()
-        storage.append(photo)
-        lock.unlock()
-    }
-
-    func snapshot() -> [PickedVaultPhoto] {
-        lock.lock()
-        defer { lock.unlock() }
-        return storage
+    @MainActor
+    static func process<Element: Sendable, Value: Sendable>(
+        _ elements: [Element],
+        load: (Element) async throws -> Value,
+        consume: (Value) async -> Void,
+        didFail: () async -> Void
+    ) async {
+        for element in elements {
+            guard !Task.isCancelled else { return }
+            do {
+                let value = try await load(element)
+                guard !Task.isCancelled else { return }
+                await consume(value)
+            } catch is CancellationError {
+                return
+            } catch {
+                await didFail()
+            }
+        }
     }
 }
 
 struct SecurePhotoPicker: UIViewControllerRepresentable {
+    /// Full-resolution images are decoded, normalized, handed to encrypted
+    /// storage, and released one at a time. Never increase this without a
+    /// device-memory test and a corresponding bounded-pipeline test.
+    static let maximumResidentFullSizePhotos = SequentialPhotoBatchProcessor.maximumConcurrentItems
+
     let selectionLimit: Int
-    let onPicked: (PickedVaultPhotoBatch) -> Void
+    let onPicked: @MainActor (PickedVaultPhotoEvent) async -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(onPicked: onPicked)
@@ -53,51 +68,80 @@ struct SecurePhotoPicker: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
 
-    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
-        private let onPicked: (PickedVaultPhotoBatch) -> Void
+    static func dismantleUIViewController(
+        _ uiViewController: PHPickerViewController,
+        coordinator: Coordinator
+    ) {
+        coordinator.cancel()
+    }
 
-        init(onPicked: @escaping (PickedVaultPhotoBatch) -> Void) {
+    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        private let onPicked: @MainActor (PickedVaultPhotoEvent) async -> Void
+        private var processingTask: Task<Void, Never>?
+
+        init(onPicked: @escaping @MainActor (PickedVaultPhotoEvent) async -> Void) {
             self.onPicked = onPicked
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            picker.dismiss(animated: true)
-            guard !results.isEmpty else {
-                onPicked(PickedVaultPhotoBatch(photos: [], failedSelectionCount: 0))
-                return
+            guard processingTask == nil else { return }
+            picker.view.isUserInteractionEnabled = false
+
+            processingTask = Task { @MainActor [onPicked] in
+                await onPicked(.started(total: results.count))
+
+                await SequentialPhotoBatchProcessor.process(
+                    results,
+                    load: Self.loadPhoto,
+                    consume: { photo in
+                        // Awaiting the consumer is the memory back-pressure:
+                        // encrypted storage completes before the next UIImage is loaded.
+                        await onPicked(.photo(photo))
+                    },
+                    didFail: {
+                        await onPicked(.failed)
+                    }
+                )
+
+                await onPicked(.finished)
+                picker.dismiss(animated: true)
+            }
+        }
+
+        func cancel() {
+            processingTask?.cancel()
+            processingTask = nil
+        }
+
+        nonisolated private static func loadPhoto(_ result: PHPickerResult) async throws -> PickedVaultPhoto {
+            let provider = result.itemProvider
+            guard provider.canLoadObject(ofClass: UIImage.self) else {
+                throw CocoaError(.fileReadUnsupportedScheme)
             }
 
-            let group = DispatchGroup()
-            let collector = PickedPhotoCollector()
-            let selectedCount = results.count
-
-            for result in results {
-                let provider = result.itemProvider
-                let assetIdentifier = result.assetIdentifier
-                guard provider.canLoadObject(ofClass: UIImage.self) else { continue }
-                group.enter()
-
-                provider.loadObject(ofClass: UIImage.self) { object, _ in
-                    defer { group.leave() }
-                    guard let image = object as? UIImage,
-                          let originalData = Self.normalizedJPEG(from: image),
-                          let thumbnailData = Self.thumbnailJPEG(from: image) else { return }
-
-                    collector.append(PickedVaultPhoto(
-                        sourceAssetIdentifier: assetIdentifier,
-                        originalData: originalData,
-                        thumbnailData: thumbnailData
-                    ))
+            let image = try await withCheckedThrowingContinuation {
+                (continuation: CheckedContinuation<UIImage, Error>) in
+                provider.loadObject(ofClass: UIImage.self) { object, error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else if let image = object as? UIImage {
+                        continuation.resume(returning: image)
+                    } else {
+                        continuation.resume(throwing: CocoaError(.fileReadCorruptFile))
+                    }
                 }
             }
+            try Task.checkCancellation()
 
-            group.notify(queue: .main) { [onPicked] in
-                let photos = collector.snapshot()
-                onPicked(PickedVaultPhotoBatch(
-                    photos: photos,
-                    failedSelectionCount: max(0, selectedCount - photos.count)
-                ))
+            guard let originalData = normalizedJPEG(from: image),
+                  let thumbnailData = thumbnailJPEG(from: image) else {
+                throw CocoaError(.fileReadCorruptFile)
             }
+            return PickedVaultPhoto(
+                sourceAssetIdentifier: result.assetIdentifier,
+                originalData: originalData,
+                thumbnailData: thumbnailData
+            )
         }
 
         /// Re-encoding removes most source metadata and avoids writing a plaintext
@@ -135,21 +179,22 @@ enum PhotoLibrarySaveResult {
 }
 
 enum PhotoLibrarySaveService {
-    static func savePhotos(_ photos: [Data]) async -> PhotoLibrarySaveResult {
-        guard !photos.isEmpty else { return .failed }
+    static let maximumResidentFullSizePhotos = 1
+
+    static func savePhoto(_ photo: Data) async -> PhotoLibrarySaveResult {
+        guard !photo.isEmpty, !Task.isCancelled else { return .failed }
 
         let status = await authorizationStatus()
         guard status == .authorized || status == .limited else {
             return .permissionDenied
         }
+        guard !Task.isCancelled else { return .failed }
 
         do {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 PHPhotoLibrary.shared().performChanges({
-                    for photo in photos {
-                        let request = PHAssetCreationRequest.forAsset()
-                        request.addResource(with: .photo, data: photo, options: nil)
-                    }
+                    let request = PHAssetCreationRequest.forAsset()
+                    request.addResource(with: .photo, data: photo, options: nil)
                 }) { success, error in
                     if let error {
                         continuation.resume(throwing: error)
@@ -160,7 +205,7 @@ enum PhotoLibrarySaveService {
                     }
                 }
             }
-            return .saved(photos.count)
+            return .saved(1)
         } catch {
             return .failed
         }
@@ -181,10 +226,11 @@ enum PhotoLibrarySaveService {
 enum PhotoLibraryDeletionService {
     static func deleteOriginals(localIdentifiers: [String]) async -> PhotoMoveResult {
         let identifiers = Array(Set(localIdentifiers))
-        guard !identifiers.isEmpty else { return .copiedOnly }
+        guard !identifiers.isEmpty, !Task.isCancelled else { return .copiedOnly }
 
         let status = await authorizationStatus()
         guard status == .authorized || status == .limited else { return .copiedOnly }
+        guard !Task.isCancelled else { return .copiedOnly }
 
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: identifiers, options: nil)
         guard assets.count == identifiers.count else { return .copiedOnly }
