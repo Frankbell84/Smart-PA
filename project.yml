@@ -111,7 +111,7 @@ targets:
         excludes:
           - Resources
     resources:
-      - path: KeyHollowVaultThumbnailExtension/Resources/KeyHollowVaultIcon.png
+      - path: KeyHollowVaultThumbnailExtension/Resources/Assets.xcassets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.vault-thumbnail

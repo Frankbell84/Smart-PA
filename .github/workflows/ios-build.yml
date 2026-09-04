@@ -105,6 +105,13 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      - name: Verify packaged thumbnail asset
+        run: |
+          set -euo pipefail
+          EXTENSION_PATH="build/DerivedData/Build/Products/Debug-iphonesimulator/KeyHollow.app/PlugIns/KeyHollowVaultThumbnail.appex"
+          test -d "$EXTENSION_PATH"
+          test -f "$EXTENSION_PATH/Assets.car"
+
       - name: Run security unit tests
         run: |
           set -o pipefail

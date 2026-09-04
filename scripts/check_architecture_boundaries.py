@@ -153,7 +153,7 @@ def main() -> int:
     required_thumbnail_markers = (
         "type: app-extension",
         "- path: KeyHollowVaultThumbnailExtension",
-        "- path: KeyHollowVaultThumbnailExtension/Resources/KeyHollowVaultIcon.png",
+        "- path: KeyHollowVaultThumbnailExtension/Resources/Assets.xcassets",
         "PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.vault-thumbnail",
         "APPLICATION_EXTENSION_API_ONLY: YES",
         "NSExtensionPointIdentifier: com.apple.quicklook.thumbnail",
@@ -230,7 +230,11 @@ def main() -> int:
         / "AppIcon.png"
     )
     thumbnail_icon = (
-        THUMBNAIL_EXTENSION_ROOT / "Resources" / "KeyHollowVaultIcon.png"
+        THUMBNAIL_EXTENSION_ROOT
+        / "Resources"
+        / "Assets.xcassets"
+        / "KeyHollowVaultIcon.imageset"
+        / "KeyHollowVaultIcon.png"
     )
     if not thumbnail_icon.is_file():
         violations.append(

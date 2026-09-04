@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 import KeyHollowFileRecognitionAddOn
+import UIKit
 
 final class VaultFileRecognitionAddOnTests: XCTestCase {
     private let recognizer = KHVaultFileRecognizer()
@@ -96,10 +97,12 @@ final class VaultFileRecognitionAddOnTests: XCTestCase {
         )
         XCTAssertEqual(attributes["QLThumbnailMinimumDimension"] as? Int, 1)
         XCTAssertNotNil(
-            extensionBundle.url(
-                forResource: "KeyHollowVaultIcon",
-                withExtension: "png"
-            )
+            UIImage(
+                named: "KeyHollowVaultIcon",
+                in: extensionBundle,
+                compatibleWith: nil
+            ),
+            "The packaged thumbnail extension must expose the approved icon asset"
         )
     }
 }
