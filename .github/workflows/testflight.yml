@@ -67,6 +67,8 @@ jobs:
       - name: Install cloud-signing material
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          THUMBNAIL_PROVISION_PROFILE_BASE64: ${{ secrets.THUMBNAIL_PROVISION_PROFILE_BASE64 }}
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
@@ -76,6 +78,11 @@ jobs:
 
           CERTIFICATE_PATH="$RUNNER_TEMP/keyhollow-distribution.p12"
           KEYCHAIN_PATH="$RUNNER_TEMP/keyhollow-signing.keychain-db"
+          APP_PROFILE_PATH="$RUNNER_TEMP/keyhollow-app.mobileprovision"
+          THUMBNAIL_PROFILE_PATH="$RUNNER_TEMP/keyhollow-thumbnail.mobileprovision"
+          APP_PROFILE_PLIST="$RUNNER_TEMP/keyhollow-app-profile.plist"
+          THUMBNAIL_PROFILE_PLIST="$RUNNER_TEMP/keyhollow-thumbnail-profile.plist"
+          PROFILE_DIRECTORY="$HOME/Library/MobileDevice/Provisioning Profiles"
           API_KEY_DIRECTORY="$HOME/.appstoreconnect/private_keys"
           API_KEY_PATH="$API_KEY_DIRECTORY/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
 
@@ -87,6 +94,18 @@ jobs:
           security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychains -d user -s "$KEYCHAIN_PATH"
+
+          mkdir -p "$PROFILE_DIRECTORY"
+          printf '%s' "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > "$APP_PROFILE_PATH"
+          printf '%s' "$THUMBNAIL_PROVISION_PROFILE_BASE64" | base64 --decode > "$THUMBNAIL_PROFILE_PATH"
+          security cms -D -i "$APP_PROFILE_PATH" > "$APP_PROFILE_PLIST"
+          security cms -D -i "$THUMBNAIL_PROFILE_PATH" > "$THUMBNAIL_PROFILE_PLIST"
+          APP_PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$APP_PROFILE_PLIST")
+          THUMBNAIL_PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$THUMBNAIL_PROFILE_PLIST")
+          cp "$APP_PROFILE_PATH" "$PROFILE_DIRECTORY/$APP_PROFILE_UUID.mobileprovision"
+          cp "$THUMBNAIL_PROFILE_PATH" "$PROFILE_DIRECTORY/$THUMBNAIL_PROFILE_UUID.mobileprovision"
+          echo "APP_PROFILE_UUID=$APP_PROFILE_UUID" >> "$GITHUB_ENV"
+          echo "THUMBNAIL_PROFILE_UUID=$THUMBNAIL_PROFILE_UUID" >> "$GITHUB_ENV"
 
           mkdir -p "$API_KEY_DIRECTORY"
           printf '%s' "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode > "$API_KEY_PATH"
@@ -155,7 +174,11 @@ jobs:
       - name: Create export options
         run: |
           /usr/libexec/PlistBuddy -c 'Add :method string app-store-connect' build/ExportOptions.plist
-          /usr/libexec/PlistBuddy -c 'Add :signingStyle string automatic' build/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c 'Add :signingStyle string manual' build/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c 'Add :signingCertificate string Apple Distribution' build/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c 'Add :provisioningProfiles dict' build/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c 'Add :provisioningProfiles:com.keyhollow.app string KeyHollow App Store' build/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c 'Add :provisioningProfiles:com.keyhollow.app.vault-thumbnail string KeyHollow Vault Thumbnail App Store' build/ExportOptions.plist
           /usr/libexec/PlistBuddy -c "Add :teamID string $TEAM_ID" build/ExportOptions.plist
           /usr/libexec/PlistBuddy -c 'Add :manageAppVersionAndBuildNumber bool false' build/ExportOptions.plist
 
@@ -213,8 +236,15 @@ jobs:
           set -euo pipefail
 
           security delete-keychain "$RUNNER_TEMP/keyhollow-signing.keychain-db" || true
+          PROFILE_DIRECTORY="$HOME/Library/MobileDevice/Provisioning Profiles"
           rm -f \
             "$RUNNER_TEMP/keyhollow-distribution.p12" \
+            "$RUNNER_TEMP/keyhollow-app.mobileprovision" \
+            "$RUNNER_TEMP/keyhollow-thumbnail.mobileprovision" \
+            "$RUNNER_TEMP/keyhollow-app-profile.plist" \
+            "$RUNNER_TEMP/keyhollow-thumbnail-profile.plist" \
+            "$PROFILE_DIRECTORY/${APP_PROFILE_UUID:-}.mobileprovision" \
+            "$PROFILE_DIRECTORY/${THUMBNAIL_PROFILE_UUID:-}.mobileprovision" \
             "$APP_STORE_CONNECT_API_KEY_PATH"
 
           if [[ -n "${APP_STORE_CONNECT_API_KEY_ID:-}" ]]; then
