@@ -90,12 +90,26 @@ targets:
         DEFINES_MODULE: YES
         SKIP_INSTALL: YES
 
+  KeyHollowFileRecognitionAddOn:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/AddOns/FileRecognition
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowFileRecognitionAddOn
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
   KeyHollow:
     type: application
     platform: iOS
     sources:
       - path: KeyHollow
         excludes:
+          - AddOns/FileRecognition
           - Security/CryptoBox.swift
           - Security/KeyDerivation.swift
           - Security/PasscodePolicy.swift
@@ -113,6 +127,7 @@ targets:
           - Transfer/EncryptedVaultTransferCoordinator.swift
           - ThirdParty/Argon2id
     dependencies:
+      - target: KeyHollowFileRecognitionAddOn
       - target: KeyHollowCryptoCore
       - target: KeyHollowPhotoCore
       - target: KeyHollowPhotosAdapter
@@ -152,6 +167,12 @@ targets:
               public.filename-extension:
                 - khvault
               public.mime-type: application/vnd.keyhollow.khvault
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: KeyHollow Encrypted Vault
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - com.keyhollow.encrypted-vault
 
   KeyHollowTests:
     type: bundle.unit-test
@@ -160,6 +181,8 @@ targets:
       - path: KeyHollowTests
     dependencies:
       - target: KeyHollow
+      - target: KeyHollowFileRecognitionAddOn
+        link: false
       - target: KeyHollowCryptoCore
         link: false
       - target: KeyHollowPhotoCore
@@ -192,6 +215,7 @@ schemes:
   KeyHollow:
     build:
       targets:
+        KeyHollowFileRecognitionAddOn: all
         KeyHollowCryptoCore: all
         KeyHollowPhotoCore: all
         KeyHollowPhotosAdapter: all

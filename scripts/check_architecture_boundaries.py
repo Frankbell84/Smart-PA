@@ -141,6 +141,13 @@ def main() -> int:
                 violations.append(
                     f"project.yml: KeyHollow must compose {target} explicitly"
                 )
+
+            exclusion_marker = f"- AddOns/{addon_name}"
+            if app_target is not None and exclusion_marker not in app_target:
+                violations.append(
+                    f"project.yml: KeyHollow must exclude {exclusion_marker!r} "
+                    "so the add-on is compiled only in its own target"
+                )
     required_crypto_module_markers = (
         "KeyHollowCryptoCore:",
         "- path: KeyHollow/Security/CryptoBox.swift",
