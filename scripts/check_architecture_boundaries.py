@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "KeyHollow"
 PROJECT_FILE = ROOT / "project.yml"
+ADDON_ROOT = SOURCE_ROOT / "AddOns"
 
 PRESENTATION_FILES = {
     "KeyHollow/App/KeyHollowApp.swift",
@@ -86,11 +87,60 @@ def imports(source: str) -> set[str]:
     )
 
 
+def target_body(project: str, target: str) -> str | None:
+    match = re.search(
+        rf"(?ms)^  {re.escape(target)}:\s*$\n(?P<body>.*?)(?=^  [A-Za-z0-9_]+:\s*$|^schemes:\s*$)",
+        project,
+    )
+    return match.group("body") if match else None
+
+
 def main() -> int:
     violations: list[str] = []
     swift_files = sorted(SOURCE_ROOT.rglob("*.swift"))
 
     project = PROJECT_FILE.read_text(encoding="utf-8")
+    app_target = target_body(project, "KeyHollow")
+    if app_target is None:
+        violations.append("project.yml: application target KeyHollow is missing")
+
+    addon_modules: set[str] = set()
+    if ADDON_ROOT.exists():
+        for addon_directory in sorted(path for path in ADDON_ROOT.iterdir() if path.is_dir()):
+            addon_sources = sorted(addon_directory.rglob("*.swift"))
+            if not addon_sources:
+                continue
+
+            addon_name = addon_directory.name
+            if re.fullmatch(r"[A-Z][A-Za-z0-9]*", addon_name) is None:
+                violations.append(
+                    f"KeyHollow/AddOns/{addon_name}: add-on directory must use UpperCamelCase"
+                )
+                continue
+
+            target = f"KeyHollow{addon_name}AddOn"
+            addon_modules.add(target)
+            body = target_body(project, target)
+            if body is None:
+                violations.append(
+                    f"KeyHollow/AddOns/{addon_name}: missing compiled target {target}"
+                )
+                continue
+
+            if re.search(r"(?m)^    type:\s*library\.static\s*$", body) is None:
+                violations.append(f"project.yml: {target} must be a static library")
+
+            source_marker = f"- path: KeyHollow/AddOns/{addon_name}"
+            if source_marker not in body:
+                violations.append(
+                    f"project.yml: {target} must own {source_marker!r}"
+                )
+
+            dependency_marker = f"- target: {target}"
+            if app_target is not None and dependency_marker not in app_target:
+                violations.append(
+                    f"project.yml: KeyHollow must compose {target} explicitly"
+                )
     required_crypto_module_markers = (
         "KeyHollowCryptoCore:",
         "- path: KeyHollow/Security/CryptoBox.swift",
@@ -178,6 +228,11 @@ def main() -> int:
         source = file.read_text(encoding="utf-8")
         imported = imports(source)
 
+        if path.startswith("KeyHollow/AddOns/") and "KeyHollow" in imported:
+            violations.append(
+                f"{path}: add-on module imports the application target instead of a narrow interface"
+            )
+
         if path in CRYPTO_MODULE_FILES or path.startswith(CRYPTO_MODULE_PREFIXES):
             unexpected = imported - {"CryptoKit", "Foundation"}
             if unexpected:
@@ -255,6 +310,13 @@ def main() -> int:
 
         is_core = path.startswith(CORE_PREFIXES) or path in CORE_PHOTO_FILES
         if is_core:
+            leaked_addons = imported & addon_modules
+            if leaked_addons:
+                violations.append(
+                    f"{path}: protected core imports add-on modules: "
+                    f"{', '.join(sorted(leaked_addons))}"
+                )
+
             for forbidden_symbol in (
                 "PHPhotoLibrary",
                 "PhotosPicker",
@@ -278,7 +340,8 @@ def main() -> int:
     print(
         "Architecture boundaries passed: KeyHollowCryptoCore, "
         "KeyHollowVaultCore, KeyHollowPhotoCore, KeyHollowPhotosAdapter, and "
-        "KeyHollowTransferCore remain separately compiled, and core storage, "
+        "KeyHollowTransferCore remain separately compiled; registered add-ons "
+        "remain independently compiled; and core storage, "
         "cryptography, session, and transfer code "
         "remain free of UI, Photos, network, and remote SDK concerns."
     )
