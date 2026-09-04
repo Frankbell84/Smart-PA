@@ -48,6 +48,15 @@ final class VaultFileRecognitionAddOnTests: XCTestCase {
         XCTAssertEqual(keyHollowType["CFBundleTypeRole"] as? String, "Viewer")
         XCTAssertEqual(keyHollowType["LSHandlerRank"] as? String, "Owner")
         XCTAssertEqual(
+            keyHollowType["CFBundleTypeIconFiles"] as? [String],
+            [
+                "KHVaultDocumentIcon-22.png",
+                "KHVaultDocumentIcon-44.png",
+                "KHVaultDocumentIcon-64.png",
+                "KHVaultDocumentIcon-320.png"
+            ]
+        )
+        XCTAssertEqual(
             Bundle.main.object(forInfoDictionaryKey: "LSSupportsOpeningDocumentsInPlace") as? Bool,
             true
         )
