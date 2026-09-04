@@ -43,6 +43,20 @@ CORE_PHOTO_FILES = {
     "KeyHollow/Photos/VaultPhotoModels.swift",
     "KeyHollow/Photos/VaultPhotoStore.swift",
 }
+CRYPTO_MODULE_PREFIXES = ("KeyHollow/ThirdParty/Argon2id/",)
+CRYPTO_MODULE_FILES = {"KeyHollow/Security/CryptoBox.swift"}
+VAULT_MODULE_FILES = {
+    "KeyHollow/Security/KeyDerivation.swift",
+    "KeyHollow/Security/PasscodePolicy.swift",
+    "KeyHollow/Security/VaultEnvelope.swift",
+    "KeyHollow/Security/VaultLocator.swift",
+    "KeyHollow/Storage/VaultStore.swift",
+}
+PHOTO_MODULE_FILES = {
+    "KeyHollow/Photos/VaultPhotoCryptographicAccess.swift",
+    "KeyHollow/Photos/VaultPhotoModels.swift",
+    "KeyHollow/Photos/VaultPhotoStore.swift",
+}
 
 
 def relative(file: Path) -> str:
@@ -96,10 +110,59 @@ def main() -> int:
                 f"project.yml: compiled vault boundary is missing {marker!r}"
             )
 
+    required_photo_module_markers = (
+        "KeyHollowPhotoCore:",
+        "- path: KeyHollow/Photos/VaultPhotoCryptographicAccess.swift",
+        "- path: KeyHollow/Photos/VaultPhotoModels.swift",
+        "- path: KeyHollow/Photos/VaultPhotoStore.swift",
+        "- target: KeyHollowPhotoCore",
+        "- Photos/VaultPhotoCryptographicAccess.swift",
+        "- Photos/VaultPhotoModels.swift",
+        "- Photos/VaultPhotoStore.swift",
+    )
+    for marker in required_photo_module_markers:
+        if marker not in project:
+            violations.append(
+                f"project.yml: compiled photo-storage boundary is missing {marker!r}"
+            )
+
     for file in swift_files:
         path = relative(file)
         source = file.read_text(encoding="utf-8")
         imported = imports(source)
+
+        if path in CRYPTO_MODULE_FILES or path.startswith(CRYPTO_MODULE_PREFIXES):
+            unexpected = imported - {"CryptoKit", "Foundation"}
+            if unexpected:
+                violations.append(
+                    f"{path}: crypto module imports outside its allowlist: "
+                    f"{', '.join(sorted(unexpected))}"
+                )
+
+        if path in VAULT_MODULE_FILES:
+            unexpected = imported - {
+                "CryptoKit",
+                "Foundation",
+                "KeyHollowCryptoCore",
+                "Security",
+            }
+            if unexpected:
+                violations.append(
+                    f"{path}: vault module imports outside its allowlist: "
+                    f"{', '.join(sorted(unexpected))}"
+                )
+
+        if path in PHOTO_MODULE_FILES:
+            unexpected = imported - {
+                "CryptoKit",
+                "Foundation",
+                "KeyHollowCryptoCore",
+            }
+            if unexpected:
+                violations.append(
+                    f"{path}: photo-storage module imports outside its allowlist: "
+                    f"{', '.join(sorted(unexpected))}"
+                )
 
         leaked_ui = imported & UI_FRAMEWORKS
         if leaked_ui and not is_presentation(path):
@@ -138,10 +201,10 @@ def main() -> int:
         return 1
 
     print(
-        "Architecture boundaries passed: KeyHollowCryptoCore and "
-        "KeyHollowVaultCore remain separately compiled, and core storage, "
-        "cryptography, session, and transfer code remain free of UI, Photos, "
-        "network, and remote SDK concerns."
+        "Architecture boundaries passed: KeyHollowCryptoCore, "
+        "KeyHollowVaultCore, and KeyHollowPhotoCore remain separately "
+        "compiled, and core storage, cryptography, session, and transfer code "
+        "remain free of UI, Photos, network, and remote SDK concerns."
     )
     return 0
 

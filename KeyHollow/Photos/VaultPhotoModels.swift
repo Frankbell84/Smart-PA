@@ -1,34 +1,46 @@
 import Foundation
 import CryptoKit
 
-struct VaultPhotoRecord: Codable, Identifiable, Hashable {
-    let id: UUID
-    let importedAt: Date
-    let blobName: String
-    let thumbnailName: String
+public struct VaultPhotoRecord: Codable, Identifiable, Hashable {
+    public let id: UUID
+    public let importedAt: Date
+    public let blobName: String
+    public let thumbnailName: String
+
+    public init(id: UUID, importedAt: Date, blobName: String, thumbnailName: String) {
+        self.id = id
+        self.importedAt = importedAt
+        self.blobName = blobName
+        self.thumbnailName = thumbnailName
+    }
 }
 
-struct VaultPhotoManifest: Codable {
-    static let currentVersion = 1
+public struct VaultPhotoManifest: Codable {
+    public static let currentVersion = 1
 
-    let version: Int
-    var photos: [VaultPhotoRecord]
+    public let version: Int
+    public var photos: [VaultPhotoRecord]
 
-    static var empty: VaultPhotoManifest {
+    public init(version: Int, photos: [VaultPhotoRecord]) {
+        self.version = version
+        self.photos = photos
+    }
+
+    public static var empty: VaultPhotoManifest {
         VaultPhotoManifest(version: currentVersion, photos: [])
     }
 }
 
-enum VaultPhotoKeySchedule {
-    static func manifestKey(from vaultKey: SymmetricKey) -> SymmetricKey {
+public enum VaultPhotoKeySchedule {
+    public static func manifestKey(from vaultKey: SymmetricKey) -> SymmetricKey {
         derive(from: vaultKey, label: "keyhollow.photos.manifest.v1")
     }
 
-    static func photoKey(from vaultKey: SymmetricKey, id: UUID) -> SymmetricKey {
+    public static func photoKey(from vaultKey: SymmetricKey, id: UUID) -> SymmetricKey {
         derive(from: vaultKey, label: "keyhollow.photos.original.v1.\(id.uuidString.lowercased())")
     }
 
-    static func thumbnailKey(from vaultKey: SymmetricKey, id: UUID) -> SymmetricKey {
+    public static func thumbnailKey(from vaultKey: SymmetricKey, id: UUID) -> SymmetricKey {
         derive(from: vaultKey, label: "keyhollow.photos.thumbnail.v1.\(id.uuidString.lowercased())")
     }
 

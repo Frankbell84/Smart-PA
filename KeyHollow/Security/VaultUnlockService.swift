@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import KeyHollowPhotoCore
 import KeyHollowVaultCore
 
 enum VaultUnlockError: Error, Equatable {

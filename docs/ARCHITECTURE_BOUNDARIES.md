@@ -38,6 +38,11 @@ Photos, session, or transfer code. Keychain access remains a platform adapter.
 Additional module extraction remains incremental and must continue in its own
 review so it cannot destabilize the tested core.
 
+`KeyHollowPhotoCore` owns encrypted photo records, key scheduling, manifests,
+and blob persistence. It receives cryptographic operations through a narrow
+interface, allowing the app session to retain revocation ownership without the
+storage module importing session, UI, Photos, or transfer code.
+
 ## Change policy
 
 1. New functionality enters through a feature branch and draft review.

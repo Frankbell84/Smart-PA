@@ -39,6 +39,23 @@ targets:
         DEFINES_MODULE: YES
         SKIP_INSTALL: YES
 
+  KeyHollowPhotoCore:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/Photos/VaultPhotoCryptographicAccess.swift
+      - path: KeyHollow/Photos/VaultPhotoModels.swift
+      - path: KeyHollow/Photos/VaultPhotoStore.swift
+    dependencies:
+      - target: KeyHollowCryptoCore
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowPhotoCore
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
   KeyHollow:
     type: application
     platform: iOS
@@ -50,10 +67,14 @@ targets:
           - Security/PasscodePolicy.swift
           - Security/VaultEnvelope.swift
           - Security/VaultLocator.swift
+          - Photos/VaultPhotoCryptographicAccess.swift
+          - Photos/VaultPhotoModels.swift
+          - Photos/VaultPhotoStore.swift
           - Storage/VaultStore.swift
           - ThirdParty/Argon2id
     dependencies:
       - target: KeyHollowCryptoCore
+      - target: KeyHollowPhotoCore
       - target: KeyHollowVaultCore
     settings:
       base:
@@ -99,6 +120,8 @@ targets:
       - target: KeyHollow
       - target: KeyHollowCryptoCore
         link: false
+      - target: KeyHollowPhotoCore
+        link: false
       - target: KeyHollowVaultCore
         link: false
     settings:
@@ -124,6 +147,7 @@ schemes:
     build:
       targets:
         KeyHollowCryptoCore: all
+        KeyHollowPhotoCore: all
         KeyHollowVaultCore: all
         KeyHollow: all
         KeyHollowTests: [test]

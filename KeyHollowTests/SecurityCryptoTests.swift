@@ -4,6 +4,7 @@ import SwiftUI
 import XCTest
 @testable import KeyHollow
 @testable import KeyHollowCryptoCore
+@testable import KeyHollowPhotoCore
 @testable import KeyHollowVaultCore
 
 final class SecurityCryptoTests: XCTestCase {

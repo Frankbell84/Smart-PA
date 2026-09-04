@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import KeyHollowPhotoCore
 
 enum PortableArchivePayloadError: Error, Equatable {
     case alreadyFinished

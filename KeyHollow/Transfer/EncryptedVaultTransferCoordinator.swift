@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import KeyHollowPhotoCore
 import KeyHollowVaultCore
 
 enum EncryptedVaultTransferError: Error, Equatable {

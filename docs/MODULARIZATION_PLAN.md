@@ -41,13 +41,15 @@ analytics, advertising, authentication, or purchase SDKs.
 - Remove accidental error coupling between random-key generation and the
   device-secret adapter.
 - Keep Apple Keychain access in a platform adapter rather than the pure domain.
-- Status: implemented on the isolated branch and awaiting Mac validation.
+- Status: validated by the Mac simulator build, complete regression suite, and
+  Swift security analysis.
 
 ### Milestone 3: Encrypted photo storage
 
 - Extract encrypted photo models, key scheduling, manifests, and blob storage.
 - Keep Photos and PhotosUI imports outside this module.
 - Preserve encrypted on-device formats byte-for-byte.
+- Status: implemented on the isolated branch and awaiting Mac validation.
 
 ### Milestone 4: Portable vault transfer
 

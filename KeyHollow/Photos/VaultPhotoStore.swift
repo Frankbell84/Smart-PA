@@ -1,27 +1,32 @@
 import Foundation
 import CryptoKit
 
-actor VaultPhotoStore {
-    enum StoreError: Error {
+public actor VaultPhotoStore {
+    public enum StoreError: Error {
         case invalidManifest
         case verificationFailed
+        case accessMismatch
     }
 
     private let fileManager = FileManager.default
     private let root: URL
     private let vaultID: UUID
-    private let access: VaultAccessCapability
+    private let access: any VaultPhotoCryptographicAccess
 
-    init(vaultID: UUID, vaultKey: SymmetricKey, storageRoot: URL? = nil) throws {
+    public init(vaultID: UUID, vaultKey: SymmetricKey, storageRoot: URL? = nil) throws {
         try self.init(
             vaultID: vaultID,
-            access: VaultAccessCapability(vaultID: vaultID, vaultKey: vaultKey),
+            access: DirectVaultPhotoAccess(vaultID: vaultID, vaultKey: vaultKey),
             storageRoot: storageRoot
         )
     }
 
-    init(vaultID: UUID, access: VaultAccessCapability, storageRoot: URL? = nil) throws {
-        guard access.vaultID == vaultID else { throw VaultAccessError.revoked }
+    public init(
+        vaultID: UUID,
+        access: any VaultPhotoCryptographicAccess,
+        storageRoot: URL? = nil
+    ) throws {
+        guard access.vaultID == vaultID else { throw StoreError.accessMismatch }
         self.vaultID = vaultID
         self.access = access
 
@@ -44,7 +49,7 @@ actor VaultPhotoStore {
         try Self.protectAndExclude(root, fileManager: fileManager)
     }
 
-    func loadManifest() throws -> VaultPhotoManifest {
+    public func loadManifest() throws -> VaultPhotoManifest {
         try Task.checkCancellation()
         let target = manifestURL
         guard fileManager.fileExists(atPath: target.path) else { return .empty }
@@ -60,7 +65,7 @@ actor VaultPhotoStore {
         return manifest
     }
 
-    func importPhoto(originalData: Data, thumbnailData: Data) throws -> VaultPhotoRecord {
+    public func importPhoto(originalData: Data, thumbnailData: Data) throws -> VaultPhotoRecord {
         try Task.checkCancellation()
         let id = UUID()
         let blobName = randomName(extension: "khp")
@@ -110,7 +115,7 @@ actor VaultPhotoStore {
         }
     }
 
-    func loadPhoto(_ record: VaultPhotoRecord) throws -> Data {
+    public func loadPhoto(_ record: VaultPhotoRecord) throws -> Data {
         try Task.checkCancellation()
         let ciphertext = try Data(contentsOf: root.appendingPathComponent(record.blobName))
         let plaintext = try access.open(ciphertext, for: .photo(record.id))
@@ -118,7 +123,7 @@ actor VaultPhotoStore {
         return plaintext
     }
 
-    func loadThumbnail(_ record: VaultPhotoRecord) throws -> Data {
+    public func loadThumbnail(_ record: VaultPhotoRecord) throws -> Data {
         try Task.checkCancellation()
         let ciphertext = try Data(contentsOf: root.appendingPathComponent(record.thumbnailName))
         let plaintext = try access.open(ciphertext, for: .thumbnail(record.id))
@@ -126,11 +131,11 @@ actor VaultPhotoStore {
         return plaintext
     }
 
-    func delete(_ record: VaultPhotoRecord) throws {
+    public func delete(_ record: VaultPhotoRecord) throws {
         try delete([record])
     }
 
-    func delete(_ records: [VaultPhotoRecord]) throws {
+    public func delete(_ records: [VaultPhotoRecord]) throws {
         guard !records.isEmpty else { return }
 
         let recordIDs = Set(records.map(\.id))
@@ -145,7 +150,7 @@ actor VaultPhotoStore {
         }
     }
 
-    static func destroyVaultData(vaultID: UUID, storageRoot: URL? = nil) throws {
+    public static func destroyVaultData(vaultID: UUID, storageRoot: URL? = nil) throws {
         let fileManager = FileManager.default
         let photoDataRoot: URL
         if let storageRoot {

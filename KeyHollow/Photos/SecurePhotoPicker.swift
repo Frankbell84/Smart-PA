@@ -2,6 +2,7 @@ import SwiftUI
 @preconcurrency import PhotosUI
 import Photos
 @preconcurrency import UIKit
+import KeyHollowPhotoCore
 
 struct PickedVaultPhoto: Identifiable, @unchecked Sendable {
     let id = UUID()

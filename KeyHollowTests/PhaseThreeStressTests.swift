@@ -2,6 +2,7 @@ import CryptoKit
 import Foundation
 import XCTest
 @testable import KeyHollow
+@testable import KeyHollowPhotoCore
 
 final class PhaseThreeStressTests: XCTestCase {
     func testFiftyLargePhotosRoundTripWithoutChangingTheSourceVault() async throws {
