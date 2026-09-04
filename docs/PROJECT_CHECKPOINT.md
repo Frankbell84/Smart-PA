@@ -15,6 +15,8 @@
   `KeyHollowCryptoCore`, `KeyHollowVaultCore`, and `KeyHollowPhotoCore`.
 - The fourth boundary, `KeyHollowTransferCore`, is fully validated by its Mac
   build, regression, stress, launch, and Swift security gates.
+- The fifth boundary, `KeyHollowPhotosAdapter`, and the final composition-root
+  injection are implemented on the isolated branch and awaiting validation.
 
 ## What Phase Three accomplished
 
@@ -58,7 +60,8 @@ The important responsibilities are logically separated and protected by
 source-boundary checks. Cryptography, vault-domain persistence, and encrypted
 photo storage, and portable vault transfer are now independently compiled and
 fully validated. The app session retains revocation and task
-lifetime; UI and Apple Photos integration remain outside the core modules.
+lifetime. Apple Photos integration is now isolated in its own platform adapter,
+while UI and navigation remain in the app target.
 
 ## Next goal
 
@@ -66,14 +69,12 @@ Complete and validate modularization without mixing the structural refactor with
 
 ### Approved order when work resumes
 
-1. Isolate the Apple Photos adapter and final app composition one boundary at
-   a time.
+1. Run the Mac build, complete regression, architecture, and Swift security
+   gates for `KeyHollowPhotosAdapter` and the final app composition.
 2. Fix only extraction-related failures; do not change behavior or archive
    compatibility.
-3. Run the full automated, architecture, and Swift security gates after every
-   move.
-4. Upload the completed modular candidate to TestFlight.
-5. Repeat the physical-iPhone validation before merging the modular refactor.
+3. Upload the completed modular candidate to TestFlight.
+4. Repeat the physical-iPhone validation before merging the modular refactor.
 
 ## Proposed module sequence
 

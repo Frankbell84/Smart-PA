@@ -56,6 +56,19 @@ targets:
         DEFINES_MODULE: YES
         SKIP_INSTALL: YES
 
+  KeyHollowPhotosAdapter:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/Photos/PhotoLibraryAdapter.swift
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowPhotosAdapter
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
   KeyHollowTransferCore:
     type: library.static
     platform: iOS
@@ -91,6 +104,7 @@ targets:
           - Photos/VaultPhotoCryptographicAccess.swift
           - Photos/VaultPhotoModels.swift
           - Photos/VaultPhotoStore.swift
+          - Photos/PhotoLibraryAdapter.swift
           - Storage/VaultStore.swift
           - Transfer/PortableArchiveContainer.swift
           - Transfer/PortableArchiveSecurity.swift
@@ -101,6 +115,7 @@ targets:
     dependencies:
       - target: KeyHollowCryptoCore
       - target: KeyHollowPhotoCore
+      - target: KeyHollowPhotosAdapter
       - target: KeyHollowTransferCore
       - target: KeyHollowVaultCore
     settings:
@@ -149,6 +164,8 @@ targets:
         link: false
       - target: KeyHollowPhotoCore
         link: false
+      - target: KeyHollowPhotosAdapter
+        link: false
       - target: KeyHollowTransferCore
         link: false
       - target: KeyHollowVaultCore
@@ -177,6 +194,7 @@ schemes:
       targets:
         KeyHollowCryptoCore: all
         KeyHollowPhotoCore: all
+        KeyHollowPhotosAdapter: all
         KeyHollowTransferCore: all
         KeyHollowVaultCore: all
         KeyHollow: all

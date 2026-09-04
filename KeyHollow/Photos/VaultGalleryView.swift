@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import KeyHollowPhotoCore
+import KeyHollowPhotosAdapter
 
 private enum VaultImportMode {
     case copy

@@ -50,6 +50,19 @@ revocable export-access interface from the app session and returns a neutral
 vault payload after installation. It does not import the app session,
 `UnlockedVault`, UI, Photos, networking, or remote services.
 
+`KeyHollowPhotosAdapter` is the only non-presentation boundary allowed to
+import the Apple Photos and PhotosUI frameworks. It owns picker-item loading,
+in-memory image normalization, Photos authorization, save, and deletion calls.
+The minimal SwiftUI picker wrapper remains in the app target and may import
+PhotosUI solely to present Apple's picker. The adapter receives and returns
+plain in-memory data and identifiers; it does not own vault keys, encrypted
+storage, transfer formats, sessions, or navigation.
+
+The app target remains the composition and presentation layer. It selects the
+concrete vault service at `KeyHollowApp`, injects its factory into `RootView`,
+and keeps the gallery and navigation outside every core module and platform
+adapter.
+
 ## Change policy
 
 1. New functionality enters through a feature branch and draft review.

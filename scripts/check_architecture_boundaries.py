@@ -57,6 +57,9 @@ PHOTO_MODULE_FILES = {
     "KeyHollow/Photos/VaultPhotoModels.swift",
     "KeyHollow/Photos/VaultPhotoStore.swift",
 }
+PHOTOS_ADAPTER_FILES = {
+    "KeyHollow/Photos/PhotoLibraryAdapter.swift",
+}
 TRANSFER_MODULE_FILES = {
     "KeyHollow/Transfer/PortableArchiveContainer.swift",
     "KeyHollow/Transfer/PortableArchiveSecurity.swift",
@@ -75,7 +78,12 @@ def is_presentation(path: str) -> bool:
 
 
 def imports(source: str) -> set[str]:
-    return set(re.findall(r"(?m)^import\s+([A-Za-z0-9_]+)\s*$", source))
+    return set(
+        re.findall(
+            r"(?m)^(?:@preconcurrency\s+)?import\s+([A-Za-z0-9_]+)\s*$",
+            source,
+        )
+    )
 
 
 def main() -> int:
@@ -131,6 +139,18 @@ def main() -> int:
         if marker not in project:
             violations.append(
                 f"project.yml: compiled photo-storage boundary is missing {marker!r}"
+            )
+
+    required_photos_adapter_markers = (
+        "KeyHollowPhotosAdapter:",
+        "- path: KeyHollow/Photos/PhotoLibraryAdapter.swift",
+        "- target: KeyHollowPhotosAdapter",
+        "- Photos/PhotoLibraryAdapter.swift",
+    )
+    for marker in required_photos_adapter_markers:
+        if marker not in project:
+            violations.append(
+                f"project.yml: compiled Photos adapter boundary is missing {marker!r}"
             )
 
     required_transfer_module_markers = (
@@ -191,6 +211,19 @@ def main() -> int:
                     f"{', '.join(sorted(unexpected))}"
                 )
 
+        if path in PHOTOS_ADAPTER_FILES:
+            unexpected = imported - {
+                "Foundation",
+                "Photos",
+                "PhotosUI",
+                "UIKit",
+            }
+            if unexpected:
+                violations.append(
+                    f"{path}: Photos adapter imports outside its allowlist: "
+                    f"{', '.join(sorted(unexpected))}"
+                )
+
         if path in TRANSFER_MODULE_FILES:
             unexpected = imported - {
                 "CryptoKit",
@@ -207,7 +240,7 @@ def main() -> int:
                 )
 
         leaked_ui = imported & UI_FRAMEWORKS
-        if leaked_ui and not is_presentation(path):
+        if leaked_ui and not is_presentation(path) and path not in PHOTOS_ADAPTER_FILES:
             violations.append(
                 f"{path}: UI/system-photo frameworks outside the presentation adapter: "
                 f"{', '.join(sorted(leaked_ui))}"
@@ -244,8 +277,9 @@ def main() -> int:
 
     print(
         "Architecture boundaries passed: KeyHollowCryptoCore, "
-        "KeyHollowVaultCore, KeyHollowPhotoCore, and KeyHollowTransferCore "
-        "remain separately compiled, and core storage, cryptography, session, and transfer code "
+        "KeyHollowVaultCore, KeyHollowPhotoCore, KeyHollowPhotosAdapter, and "
+        "KeyHollowTransferCore remain separately compiled, and core storage, "
+        "cryptography, session, and transfer code "
         "remain free of UI, Photos, network, and remote SDK concerns."
     )
     return 0

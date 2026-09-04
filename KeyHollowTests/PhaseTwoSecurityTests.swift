@@ -3,6 +3,7 @@ import Foundation
 import XCTest
 @testable import KeyHollow
 @testable import KeyHollowPhotoCore
+@testable import KeyHollowPhotosAdapter
 
 final class PhaseTwoSecurityTests: XCTestCase {
     func testRevokedCapabilityCannotReadOrMutateVaultStore() async throws {

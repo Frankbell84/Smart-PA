@@ -67,9 +67,12 @@ analytics, advertising, authentication, or purchase SDKs.
 
 ### Milestone 5: Platform adapters and app composition
 
-- Isolate Photos permission/import/export/delete behavior as an adapter.
+- Compile photo-picker item loading, in-memory normalization, and Photos
+  permission/save/delete behavior as `KeyHollowPhotosAdapter`.
 - Keep SwiftUI views and navigation in the app target.
-- Construct concrete dependencies only at the app composition boundary.
+- Select the concrete vault service at the app composition boundary and inject
+  its factory into the root view.
+- Status: implemented on the isolated branch and awaiting Mac validation.
 
 ## Gate after every milestone
 

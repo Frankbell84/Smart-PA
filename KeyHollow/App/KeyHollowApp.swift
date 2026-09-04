@@ -20,7 +20,7 @@ struct KeyHollowApp: App {
                 Color.clear
             } else {
                 ZStack {
-                    RootView()
+                    RootView(makeService: { try VaultUnlockService() })
                         .environmentObject(session)
                         .privacySensitive()
 
