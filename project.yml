@@ -90,12 +90,26 @@ targets:
         DEFINES_MODULE: YES
         SKIP_INSTALL: YES
 
+  KeyHollowFileRecognitionAddOn:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/AddOns/FileRecognition
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowFileRecognitionAddOn
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
   KeyHollow:
     type: application
     platform: iOS
     sources:
       - path: KeyHollow
         excludes:
+          - AddOns/FileRecognition
           - Security/CryptoBox.swift
           - Security/KeyDerivation.swift
           - Security/PasscodePolicy.swift
@@ -113,6 +127,7 @@ targets:
           - Transfer/EncryptedVaultTransferCoordinator.swift
           - ThirdParty/Argon2id
     dependencies:
+      - target: KeyHollowFileRecognitionAddOn
       - target: KeyHollowCryptoCore
       - target: KeyHollowPhotoCore
       - target: KeyHollowPhotosAdapter
@@ -143,15 +158,29 @@ targets:
         NSPhotoLibraryUsageDescription: KeyHollow needs access only to photos you choose to copy or move into an encrypted vault.
         NSPhotoLibraryAddUsageDescription: KeyHollow needs permission to save photos you choose from an encrypted vault back to your Photos library.
         ITSAppUsesNonExemptEncryption: false
+        LSSupportsOpeningDocumentsInPlace: true
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: com.keyhollow.encrypted-vault
             UTTypeDescription: KeyHollow Encrypted Vault
+            UTTypeIcons: {}
             UTTypeConformsTo:
+              - public.content
               - public.data
             UTTypeTagSpecification:
               public.filename-extension:
                 - khvault
               public.mime-type: application/vnd.keyhollow.khvault
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: KeyHollow Encrypted Vault
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Owner
+            CFBundleTypeIconFiles:
+              - KHVaultDocumentIcon-22.png
+              - KHVaultDocumentIcon-44.png
+              - KHVaultDocumentIcon-64.png
+              - KHVaultDocumentIcon-320.png
+            LSItemContentTypes:
+              - com.keyhollow.encrypted-vault
 
   KeyHollowTests:
     type: bundle.unit-test
@@ -160,6 +189,8 @@ targets:
       - path: KeyHollowTests
     dependencies:
       - target: KeyHollow
+      - target: KeyHollowFileRecognitionAddOn
+        link: false
       - target: KeyHollowCryptoCore
         link: false
       - target: KeyHollowPhotoCore
@@ -192,6 +223,7 @@ schemes:
   KeyHollow:
     build:
       targets:
+        KeyHollowFileRecognitionAddOn: all
         KeyHollowCryptoCore: all
         KeyHollowPhotoCore: all
         KeyHollowPhotosAdapter: all

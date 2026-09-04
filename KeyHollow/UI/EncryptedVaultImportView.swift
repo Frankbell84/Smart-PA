@@ -10,6 +10,7 @@ struct EncryptedVaultImportView: View {
     @Environment(\.dismiss) private var dismiss
 
     let service: VaultUnlockService
+    let initialArchiveURL: URL?
 
     @State private var selectedArchive: SelectedPortableArchive?
     @State private var recoveryCode = ""
@@ -23,9 +24,15 @@ struct EncryptedVaultImportView: View {
     @State private var systemInteractionOpen = false
     @State private var isWorking = false
     @State private var message: String?
+    @State private var handledInitialArchive = false
     @FocusState private var focusedField: ImportField?
 
     private var requiredLength: Int { tier.fixedLength ?? customLength }
+
+    init(service: VaultUnlockService, initialArchiveURL: URL? = nil) {
+        self.service = service
+        self.initialArchiveURL = initialArchiveURL
+    }
 
     var body: some View {
         NavigationStack {
@@ -201,6 +208,11 @@ struct EncryptedVaultImportView: View {
             discardUninstalledMaterial()
             isWorking = false
             message = "Import canceled because KeyHollow locked."
+        }
+        .task {
+            guard !handledInitialArchive, let initialArchiveURL else { return }
+            handledInitialArchive = true
+            finishFileSelection(initialArchiveURL)
         }
     }
 

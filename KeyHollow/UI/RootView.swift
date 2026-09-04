@@ -5,11 +5,14 @@ struct RootView: View {
     @EnvironmentObject private var session: VaultSession
 
     let makeService: () throws -> VaultUnlockService
+    let recognizeIncomingVaultFile: (URL) -> URL?
 
     @State private var service: VaultUnlockService?
     @State private var setupRequired = false
     @State private var isChecking = true
     @State private var startupError: String?
+    @State private var incomingArchiveURL: URL?
+    @State private var showingIncomingArchive = false
 
     var body: some View {
         Group {
@@ -68,6 +71,29 @@ struct RootView: View {
                 } catch {
                     startupError = "Secure local storage could not be rechecked."
                 }
+            }
+        }
+        .onOpenURL { url in
+            guard let recognizedURL = recognizeIncomingVaultFile(url) else { return }
+            incomingArchiveURL = recognizedURL
+            showingIncomingArchive = service != nil
+        }
+        .onChange(of: service != nil) { _, serviceReady in
+            if serviceReady, incomingArchiveURL != nil {
+                showingIncomingArchive = true
+            }
+        }
+        .sheet(isPresented: $showingIncomingArchive, onDismiss: {
+            incomingArchiveURL = nil
+        }) {
+            if let service, let incomingArchiveURL {
+                EncryptedVaultImportView(
+                    service: service,
+                    initialArchiveURL: incomingArchiveURL
+                )
+                .environmentObject(session)
+            } else {
+                ProgressView("Preparing KeyHollow…")
             }
         }
     }
