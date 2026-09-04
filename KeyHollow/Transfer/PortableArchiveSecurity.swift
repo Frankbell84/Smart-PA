@@ -1,8 +1,10 @@
 import CryptoKit
 import Foundation
+import KeyHollowCryptoCore
+import KeyHollowVaultCore
 import Security
 
-enum PortableArchiveError: Error, Equatable {
+public enum PortableArchiveError: Error, Equatable {
     case invalidCredential
     case invalidHeader
     case invalidKDFParameters
@@ -11,20 +13,20 @@ enum PortableArchiveError: Error, Equatable {
     case randomGenerationFailed
 }
 
-struct PortableArchiveKDFParameters: Codable, Equatable, Sendable {
-    static let algorithmIdentifier = "argon2id-v1.3"
-    static let saltByteCount = 16
-    static let memoryKiB: UInt32 = 65_536
-    static let iterations: UInt32 = 3
-    static let parallelism: UInt32 = 2
-    static let outputByteCount = 32
+public struct PortableArchiveKDFParameters: Codable, Equatable, Sendable {
+    public static let algorithmIdentifier = "argon2id-v1.3"
+    public static let saltByteCount = 16
+    public static let memoryKiB: UInt32 = 65_536
+    public static let iterations: UInt32 = 3
+    public static let parallelism: UInt32 = 2
+    public static let outputByteCount = 32
 
-    let algorithm: String
-    let salt: Data
-    let memoryKiB: UInt32
-    let iterations: UInt32
-    let parallelism: UInt32
-    let outputByteCount: Int
+    public let algorithm: String
+    public let salt: Data
+    public let memoryKiB: UInt32
+    public let iterations: UInt32
+    public let parallelism: UInt32
+    public let outputByteCount: Int
 
     static func create() throws -> PortableArchiveKDFParameters {
         PortableArchiveKDFParameters(
@@ -37,7 +39,7 @@ struct PortableArchiveKDFParameters: Codable, Equatable, Sendable {
         )
     }
 
-    func validate() throws {
+    public func validate() throws {
         guard algorithm == Self.algorithmIdentifier,
               salt.count == Self.saltByteCount,
               memoryKiB == Self.memoryKiB,
@@ -48,7 +50,7 @@ struct PortableArchiveKDFParameters: Codable, Equatable, Sendable {
         }
     }
 
-    func authenticationData(archiveVersion: Int) -> Data {
+    public func authenticationData(archiveVersion: Int) -> Data {
         var result = Data("keyhollow.encrypted-vault.header".utf8)
         result.append(0)
         result.append(Data(algorithm.utf8))
@@ -63,11 +65,11 @@ struct PortableArchiveKDFParameters: Codable, Equatable, Sendable {
     }
 }
 
-enum PortableArchiveCredential: Equatable, Sendable {
+public enum PortableArchiveCredential: Equatable, Sendable {
     case recoveryCode(String)
     case passphrase(String)
 
-    func keyMaterial() throws -> Data {
+    public func keyMaterial() throws -> Data {
         switch self {
         case .recoveryCode(let code):
             let canonical = try PortableArchiveRecoveryCode.canonicalize(code)
@@ -87,13 +89,13 @@ enum PortableArchiveCredential: Equatable, Sendable {
     }
 }
 
-enum PortableArchiveRecoveryCode {
+public enum PortableArchiveRecoveryCode {
     static let randomByteCount = 20
     static let encodedCharacterCount = 32
     private static let alphabet = Array("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
     private static let allowed = Set(alphabet)
 
-    static func generate() throws -> String {
+    public static func generate() throws -> String {
         let raw = try SecureRandom.data(byteCount: randomByteCount)
         let encoded = encode(raw)
         return stride(from: 0, to: encoded.count, by: 4)
@@ -105,7 +107,7 @@ enum PortableArchiveRecoveryCode {
             .joined(separator: "-")
     }
 
-    static func canonicalize(_ input: String) throws -> String {
+    public static func canonicalize(_ input: String) throws -> String {
         let compact = input.uppercased().filter { character in
             character != "-" && !character.isWhitespace
         }
@@ -151,15 +153,17 @@ enum PortableArchiveRecoveryCode {
     }
 }
 
-protocol PortableArchiveKeyDeriving: Sendable {
+public protocol PortableArchiveKeyDeriving: Sendable {
     func deriveWrappingKey(
         credential: PortableArchiveCredential,
         parameters: PortableArchiveKDFParameters
     ) throws -> SymmetricKey
 }
 
-struct PortableArchiveArgon2idKeyDeriver: PortableArchiveKeyDeriving {
-    func deriveWrappingKey(
+public struct PortableArchiveArgon2idKeyDeriver: PortableArchiveKeyDeriving {
+    public init() {}
+
+    public func deriveWrappingKey(
         credential: PortableArchiveCredential,
         parameters: PortableArchiveKDFParameters
     ) throws -> SymmetricKey {
@@ -176,30 +180,30 @@ struct PortableArchiveArgon2idKeyDeriver: PortableArchiveKeyDeriving {
     }
 }
 
-struct PortableArchiveSecrets: Codable, Equatable, Sendable {
-    let archiveID: UUID
-    let sourceVaultID: UUID
-    let sourceVaultCreatedAt: Date
-    let exportedAt: Date
-    let vaultKey: Data
-    let contentKey: Data
+public struct PortableArchiveSecrets: Codable, Equatable, Sendable {
+    public let archiveID: UUID
+    public let sourceVaultID: UUID
+    public let sourceVaultCreatedAt: Date
+    public let exportedAt: Date
+    public let vaultKey: Data
+    public let contentKey: Data
 }
 
-struct PreparedEncryptedVaultArchive: Sendable {
-    let header: EncryptedVaultArchiveHeader
-    let secrets: PortableArchiveSecrets
+public struct PreparedEncryptedVaultArchive: Sendable {
+    public let header: EncryptedVaultArchiveHeader
+    public let secrets: PortableArchiveSecrets
 }
 
-struct EncryptedVaultArchiveHeader: Codable, Equatable, Sendable {
-    static let formatIdentifier = "com.keyhollow.encrypted-vault"
-    static let currentVersion = 1
+public struct EncryptedVaultArchiveHeader: Codable, Equatable, Sendable {
+    public static let formatIdentifier = "com.keyhollow.encrypted-vault"
+    public static let currentVersion = 1
 
-    let format: String
-    let version: Int
-    let kdf: PortableArchiveKDFParameters
-    let sealedSecrets: Data
+    public let format: String
+    public let version: Int
+    public let kdf: PortableArchiveKDFParameters
+    public let sealedSecrets: Data
 
-    static func create(
+    public static func create(
         vaultPayload: VaultPayload,
         credential: PortableArchiveCredential,
         exportedAt: Date = Date(),
@@ -213,7 +217,7 @@ struct EncryptedVaultArchiveHeader: Codable, Equatable, Sendable {
         ).header
     }
 
-    static func prepare(
+    public static func prepare(
         vaultPayload: VaultPayload,
         credential: PortableArchiveCredential,
         exportedAt: Date = Date(),
@@ -255,7 +259,7 @@ struct EncryptedVaultArchiveHeader: Codable, Equatable, Sendable {
         return PreparedEncryptedVaultArchive(header: header, secrets: secrets)
     }
 
-    func open(
+    public func open(
         credential: PortableArchiveCredential,
         keyDeriver: any PortableArchiveKeyDeriving = PortableArchiveArgon2idKeyDeriver()
     ) throws -> PortableArchiveSecrets {
@@ -311,3 +315,4 @@ private extension Data {
         }
     }
 }
+

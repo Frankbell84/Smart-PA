@@ -6,17 +6,124 @@ options:
   createIntermediateGroups: true
 
 targets:
+  KeyHollowCryptoCore:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/Security/CryptoBox.swift
+      - path: KeyHollow/ThirdParty/Argon2id
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowCryptoCore
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
+  KeyHollowVaultCore:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/Security/KeyDerivation.swift
+      - path: KeyHollow/Security/PasscodePolicy.swift
+      - path: KeyHollow/Security/VaultEnvelope.swift
+      - path: KeyHollow/Security/VaultLocator.swift
+      - path: KeyHollow/Storage/VaultStore.swift
+    dependencies:
+      - target: KeyHollowCryptoCore
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowVaultCore
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
+  KeyHollowPhotoCore:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/Photos/VaultPhotoCryptographicAccess.swift
+      - path: KeyHollow/Photos/VaultPhotoModels.swift
+      - path: KeyHollow/Photos/VaultPhotoStore.swift
+    dependencies:
+      - target: KeyHollowCryptoCore
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowPhotoCore
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
+  KeyHollowPhotosAdapter:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/Photos/PhotoLibraryAdapter.swift
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowPhotosAdapter
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
+  KeyHollowTransferCore:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/Transfer/PortableArchiveContainer.swift
+      - path: KeyHollow/Transfer/PortableArchiveSecurity.swift
+      - path: KeyHollow/Transfer/PortableArchivePayload.swift
+      - path: KeyHollow/Transfer/PortableVaultRestoreTransactionJournal.swift
+      - path: KeyHollow/Transfer/EncryptedVaultTransferCoordinator.swift
+    dependencies:
+      - target: KeyHollowCryptoCore
+      - target: KeyHollowPhotoCore
+      - target: KeyHollowVaultCore
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowTransferCore
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
   KeyHollow:
     type: application
     platform: iOS
     sources:
       - path: KeyHollow
+        excludes:
+          - Security/CryptoBox.swift
+          - Security/KeyDerivation.swift
+          - Security/PasscodePolicy.swift
+          - Security/VaultEnvelope.swift
+          - Security/VaultLocator.swift
+          - Photos/VaultPhotoCryptographicAccess.swift
+          - Photos/VaultPhotoModels.swift
+          - Photos/VaultPhotoStore.swift
+          - Photos/PhotoLibraryAdapter.swift
+          - Storage/VaultStore.swift
+          - Transfer/PortableArchiveContainer.swift
+          - Transfer/PortableArchiveSecurity.swift
+          - Transfer/PortableArchivePayload.swift
+          - Transfer/PortableVaultRestoreTransactionJournal.swift
+          - Transfer/EncryptedVaultTransferCoordinator.swift
+          - ThirdParty/Argon2id
+    dependencies:
+      - target: KeyHollowCryptoCore
+      - target: KeyHollowPhotoCore
+      - target: KeyHollowPhotosAdapter
+      - target: KeyHollowTransferCore
+      - target: KeyHollowVaultCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app
         PRODUCT_NAME: KeyHollow
         MARKETING_VERSION: 1.0
-        CURRENT_PROJECT_VERSION: 12
+        CURRENT_PROJECT_VERSION: 13
         VERSIONING_SYSTEM: apple-generic
         SWIFT_VERSION: 5.0
         SWIFT_STRICT_CONCURRENCY: complete
@@ -53,6 +160,16 @@ targets:
       - path: KeyHollowTests
     dependencies:
       - target: KeyHollow
+      - target: KeyHollowCryptoCore
+        link: false
+      - target: KeyHollowPhotoCore
+        link: false
+      - target: KeyHollowPhotosAdapter
+        link: false
+      - target: KeyHollowTransferCore
+        link: false
+      - target: KeyHollowVaultCore
+        link: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.tests
@@ -75,6 +192,11 @@ schemes:
   KeyHollow:
     build:
       targets:
+        KeyHollowCryptoCore: all
+        KeyHollowPhotoCore: all
+        KeyHollowPhotosAdapter: all
+        KeyHollowTransferCore: all
+        KeyHollowVaultCore: all
         KeyHollow: all
         KeyHollowTests: [test]
     test:
@@ -84,4 +206,5 @@ schemes:
         - KeyHollowLaunchTests
     archive:
       config: Release
+
 

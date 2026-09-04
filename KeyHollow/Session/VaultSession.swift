@@ -1,14 +1,12 @@
 import Foundation
 import CryptoKit
+import KeyHollowCryptoCore
+import KeyHollowPhotoCore
+import KeyHollowTransferCore
+import KeyHollowVaultCore
 
 enum VaultAccessError: Error, Equatable {
     case revoked
-}
-
-enum VaultKeyPurpose {
-    case manifest
-    case photo(UUID)
-    case thumbnail(UUID)
 }
 
 /// A narrow, revocable boundary around a vault key.
@@ -16,7 +14,7 @@ enum VaultKeyPurpose {
 /// Callers never receive a key to retain. A revocation waits for any currently
 /// executing synchronous key operation to leave the critical section, clears
 /// the capability's key reference, and prevents every later operation.
-final class VaultAccessCapability: @unchecked Sendable {
+final class VaultAccessCapability: PortableVaultExportAccess, @unchecked Sendable {
     let vaultID: UUID
 
     private let lock = NSLock()
@@ -212,4 +210,5 @@ final class VaultSession: ObservableObject {
         }
     }
 }
+
 

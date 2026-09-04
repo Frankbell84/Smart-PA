@@ -1,20 +1,22 @@
 import CryptoKit
 import Foundation
+import KeyHollowPhotoCore
+import KeyHollowVaultCore
 
-enum EncryptedVaultTransferError: Error, Equatable {
+public enum EncryptedVaultTransferError: Error, Equatable {
     case archiveVerificationFailed
     case invalidDestination
     case invalidSourceVault
     case restoredCatalogMismatch
 }
 
-enum PortableVaultRestoreInstallationError: Error, Equatable {
+public enum PortableVaultRestoreInstallationError: Error, Equatable {
     case credentialAlreadyUsed
     case credentialCommitFailed
     case destinationExists
 }
 
-protocol PortableVaultCredentialStoring: Sendable {
+public protocol PortableVaultCredentialStoring: Sendable {
     func contains(locator: String) async -> Bool
     func read(locator: String) async throws -> VaultEnvelope?
     func writeIfAbsent(_ envelope: VaultEnvelope, locator: String) async throws
@@ -23,29 +25,39 @@ protocol PortableVaultCredentialStoring: Sendable {
 
 extension VaultStore: PortableVaultCredentialStoring {}
 
-struct EncryptedVaultExportReceipt: Equatable, Sendable {
-    let archiveURL: URL
-    let archiveID: UUID
-    let encryptedFileCount: Int
-    let archiveByteCount: UInt64
+public protocol PortableVaultExportAccess: VaultPhotoCryptographicAccess {
+    func preparePortableArchive(
+        createdAt: Date,
+        credential: PortableArchiveCredential,
+        keyDeriver: any PortableArchiveKeyDeriving
+    ) throws -> PreparedEncryptedVaultArchive
+
+    func checkAccess() throws
+}
+
+public struct EncryptedVaultExportReceipt: Equatable, Sendable {
+    public let archiveURL: URL
+    public let archiveID: UUID
+    public let encryptedFileCount: Int
+    public let archiveByteCount: UInt64
 }
 
 /// Validation results are immutable. A lock serializes the only two ownership
 /// transitions (commit or discard), allowing this single-use object to cross
 /// into `VaultUnlockService` without racing its protected staging directory.
-final class ValidatedPortableVaultRestore: @unchecked Sendable {
-    let archiveID: UUID
-    let sourceVaultID: UUID
-    let sourceVaultCreatedAt: Date
-    let destinationVaultPayload: VaultPayload
-    let manifest: VaultPhotoManifest
-    let catalog: PortableArchivePayloadCatalog
+public final class ValidatedPortableVaultRestore: @unchecked Sendable {
+    public let archiveID: UUID
+    public let sourceVaultID: UUID
+    public let sourceVaultCreatedAt: Date
+    public let destinationVaultPayload: VaultPayload
+    public let manifest: VaultPhotoManifest
+    public let catalog: PortableArchivePayloadCatalog
 
     private let stagedPayload: PortableArchiveStagedPayload
     private let ownershipLock = NSLock()
     private var ownsStagingDirectory = true
 
-    var stagingURL: URL { stagedPayload.directoryURL }
+    public var stagingURL: URL { stagedPayload.directoryURL }
 
     fileprivate init(
         secrets: PortableArchiveSecrets,
@@ -66,7 +78,7 @@ final class ValidatedPortableVaultRestore: @unchecked Sendable {
         self.stagedPayload = stagedPayload
     }
 
-    func discard() {
+    public func discard() {
         ownershipLock.lock()
         defer { ownershipLock.unlock() }
         guard ownsStagingDirectory else { return }
@@ -89,11 +101,11 @@ final class ValidatedPortableVaultRestore: @unchecked Sendable {
 /// The caller is responsible for deriving `localUnlockKey` from a newly chosen,
 /// policy-compliant local LowKey. Portable recovery credentials never become a
 /// local unlock path.
-struct PortableVaultRestoreInstaller {
+public struct PortableVaultRestoreInstaller {
     private let credentialStore: any PortableVaultCredentialStoring
     private let transactionJournal: PortableVaultRestoreTransactionJournal
 
-    init(
+    public init(
         credentialStore: any PortableVaultCredentialStoring,
         journalAuthenticationKey: SymmetricKey,
         journalRootOverride: URL? = nil,
@@ -107,10 +119,10 @@ struct PortableVaultRestoreInstaller {
         )
     }
 
-    func install(
+    public func install(
         _ restore: ValidatedPortableVaultRestore,
         localUnlockKey: SymmetricKey
-    ) async throws -> UnlockedVault {
+    ) async throws -> VaultPayload {
         let payload = restore.destinationVaultPayload
         let locator = VaultLocator.derive(from: localUnlockKey)
         guard !(await credentialStore.contains(locator: locator)) else {
@@ -154,51 +166,26 @@ struct PortableVaultRestoreInstaller {
             throw PortableVaultRestoreInstallationError.credentialCommitFailed
         }
 
-        return UnlockedVault(
-            vaultID: payload.vaultID,
-            vaultKey: SymmetricKey(data: payload.vaultKey),
-            createdAt: payload.createdAt
-        )
+        return payload
     }
 
-    func recoverInterruptedInstalls() async throws {
+    public func recoverInterruptedInstalls() async throws {
         try await transactionJournal.recoverAll(credentialStore: credentialStore)
     }
 }
 
-struct EncryptedVaultTransferCoordinator {
+public struct EncryptedVaultTransferCoordinator {
+    public init() {}
+
     /// The caller must re-authenticate the currently open vault before invoking
     /// this operation. This layer accepts only an already-unlocked vault and
     /// never enumerates any other local vault.
-    func exportVault(
-        unlockedVault: UnlockedVault,
-        credential: PortableArchiveCredential,
-        destinationURL: URL,
-        sourceRootOverride: URL? = nil,
-        workingRootOverride: URL? = nil,
-        keyDeriver: any PortableArchiveKeyDeriving = PortableArchiveArgon2idKeyDeriver()
-    ) async throws -> EncryptedVaultExportReceipt {
-        try await exportVault(
-            vaultID: unlockedVault.vaultID,
-            createdAt: unlockedVault.createdAt,
-            access: VaultAccessCapability(
-                vaultID: unlockedVault.vaultID,
-                vaultKey: unlockedVault.vaultKey
-            ),
-            credential: credential,
-            destinationURL: destinationURL,
-            sourceRootOverride: sourceRootOverride,
-            workingRootOverride: workingRootOverride,
-            keyDeriver: keyDeriver
-        )
-    }
-
     /// Production export uses the active session capability so backgrounding
     /// or an explicit lock revokes its access and cancels the registered task.
-    func exportVault(
+    public func exportVault(
         vaultID: UUID,
         createdAt: Date,
-        access: VaultAccessCapability,
+        access: any PortableVaultExportAccess,
         credential: PortableArchiveCredential,
         destinationURL: URL,
         sourceRootOverride: URL? = nil,
@@ -207,7 +194,7 @@ struct EncryptedVaultTransferCoordinator {
     ) async throws -> EncryptedVaultExportReceipt {
         try Task.checkCancellation()
         guard access.vaultID == vaultID else {
-            throw VaultAccessError.revoked
+            throw EncryptedVaultTransferError.invalidSourceVault
         }
         guard destinationURL.pathExtension.lowercased() == "khvault" else {
             throw EncryptedVaultTransferError.invalidDestination
@@ -296,7 +283,7 @@ struct EncryptedVaultTransferCoordinator {
         )
     }
 
-    func stageAndValidateRestore(
+    public func stageAndValidateRestore(
         archiveURL: URL,
         credential: PortableArchiveCredential,
         workingRootOverride: URL? = nil,
@@ -427,3 +414,4 @@ struct EncryptedVaultTransferCoordinator {
         return candidatePath == directoryPath || candidatePath.hasPrefix(directoryPath + "/")
     }
 }
+

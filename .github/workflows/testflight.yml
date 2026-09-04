@@ -29,10 +29,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app$' project.yml
-          grep -q 'CFBundleDisplayName: KeyHollow$' project.yml
-          grep -q 'MARKETING_VERSION: 1.0$' project.yml
-          grep -q 'CURRENT_PROJECT_VERSION: 12$' project.yml
+          grep -Eq '^[[:space:]]*PRODUCT_BUNDLE_IDENTIFIER:[[:space:]]*com\.keyhollow\.app[[:space:]]*$' project.yml
+          grep -Eq '^[[:space:]]*CFBundleDisplayName:[[:space:]]*KeyHollow[[:space:]]*$' project.yml
+          grep -Eq '^[[:space:]]*MARKETING_VERSION:[[:space:]]*1\.0[[:space:]]*$' project.yml
+          grep -Eq '^[[:space:]]*CURRENT_PROJECT_VERSION:[[:space:]]*13[[:space:]]*$' project.yml
 
       - name: Install XcodeGen
         run: brew install xcodegen

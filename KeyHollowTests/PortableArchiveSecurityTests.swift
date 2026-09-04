@@ -2,6 +2,8 @@ import CryptoKit
 import Foundation
 import XCTest
 @testable import KeyHollow
+@testable import KeyHollowTransferCore
+@testable import KeyHollowVaultCore
 
 final class PortableArchiveSecurityTests: XCTestCase {
     func testGeneratedRecoveryCodeCreatesPortableAuthenticatedEnvelope() throws {
@@ -340,3 +342,4 @@ private extension Data {
 
     enum HexError: Error { case invalid }
 }
+

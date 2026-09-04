@@ -1,7 +1,10 @@
 import SwiftUI
+import KeyHollowVaultCore
 
 struct RootView: View {
     @EnvironmentObject private var session: VaultSession
+
+    let makeService: () throws -> VaultUnlockService
 
     @State private var service: VaultUnlockService?
     @State private var setupRequired = false
@@ -31,7 +34,7 @@ struct RootView: View {
         .task {
             guard service == nil else { return }
             do {
-                let createdService = try VaultUnlockService()
+                let createdService = try makeService()
 #if DEBUG
                 if ProcessInfo.processInfo.arguments.contains("-ui-test-locked-home") {
                     service = createdService
@@ -439,3 +442,4 @@ private struct InitialVaultSetupView: View {
         }
     }
 }
+

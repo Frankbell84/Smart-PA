@@ -1,10 +1,10 @@
 import Foundation
 
-actor VaultStore {
+public actor VaultStore {
     private let fileManager = FileManager.default
     private let root: URL
 
-    init(rootOverride: URL? = nil) throws {
+    public init(rootOverride: URL? = nil) throws {
         if let rootOverride {
             root = rootOverride.standardizedFileURL
         } else {
@@ -21,7 +21,7 @@ actor VaultStore {
         try Self.protectAndExclude(root, fileManager: fileManager)
     }
 
-    func hasAnyVaults() throws -> Bool {
+    public func hasAnyVaults() throws -> Bool {
         let contents = try fileManager.contentsOfDirectory(
             at: root,
             includingPropertiesForKeys: nil,
@@ -30,18 +30,18 @@ actor VaultStore {
         return contents.contains { $0.pathExtension == "khv" }
     }
 
-    func contains(locator: String) -> Bool {
+    public func contains(locator: String) -> Bool {
         fileManager.fileExists(atPath: url(for: locator).path)
     }
 
-    func read(locator: String) throws -> VaultEnvelope? {
+    public func read(locator: String) throws -> VaultEnvelope? {
         let target = url(for: locator)
         guard fileManager.fileExists(atPath: target.path) else { return nil }
         let data = try Data(contentsOf: target, options: [.mappedIfSafe])
         return try JSONDecoder().decode(VaultEnvelope.self, from: data)
     }
 
-    func write(_ envelope: VaultEnvelope, locator: String) throws {
+    public func write(_ envelope: VaultEnvelope, locator: String) throws {
         let target = url(for: locator)
         let data = try JSONEncoder().encode(envelope)
         try data.write(to: target, options: [.atomic, .completeFileProtection])
@@ -51,7 +51,7 @@ actor VaultStore {
     /// Creates a new credential without replacing any file that won a race for
     /// the same opaque locator. Portable restore uses this after its initial
     /// collision check so another vault can never be overwritten.
-    func writeIfAbsent(_ envelope: VaultEnvelope, locator: String) throws {
+    public func writeIfAbsent(_ envelope: VaultEnvelope, locator: String) throws {
         let target = url(for: locator)
         guard !fileManager.fileExists(atPath: target.path) else {
             throw CocoaError(.fileWriteFileExists)
@@ -82,7 +82,7 @@ actor VaultStore {
         }
     }
 
-    func delete(locator: String) throws {
+    public func delete(locator: String) throws {
         let target = url(for: locator)
         guard fileManager.fileExists(atPath: target.path) else { return }
         try fileManager.removeItem(at: target)
@@ -127,3 +127,4 @@ actor VaultStore {
         try mutableURL.setResourceValues(values)
     }
 }
+

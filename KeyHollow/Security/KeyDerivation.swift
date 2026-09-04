@@ -1,13 +1,14 @@
 import Foundation
 import CryptoKit
+import KeyHollowCryptoCore
 
-enum KeyDerivationError: Error {
+public enum KeyDerivationError: Error {
     case invalidPasscode
     case invalidSalt
     case invalidOutput
 }
 
-protocol PasswordKeyDeriving: Sendable {
+public protocol PasswordKeyDeriving: Sendable {
     func deriveKey(passcode: String, installationSalt: Data, pepper: Data) throws -> SymmetricKey
 }
 
@@ -23,12 +24,14 @@ protocol PasswordKeyDeriving: Sendable {
 ///
 /// Release gate: benchmark these parameters on the minimum supported iPhone and
 /// independently review the vendored Argon2id implementation + integration.
-struct ProductionArgon2idKDF: PasswordKeyDeriving {
+public struct ProductionArgon2idKDF: PasswordKeyDeriving {
     static let memoryKiB: UInt32 = 65_536
     static let iterations: UInt32 = 3
     static let parallelism: UInt32 = 2
 
-    func deriveKey(passcode: String, installationSalt: Data, pepper: Data) throws -> SymmetricKey {
+    public init() {}
+
+    public func deriveKey(passcode: String, installationSalt: Data, pepper: Data) throws -> SymmetricKey {
         guard PasscodePolicy.isValidForUnlock(passcode) else { throw KeyDerivationError.invalidPasscode }
         guard installationSalt.count >= 16 else { throw KeyDerivationError.invalidSalt }
         guard pepper.count == 32 else { throw KeyDerivationError.invalidOutput }
@@ -68,3 +71,4 @@ enum VaultKeySchedule {
         )
     }
 }
+

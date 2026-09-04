@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import KeyHollowPhotoCore
 
 enum PortableArchivePayloadError: Error, Equatable {
     case alreadyFinished
@@ -42,7 +43,7 @@ struct PortableArchivePayloadEntry: Codable, Equatable, Sendable {
     let ciphertextSHA256: Data
 }
 
-struct PortableArchivePayloadCatalog: Codable, Equatable, Sendable {
+public struct PortableArchivePayloadCatalog: Codable, Equatable, Sendable {
     static let currentVersion = 1
 
     let version: Int

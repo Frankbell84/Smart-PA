@@ -1,15 +1,18 @@
 import CryptoKit
 import Foundation
+import KeyHollowCryptoCore
+import KeyHollowVaultCore
 
 enum PortableVaultRestoreTransactionError: Error, Equatable {
     case invalidJournal
+    case invalidJournalKeyData
     case rollbackIncomplete
 }
 
-enum PortableVaultRestoreJournalKeySchedule {
-    static func key(devicePepper: Data) throws -> SymmetricKey {
+public enum PortableVaultRestoreJournalKeySchedule {
+    public static func key(devicePepper: Data) throws -> SymmetricKey {
         guard devicePepper.count == 32 else {
-            throw DevicePepperError.invalidData
+            throw PortableVaultRestoreTransactionError.invalidJournalKeyData
         }
         return HKDF<SHA256>.deriveKey(
             inputKeyMaterial: SymmetricKey(data: devicePepper),
@@ -54,7 +57,7 @@ struct PortableVaultRestoreTransactionRecord: Codable, Equatable, Sendable {
     }
 }
 
-struct PortableVaultRestoreTransactionJournal {
+public struct PortableVaultRestoreTransactionJournal {
     private static let fileExtension = "khtxn"
 
     let journalRoot: URL
@@ -65,7 +68,7 @@ struct PortableVaultRestoreTransactionJournal {
 
     /// Avoids creating Keychain material or protected directories during an
     /// ordinary launch when no portable restore transaction can exist.
-    static func recoveryRequired(journalRootOverride: URL? = nil) throws -> Bool {
+    public static func recoveryRequired(journalRootOverride: URL? = nil) throws -> Bool {
         let fileManager = FileManager.default
         let root: URL
         if let journalRootOverride {
@@ -307,3 +310,4 @@ struct PortableVaultRestoreTransactionJournal {
         try protectedURL.setResourceValues(values)
     }
 }
+

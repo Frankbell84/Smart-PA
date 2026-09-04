@@ -2,6 +2,8 @@ import CryptoKit
 import Foundation
 import XCTest
 @testable import KeyHollow
+@testable import KeyHollowPhotoCore
+@testable import KeyHollowTransferCore
 
 final class PhaseThreeStressTests: XCTestCase {
     func testFiftyLargePhotosRoundTripWithoutChangingTheSourceVault() async throws {
@@ -36,11 +38,9 @@ final class PhaseThreeStressTests: XCTestCase {
         )
         let coordinator = EncryptedVaultTransferCoordinator()
         let receipt = try await coordinator.exportVault(
-            unlockedVault: UnlockedVault(
-                vaultID: vaultID,
-                vaultKey: vaultKey,
-                createdAt: Date(timeIntervalSince1970: 1_700_000_000)
-            ),
+            vaultID: vaultID,
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            access: VaultAccessCapability(vaultID: vaultID, vaultKey: vaultKey),
             credential: credential,
             destinationURL: roots.archive,
             sourceRootOverride: roots.source,

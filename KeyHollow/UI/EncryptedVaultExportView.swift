@@ -1,6 +1,8 @@
 import SwiftUI
+import KeyHollowTransferCore
 import UIKit
 import UniformTypeIdentifiers
+import KeyHollowVaultCore
 
 struct EncryptedVaultExportView: View {
     @EnvironmentObject private var session: VaultSession
@@ -383,3 +385,4 @@ private struct EncryptedVaultDocumentExporter: UIViewControllerRepresentable {
         }
     }
 }
+
