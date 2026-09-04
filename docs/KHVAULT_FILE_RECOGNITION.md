@@ -6,8 +6,9 @@ iOS can identify a `.khvault` file as a KeyHollow encrypted vault. Tapping the
 file in Files launches KeyHollow and routes directly to the existing encrypted-
 vault import screen with that file already selected.
 
-Files displays a branded KeyHollow document icon for `.khvault` archives where
-the current file provider supports custom document artwork.
+On current iOS versions, Files uses the exported type's `UTTypeIcons`
+metadata to build the document tile with KeyHollow's app icon as its badge.
+Legacy document icon PNGs remain declared as a compatibility fallback.
 
 ## Security boundary
 

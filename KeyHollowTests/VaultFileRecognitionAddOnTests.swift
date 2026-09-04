@@ -74,7 +74,9 @@ final class VaultFileRecognitionAddOnTests: XCTestCase {
         let conformances = try XCTUnwrap(exportedType["UTTypeConformsTo"] as? [String])
         let tags = try XCTUnwrap(exportedType["UTTypeTagSpecification"] as? [String: Any])
         let extensions = try XCTUnwrap(tags["public.filename-extension"] as? [String])
+        let typeIcons = try XCTUnwrap(exportedType["UTTypeIcons"] as? [String: Any])
 
+        XCTAssertTrue(typeIcons.isEmpty)
         XCTAssertTrue(conformances.contains("public.content"))
         XCTAssertTrue(conformances.contains("public.data"))
         XCTAssertEqual(extensions, ["khvault"])

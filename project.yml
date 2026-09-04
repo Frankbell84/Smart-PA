@@ -162,6 +162,7 @@ targets:
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: com.keyhollow.encrypted-vault
             UTTypeDescription: KeyHollow Encrypted Vault
+            UTTypeIcons: {}
             UTTypeConformsTo:
               - public.content
               - public.data
