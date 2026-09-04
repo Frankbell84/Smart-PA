@@ -31,6 +31,9 @@ jobs:
       - name: Verify architecture boundaries
         run: python3 scripts/check_architecture_boundaries.py
 
+      - name: Test TestFlight build-number guard
+        run: node scripts/verify_testflight_build_number.mjs --self-test
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
