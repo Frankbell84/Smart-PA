@@ -7,19 +7,17 @@ options:
 
 targets:
   KeyHollowCryptoCore:
-    type: framework
+    type: library.static
     platform: iOS
     sources:
       - path: KeyHollow/Security/CryptoBox.swift
       - path: KeyHollow/ThirdParty/Argon2id
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.crypto-core
         PRODUCT_NAME: KeyHollowCryptoCore
         SWIFT_VERSION: 5.0
         SWIFT_STRICT_CONCURRENCY: complete
         DEFINES_MODULE: YES
-        MACH_O_TYPE: staticlib
         SKIP_INSTALL: YES
 
   KeyHollow:
