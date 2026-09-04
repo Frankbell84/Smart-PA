@@ -154,6 +154,7 @@ def main() -> int:
         "type: app-extension",
         "- path: KeyHollowVaultThumbnailExtension",
         "- path: KeyHollowVaultThumbnailExtension/Resources/Assets.xcassets",
+        "buildPhase: resources",
         "PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.vault-thumbnail",
         "APPLICATION_EXTENSION_API_ONLY: YES",
         "NSExtensionPointIdentifier: com.apple.quicklook.thumbnail",

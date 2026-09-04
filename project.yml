@@ -110,8 +110,8 @@ targets:
       - path: KeyHollowVaultThumbnailExtension
         excludes:
           - Resources
-    resources:
       - path: KeyHollowVaultThumbnailExtension/Resources/Assets.xcassets
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.vault-thumbnail
