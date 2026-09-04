@@ -32,7 +32,7 @@ jobs:
           grep -q 'PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app$' project.yml
           grep -q 'CFBundleDisplayName: KeyHollow$' project.yml
           grep -q 'MARKETING_VERSION: 1.0$' project.yml
-          grep -q 'CURRENT_PROJECT_VERSION: 12$' project.yml
+          grep -q 'CURRENT_PROJECT_VERSION: 13$' project.yml
 
       - name: Install XcodeGen
         run: brew install xcodegen
