@@ -153,7 +153,7 @@ def main() -> int:
     required_thumbnail_markers = (
         "type: app-extension",
         "- path: KeyHollowVaultThumbnailExtension",
-        "- path: KeyHollowVaultThumbnailExtension/Resources",
+        "- path: KeyHollowVaultThumbnailExtension/Resources/KeyHollowVaultIcon.png",
         "PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.vault-thumbnail",
         "APPLICATION_EXTENSION_API_ONLY: YES",
         "NSExtensionPointIdentifier: com.apple.quicklook.thumbnail",
