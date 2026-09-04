@@ -1,7 +1,7 @@
 import Foundation
 import CryptoKit
 
-public struct VaultPhotoRecord: Codable, Identifiable, Hashable {
+public struct VaultPhotoRecord: Codable, Identifiable, Hashable, Sendable {
     public let id: UUID
     public let importedAt: Date
     public let blobName: String
@@ -15,7 +15,7 @@ public struct VaultPhotoRecord: Codable, Identifiable, Hashable {
     }
 }
 
-public struct VaultPhotoManifest: Codable {
+public struct VaultPhotoManifest: Codable, Sendable {
     public static let currentVersion = 1
 
     public let version: Int
