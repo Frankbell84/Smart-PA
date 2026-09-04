@@ -95,5 +95,11 @@ final class VaultFileRecognitionAddOnTests: XCTestCase {
             ["com.keyhollow.encrypted-vault"]
         )
         XCTAssertEqual(attributes["QLThumbnailMinimumDimension"] as? Int, 1)
+        XCTAssertNotNil(
+            extensionBundle.url(
+                forResource: "KeyHollowVaultIcon",
+                withExtension: "png"
+            )
+        )
     }
 }

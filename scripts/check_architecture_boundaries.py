@@ -153,6 +153,7 @@ def main() -> int:
     required_thumbnail_markers = (
         "type: app-extension",
         "- path: KeyHollowVaultThumbnailExtension",
+        "- path: KeyHollowVaultThumbnailExtension/Resources",
         "PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.vault-thumbnail",
         "APPLICATION_EXTENSION_API_ONLY: YES",
         "NSExtensionPointIdentifier: com.apple.quicklook.thumbnail",
@@ -219,6 +220,29 @@ def main() -> int:
                     f"{relative(file)}: thumbnail extension must not access vault "
                     f"data or protected services ({forbidden})"
                 )
+
+    approved_app_icon = (
+        ROOT
+        / "KeyHollow"
+        / "Resources"
+        / "Assets.xcassets"
+        / "AppIcon.appiconset"
+        / "AppIcon.png"
+    )
+    thumbnail_icon = (
+        THUMBNAIL_EXTENSION_ROOT / "Resources" / "KeyHollowVaultIcon.png"
+    )
+    if not thumbnail_icon.is_file():
+        violations.append(
+            "KeyHollowVaultThumbnailExtension: approved thumbnail icon is missing"
+        )
+    elif not approved_app_icon.is_file():
+        violations.append("KeyHollow: approved app icon is missing")
+    elif thumbnail_icon.read_bytes() != approved_app_icon.read_bytes():
+        violations.append(
+            "KeyHollowVaultThumbnailExtension: thumbnail icon must remain a "
+            "byte-for-byte copy of the approved app icon"
+        )
 
     legacy_icons = ROOT / "KeyHollow" / "Resources" / "DocumentIcons"
     if legacy_icons.exists() and any(legacy_icons.iterdir()):
