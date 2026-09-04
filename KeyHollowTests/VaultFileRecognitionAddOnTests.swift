@@ -47,15 +47,7 @@ final class VaultFileRecognitionAddOnTests: XCTestCase {
 
         XCTAssertEqual(keyHollowType["CFBundleTypeRole"] as? String, "Viewer")
         XCTAssertEqual(keyHollowType["LSHandlerRank"] as? String, "Owner")
-        XCTAssertEqual(
-            keyHollowType["CFBundleTypeIconFiles"] as? [String],
-            [
-                "KHVaultDocumentIcon-22.png",
-                "KHVaultDocumentIcon-44.png",
-                "KHVaultDocumentIcon-64.png",
-                "KHVaultDocumentIcon-320.png"
-            ]
-        )
+        XCTAssertNil(keyHollowType["CFBundleTypeIconFiles"])
         XCTAssertEqual(
             Bundle.main.object(forInfoDictionaryKey: "LSSupportsOpeningDocumentsInPlace") as? Bool,
             true
@@ -74,11 +66,34 @@ final class VaultFileRecognitionAddOnTests: XCTestCase {
         let conformances = try XCTUnwrap(exportedType["UTTypeConformsTo"] as? [String])
         let tags = try XCTUnwrap(exportedType["UTTypeTagSpecification"] as? [String: Any])
         let extensions = try XCTUnwrap(tags["public.filename-extension"] as? [String])
-        let typeIcons = try XCTUnwrap(exportedType["UTTypeIcons"] as? [String: Any])
-
-        XCTAssertTrue(typeIcons.isEmpty)
+        XCTAssertNil(exportedType["UTTypeIcons"])
         XCTAssertTrue(conformances.contains("public.content"))
         XCTAssertTrue(conformances.contains("public.data"))
         XCTAssertEqual(extensions, ["khvault"])
+    }
+    func testDedicatedThumbnailExtensionIsEmbeddedAndNarrowlyRegistered() throws {
+        let plugInsURL = try XCTUnwrap(Bundle.main.builtInPlugInsURL)
+        let extensionURL = plugInsURL.appendingPathComponent(
+            "KeyHollowVaultThumbnail.appex",
+            isDirectory: true
+        )
+        let extensionBundle = try XCTUnwrap(Bundle(url: extensionURL))
+        let extensionDeclaration = try XCTUnwrap(
+            extensionBundle.object(forInfoDictionaryKey: "NSExtension")
+                as? [String: Any]
+        )
+        let attributes = try XCTUnwrap(
+            extensionDeclaration["NSExtensionAttributes"] as? [String: Any]
+        )
+
+        XCTAssertEqual(
+            extensionDeclaration["NSExtensionPointIdentifier"] as? String,
+            "com.apple.quicklook.thumbnail"
+        )
+        XCTAssertEqual(
+            attributes["QLSupportedContentTypes"] as? [String],
+            ["com.keyhollow.encrypted-vault"]
+        )
+        XCTAssertEqual(attributes["QLThumbnailMinimumDimension"] as? Int, 1)
     }
 }

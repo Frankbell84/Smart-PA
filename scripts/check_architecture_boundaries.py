@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "KeyHollow"
 PROJECT_FILE = ROOT / "project.yml"
 ADDON_ROOT = SOURCE_ROOT / "AddOns"
+THUMBNAIL_EXTENSION_ROOT = ROOT / "KeyHollowVaultThumbnailExtension"
 
 PRESENTATION_FILES = {
     "KeyHollow/App/KeyHollowApp.swift",
@@ -148,6 +149,83 @@ def main() -> int:
                     f"project.yml: KeyHollow must exclude {exclusion_marker!r} "
                     "so the add-on is compiled only in its own target"
                 )
+    thumbnail_target = target_body(project, "KeyHollowVaultThumbnailExtension")
+    required_thumbnail_markers = (
+        "type: app-extension",
+        "- path: KeyHollowVaultThumbnailExtension",
+        "PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.vault-thumbnail",
+        "APPLICATION_EXTENSION_API_ONLY: YES",
+        "NSExtensionPointIdentifier: com.apple.quicklook.thumbnail",
+        "- com.keyhollow.encrypted-vault",
+        "- target: KeyHollowVaultThumbnailExtension",
+        "embed: true",
+    )
+    if thumbnail_target is None:
+        violations.append(
+            "project.yml: isolated KeyHollowVaultThumbnailExtension target is missing"
+        )
+    else:
+        for marker in required_thumbnail_markers[:-2]:
+            if marker not in thumbnail_target:
+                violations.append(
+                    f"project.yml: thumbnail extension is missing {marker!r}"
+                )
+        if app_target is not None:
+            for marker in required_thumbnail_markers[-2:]:
+                if marker not in app_target:
+                    violations.append(
+                        f"project.yml: app embedding is missing {marker!r}"
+                    )
+
+    if "CFBundleTypeIconFiles" in project or "UTTypeIcons:" in project:
+        violations.append(
+            "project.yml: abandoned document-icon metadata must not coexist "
+            "with the thumbnail extension"
+        )
+
+    thumbnail_sources = (
+        sorted(THUMBNAIL_EXTENSION_ROOT.rglob("*.swift"))
+        if THUMBNAIL_EXTENSION_ROOT.exists()
+        else []
+    )
+    if [relative(path) for path in thumbnail_sources] != [
+        "KeyHollowVaultThumbnailExtension/ThumbnailProvider.swift"
+    ]:
+        violations.append(
+            "KeyHollowVaultThumbnailExtension: expected exactly ThumbnailProvider.swift"
+        )
+
+    for file in thumbnail_sources:
+        source = file.read_text(encoding="utf-8")
+        unexpected = imports(source) - {"QuickLookThumbnailing", "UIKit"}
+        if unexpected:
+            violations.append(
+                f"{relative(file)}: thumbnail extension imports outside its allowlist: "
+                f"{', '.join(sorted(unexpected))}"
+            )
+        for forbidden in (
+            "request.fileURL",
+            "Data(contentsOf:",
+            "FileHandle",
+            "CryptoKit",
+            "KeyHollowCryptoCore",
+            "KeyHollowVaultCore",
+            "KeyHollowPhotoCore",
+            "KeyHollowTransferCore",
+            "URLSession",
+        ):
+            if forbidden in source:
+                violations.append(
+                    f"{relative(file)}: thumbnail extension must not access vault "
+                    f"data or protected services ({forbidden})"
+                )
+
+    legacy_icons = ROOT / "KeyHollow" / "Resources" / "DocumentIcons"
+    if legacy_icons.exists() and any(legacy_icons.iterdir()):
+        violations.append(
+            "KeyHollow/Resources/DocumentIcons: legacy icon assets must be removed"
+        )
+
     required_crypto_module_markers = (
         "KeyHollowCryptoCore:",
         "- path: KeyHollow/Security/CryptoBox.swift",
@@ -345,7 +423,8 @@ def main() -> int:
         return 1
 
     print(
-        "Architecture boundaries passed: KeyHollowCryptoCore, "
+        "Architecture boundaries passed: KeyHollowVaultThumbnailExtension, "
+        "KeyHollowCryptoCore, "
         "KeyHollowVaultCore, KeyHollowPhotoCore, KeyHollowPhotosAdapter, and "
         "KeyHollowTransferCore remain separately compiled; registered add-ons "
         "remain independently compiled; and core storage, "

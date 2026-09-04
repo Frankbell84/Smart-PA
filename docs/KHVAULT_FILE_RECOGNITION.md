@@ -6,9 +6,11 @@ iOS can identify a `.khvault` file as a KeyHollow encrypted vault. Tapping the
 file in Files launches KeyHollow and routes directly to the existing encrypted-
 vault import screen with that file already selected.
 
-On current iOS versions, Files uses the exported type's `UTTypeIcons`
-metadata to build the document tile with KeyHollow's app icon as its badge.
-Legacy document icon PNGs remain declared as a compatibility fallback.
+Files receives a fixed KeyHollow-branded thumbnail from the separately compiled
+`KeyHollowVaultThumbnailExtension`. The extension draws the brand mark without
+opening, reading, parsing, authenticating, or decrypting the archive. The four
+legacy document-icon PNGs and the unsuccessful `UTTypeIcons` experiment were
+removed so only one presentation path remains.
 
 ## Security boundary
 
@@ -32,14 +34,17 @@ existing import screen. No protected core target imports the add-on.
 
 - Existing vaults and the `.khvault` container format are unchanged.
 - Manual import continues to work whether or not file recognition is present.
-- Removing the add-on removes only the iOS open-in entry point.
+- Removing the recognition add-on removes only the iOS open-in entry point.
+- Removing the thumbnail extension removes only the Files artwork; opening and
+  importing `.khvault` files continues to work.
 - Unsupported or remote URLs are rejected before reaching the import screen.
 
 ## Release evidence required
 
 In addition to the complete KeyHollow regression suite and security scan:
 
-1. Confirm Files shows KeyHollow as an available handler for `.khvault`.
+1. Confirm Files shows the KeyHollow thumbnail and KeyHollow as the handler for
+   a newly exported `.khvault` file after a clean installation.
 2. Open a valid export from Files with KeyHollow locked and unlocked.
 3. Confirm the chosen filename and size are shown without opening a second
    picker.
