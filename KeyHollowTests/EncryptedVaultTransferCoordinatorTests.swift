@@ -2,6 +2,7 @@ import CryptoKit
 import Foundation
 import XCTest
 @testable import KeyHollow
+@testable import KeyHollowVaultCore
 
 final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
     func testWholeVaultExportIsVerifiedAndSourceRemainsUnchanged() async throws {
@@ -754,3 +755,4 @@ private func XCTAssertThrowsErrorAsync(
         XCTFail("Expected expression to throw", file: file, line: line)
     } catch {}
 }
+

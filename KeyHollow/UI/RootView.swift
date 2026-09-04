@@ -1,4 +1,5 @@
 import SwiftUI
+import KeyHollowVaultCore
 
 struct RootView: View {
     @EnvironmentObject private var session: VaultSession
@@ -439,3 +440,4 @@ private struct InitialVaultSetupView: View {
         }
     }
 }
+

@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import KeyHollowVaultCore
 
 enum EncryptedVaultTransferError: Error, Equatable {
     case archiveVerificationFailed
@@ -427,3 +428,4 @@ struct EncryptedVaultTransferCoordinator {
         return candidatePath == directoryPath || candidatePath.hasPrefix(directoryPath + "/")
     }
 }
+

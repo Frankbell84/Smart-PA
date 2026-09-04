@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import KeyHollowVaultCore
 
 enum VaultUnlockError: Error, Equatable {
     case invalidCredentials
@@ -290,3 +291,4 @@ actor VaultUnlockService {
         )
     }
 }
+

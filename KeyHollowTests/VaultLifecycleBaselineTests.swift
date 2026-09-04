@@ -2,6 +2,7 @@ import CryptoKit
 import Foundation
 import XCTest
 @testable import KeyHollow
+@testable import KeyHollowVaultCore
 
 final class VaultLifecycleBaselineTests: XCTestCase {
     @MainActor
@@ -217,3 +218,4 @@ private extension SymmetricKey {
         withUnsafeBytes { Data($0) }
     }
 }
+

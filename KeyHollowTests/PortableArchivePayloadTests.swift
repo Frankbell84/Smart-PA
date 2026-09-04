@@ -2,6 +2,7 @@ import CryptoKit
 import Foundation
 import XCTest
 @testable import KeyHollow
+@testable import KeyHollowVaultCore
 
 final class PortableArchivePayloadTests: XCTestCase {
     func testEncryptedVaultPayloadRoundTripsWithoutPlaintextMedia() async throws {
@@ -397,3 +398,4 @@ private extension Data {
         }
     }
 }
+

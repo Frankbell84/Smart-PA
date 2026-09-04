@@ -20,6 +20,25 @@ targets:
         DEFINES_MODULE: YES
         SKIP_INSTALL: YES
 
+  KeyHollowVaultCore:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/Security/KeyDerivation.swift
+      - path: KeyHollow/Security/PasscodePolicy.swift
+      - path: KeyHollow/Security/VaultEnvelope.swift
+      - path: KeyHollow/Security/VaultLocator.swift
+      - path: KeyHollow/Storage/VaultStore.swift
+    dependencies:
+      - target: KeyHollowCryptoCore
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowVaultCore
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
   KeyHollow:
     type: application
     platform: iOS
@@ -27,9 +46,15 @@ targets:
       - path: KeyHollow
         excludes:
           - Security/CryptoBox.swift
+          - Security/KeyDerivation.swift
+          - Security/PasscodePolicy.swift
+          - Security/VaultEnvelope.swift
+          - Security/VaultLocator.swift
+          - Storage/VaultStore.swift
           - ThirdParty/Argon2id
     dependencies:
       - target: KeyHollowCryptoCore
+      - target: KeyHollowVaultCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app
@@ -73,6 +98,7 @@ targets:
     dependencies:
       - target: KeyHollow
       - target: KeyHollowCryptoCore
+      - target: KeyHollowVaultCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.keyhollow.app.tests
@@ -96,6 +122,7 @@ schemes:
     build:
       targets:
         KeyHollowCryptoCore: all
+        KeyHollowVaultCore: all
         KeyHollow: all
         KeyHollowTests: [test]
     test:
@@ -105,4 +132,5 @@ schemes:
         - KeyHollowLaunchTests
     archive:
       config: Release
+
 

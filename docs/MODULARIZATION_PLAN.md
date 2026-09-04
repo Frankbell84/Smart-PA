@@ -31,6 +31,8 @@ analytics, advertising, authentication, or purchase SDKs.
 - Preserve all existing algorithms, parameters, inputs, outputs, and errors.
 - Require the architecture check to prove the compiled boundary remains in the
   project configuration.
+- Status: validated by the Mac simulator build, complete regression suite, and
+  Swift security analysis.
 
 ### Milestone 2: Vault domain
 
@@ -39,6 +41,7 @@ analytics, advertising, authentication, or purchase SDKs.
 - Remove accidental error coupling between random-key generation and the
   device-secret adapter.
 - Keep Apple Keychain access in a platform adapter rather than the pure domain.
+- Status: implemented on the isolated branch and awaiting Mac validation.
 
 ### Milestone 3: Encrypted photo storage
 
@@ -76,3 +79,4 @@ analytics, advertising, authentication, or purchase SDKs.
 - Repeat the physical-iPhone test matrix.
 - Merge only after the owner confirms the modular build behaves like the
   validated Build 12 baseline.
+

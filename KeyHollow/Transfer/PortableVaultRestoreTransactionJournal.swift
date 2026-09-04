@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 import KeyHollowCryptoCore
+import KeyHollowVaultCore
 
 enum PortableVaultRestoreTransactionError: Error, Equatable {
     case invalidJournal
@@ -308,3 +309,4 @@ struct PortableVaultRestoreTransactionJournal {
         try protectedURL.setResourceValues(values)
     }
 }
+

@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import KeyHollowVaultCore
 
 struct VaultSecuritySettingsView: View {
     @EnvironmentObject private var session: VaultSession
@@ -361,3 +362,4 @@ private enum DeleteVaultSection: Hashable {
     case confirmation
     case deleteButton
 }
+

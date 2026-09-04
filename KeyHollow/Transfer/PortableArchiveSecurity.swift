@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 import KeyHollowCryptoCore
+import KeyHollowVaultCore
 import Security
 
 enum PortableArchiveError: Error, Equatable {
@@ -312,3 +313,4 @@ private extension Data {
         }
     }
 }
+

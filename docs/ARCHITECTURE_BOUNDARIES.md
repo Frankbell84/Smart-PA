@@ -29,10 +29,12 @@ The CI architecture check fails when:
   SDK enters the current local-only application.
 
 These rules make accidental coupling visible at review time. They do not claim
-that every folder is a separate compiled Swift module. The first compiled
-boundary is now `KeyHollowCryptoCore`, which owns the authenticated-encryption
-primitive and vendored Argon2id implementation. The app can import that module;
-the module cannot import the app, UI, Photos, storage, session, or transfer code.
+that every folder is a separate compiled Swift module. `KeyHollowCryptoCore`
+owns the authenticated-encryption primitive and vendored Argon2id
+implementation. `KeyHollowVaultCore` owns passcode policy, key derivation,
+opaque vault locators, credential envelopes, and local credential persistence.
+The vault module depends on the crypto module; neither may import the app, UI,
+Photos, session, or transfer code. Keychain access remains a platform adapter.
 Additional module extraction remains incremental and must continue in its own
 review so it cannot destabilize the tested core.
 
@@ -47,3 +49,4 @@ review so it cannot destabilize the tested core.
    existing encrypted vault data byte-for-byte.
 5. No architecture cleanup and customer-facing feature expansion share the
    same production merge.
+

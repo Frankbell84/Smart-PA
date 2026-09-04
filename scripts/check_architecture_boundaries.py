@@ -76,6 +76,26 @@ def main() -> int:
                 f"project.yml: compiled crypto boundary is missing {marker!r}"
             )
 
+    required_vault_module_markers = (
+        "KeyHollowVaultCore:",
+        "- path: KeyHollow/Security/KeyDerivation.swift",
+        "- path: KeyHollow/Security/PasscodePolicy.swift",
+        "- path: KeyHollow/Security/VaultEnvelope.swift",
+        "- path: KeyHollow/Security/VaultLocator.swift",
+        "- path: KeyHollow/Storage/VaultStore.swift",
+        "- target: KeyHollowVaultCore",
+        "- Security/KeyDerivation.swift",
+        "- Security/PasscodePolicy.swift",
+        "- Security/VaultEnvelope.swift",
+        "- Security/VaultLocator.swift",
+        "- Storage/VaultStore.swift",
+    )
+    for marker in required_vault_module_markers:
+        if marker not in project:
+            violations.append(
+                f"project.yml: compiled vault boundary is missing {marker!r}"
+            )
+
     for file in swift_files:
         path = relative(file)
         source = file.read_text(encoding="utf-8")
@@ -118,12 +138,14 @@ def main() -> int:
         return 1
 
     print(
-        "Architecture boundaries passed: KeyHollowCryptoCore remains separately "
-        "compiled, and core storage, cryptography, session, and transfer code remain "
-        "free of UI, Photos, network, and remote SDK concerns."
+        "Architecture boundaries passed: KeyHollowCryptoCore and "
+        "KeyHollowVaultCore remain separately compiled, and core storage, "
+        "cryptography, session, and transfer code remain free of UI, Photos, "
+        "network, and remote SDK concerns."
     )
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

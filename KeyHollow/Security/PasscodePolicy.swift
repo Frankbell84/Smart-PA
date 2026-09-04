@@ -1,15 +1,15 @@
 import Foundation
 
-enum PasscodeTier: String, CaseIterable, Codable, Identifiable {
+public enum PasscodeTier: String, CaseIterable, Codable, Identifiable {
     case standard
     case enhanced
     case high
     case maximum
     case custom
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .standard: return "Standard"
         case .enhanced: return "Enhanced"
@@ -19,7 +19,7 @@ enum PasscodeTier: String, CaseIterable, Codable, Identifiable {
         }
     }
 
-    var fixedLength: Int? {
+    public var fixedLength: Int? {
         switch self {
         case .standard: return 8
         case .enhanced: return 10
@@ -30,7 +30,7 @@ enum PasscodeTier: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum NewPasscodeRejection: Equatable {
+public enum NewPasscodeRejection: Equatable {
     case tooShort
     case tooLong
     case digitsOnly
@@ -38,7 +38,7 @@ enum NewPasscodeRejection: Equatable {
     case sequential
     case repeatedPattern
 
-    var message: String {
+    public var message: String {
         switch self {
         case .tooShort:
             return "Use at least 8 digits."
@@ -56,17 +56,17 @@ enum NewPasscodeRejection: Equatable {
     }
 }
 
-enum PasscodePolicy {
+public enum PasscodePolicy {
     /// New and changed passcodes must meet the stronger current policy.
-    static let minimumLength = 8
-    static let maximumLength = 20
+    public static let minimumLength = 8
+    public static let maximumLength = 20
 
-    static func isValidForUnlock(_ passcode: String) -> Bool {
+    public static func isValidForUnlock(_ passcode: String) -> Bool {
         (minimumLength...maximumLength).contains(passcode.count) &&
         isASCIIDigits(passcode)
     }
 
-    static func rejectionReason(forNewPasscode passcode: String) -> NewPasscodeRejection? {
+    public static func rejectionReason(forNewPasscode passcode: String) -> NewPasscodeRejection? {
         guard passcode.count >= minimumLength else { return .tooShort }
         guard passcode.count <= maximumLength else { return .tooLong }
         guard isASCIIDigits(passcode) else { return .digitsOnly }
@@ -98,11 +98,11 @@ enum PasscodePolicy {
         return nil
     }
 
-    static func isAcceptableNewPasscode(_ passcode: String) -> Bool {
+    public static func isAcceptableNewPasscode(_ passcode: String) -> Bool {
         rejectionReason(forNewPasscode: passcode) == nil
     }
 
-    static func isAcceptableNewPasscode(
+    public static func isAcceptableNewPasscode(
         _ passcode: String,
         tier: PasscodeTier,
         customLength: Int? = nil
@@ -120,3 +120,4 @@ enum PasscodePolicy {
         !passcode.isEmpty && passcode.utf8.allSatisfy { (48...57).contains($0) }
     }
 }
+

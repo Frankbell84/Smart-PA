@@ -1,6 +1,7 @@
 import Foundation
 import CryptoKit
 import KeyHollowCryptoCore
+import KeyHollowVaultCore
 
 enum VaultAccessError: Error, Equatable {
     case revoked
@@ -213,4 +214,5 @@ final class VaultSession: ObservableObject {
         }
     }
 }
+
 
