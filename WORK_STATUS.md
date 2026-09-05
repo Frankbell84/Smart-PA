@@ -6,7 +6,7 @@ Pull request: Draft PR #33
 
 ## Current task
 
-Close the mixed-content portable-vault transfer gap and smooth the new-vault LowKey confirmation flow on the isolated general-file branch; preserve backward compatibility with existing photo-only `.khvault` archives and keep production untouched.
+Deliver the fully validated mixed-content portable-vault repair and smoother LowKey confirmation flow as isolated internal TestFlight Build 29; preserve backward compatibility with existing photo-only `.khvault` archives and keep production untouched.
 
 ## Completed work
 
@@ -61,6 +61,7 @@ Close the mixed-content portable-vault transfer gap and smooth the new-vault Low
 - Added mixed photo/file export, validation, install, plaintext-equivalence, legacy-catalog compatibility, and dual-store rollback regression coverage.
 - The import verification summary now reports both photo and file counts.
 - Matching, policy-compliant confirmation digits now reveal an inline Continue action directly beneath the second LowKey field while preserving the keyboard toolbar action.
+- PR #33 completed the corrected macOS simulator build, full mixed photo/file regression and security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL analysis at `2ac4d75`.
 
 ## Test and build status
 
@@ -103,18 +104,19 @@ Close the mixed-content portable-vault transfer gap and smooth the new-vault Low
 - Mixed-content repair architecture boundary check: passed locally; TransferCore remains independent from all add-ons.
 - Mixed-content repair release-hygiene check: passed locally.
 - Mixed-content repair whitespace/diff validation: passed locally.
-- Mixed-content simulator compilation, full regression/security suite, and Swift CodeQL: pending remote validation.
+- Mixed-content macOS simulator compilation and full regression/security suite: passed on PR #33 at `2ac4d75`.
+- Mixed-content Swift CodeQL security analysis: passed on PR #33 at `2ac4d75`.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
 
 ## Blockers
 
-- No implementation blocker. Remote macOS compilation, the full regression/security suite, and Swift CodeQL remain required before TestFlight delivery.
+- No implementation blocker. The remaining gate is signed Build 29 delivery followed by focused physical-iPhone validation.
 
 ## Next action
 
-Commit and publish the isolated mixed-content repair, run the complete protected PR gates, correct any compiler or security findings, and only then prepare another isolated TestFlight build for focused physical testing.
+Transfer the exact validated source to the isolated delivery branch, advance the app and thumbnail extension together to Build 29, run delivery hygiene gates, upload to the existing internal TestFlight group, and wait for focused physical testing.
 
 ## Frank's decision required
 
