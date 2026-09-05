@@ -1,15 +1,17 @@
 # KeyHollow Work Status
 
 Updated: 2026-09-05
-Branch: `feature/general-file-support`
-Pull request: Draft PR #33
+Branch: `chore/phase-four-preflight`
+Pull request: Not opened
 
 ## Current task
 
-Prepare the fully validated general-file-support candidate for Frank's final merge decision while keeping production and App Store review untouched. Defer thumbnail parity for images imported through Files to the dedicated folder/presentation phase.
+Perform a dedicated pre-Phase 4 cleanup from merged production commit `bbd6b`: refresh obsolete restart documentation, audit and address the known Swift 6 concurrency warnings without changing customer behavior, and prove the resulting baseline with the standard architecture, hygiene, build, test, and security gates. App Store review remains untouched.
 
 ## Completed work
 
+- PR #33 was explicitly approved after Build 29 device validation and merged into `main` as `bbd6bfa`.
+- Created this isolated cleanup branch directly from verified remote `main`; no feature or delivery branch was reused.
 - General File Support remains an independently compiled add-on behind narrow interfaces.
 - Selecting files creates pending review candidates and does not change the vault manifest.
 - The review screen provides an explicit `Import N Files into Vault` confirmation.
@@ -116,17 +118,17 @@ Prepare the fully validated general-file-support candidate for Frank's final mer
 - Image-file thumbnail parity with Photo-library imports: deferred to the folder/presentation phase by design.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
-- Production and App Store review: untouched.
+- Production source is unchanged after `bbd6bfa`; App Store review is untouched.
 
 ## Blockers
 
-- No implementation, validation, signing, upload, processing, TestFlight-assignment, or physical-device blocker. Final merge awaits Frank's explicit approval.
+- No current blocker. The Mac build and Swift analysis will be required after cleanup changes are published.
 
 ## Next action
 
-With Frank's explicit approval, make PR #33 merge-ready and merge the completed general-file-support layer. Carry thumbnail generation and unified image-tile presentation forward as an acceptance requirement for the dedicated folder feature.
+Commit and push this starting checkpoint, audit all stale phase records and current Swift 6 warnings, make only behavior-neutral cleanup changes, and run the complete protected validation sequence before declaring the Phase 4 baseline clean.
 
 ## Frank's decision required
 
-- Frank must explicitly approve the final merge of PR #33 now that Build 29 has passed device validation.
-- Any App Store review submission remains a separate decision requiring Frank's explicit approval.
+- No decision is required for routine preflight cleanup and validation.
+- Any merge into `main`, TestFlight delivery, or App Store review submission remains a separate decision requiring Frank's explicit approval.
