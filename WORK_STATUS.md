@@ -41,6 +41,10 @@ Prepare the fully validated unified mixed-content grid for isolated internal Tes
 - Build 24 exposed a presentation-quality issue only: general files use an oversized list card while photos use compact square tiles.
 - The isolated source refinement replaces that split presentation with one three-column grid while keeping photo and general-file stores, manifests, and compiled modules separate.
 - PR #33 passed the refined macOS simulator build, full regression/security suite, architecture enforcement, release hygiene, and Swift CodeQL at source commit `7b41ffc`.
+- Replaced the oversized primary-screen file panel with compact file tiles inside the same three-column grid used by photo thumbnails.
+- File tiles retain file-type identity, display name, size, accessibility labels, and navigation into the dedicated file manager.
+- Photo-selection mode visibly disables file tiles because its save/delete actions remain intentionally photo-specific.
+- Updated the add-on behavior record to document the unified mixed-content grid without weakening the separate manifests or compiled-module boundary.
 
 ## Test and build status
 

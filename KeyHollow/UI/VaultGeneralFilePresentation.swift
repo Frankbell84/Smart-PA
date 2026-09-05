@@ -50,62 +50,61 @@ enum GeneralFilePresentation {
     }
 }
 
-struct VaultGeneralFileSummaryView: View {
-    let records: [VaultGeneralFileRecord]
+struct VaultGeneralFileTileView: View {
+    let record: VaultGeneralFileRecord
+    let isEnabled: Bool
     let openFileManager: () -> Void
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Files")
-                    .font(.headline)
-                Spacer()
-                Button("Manage") { openFileManager() }
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 12)
+    private var formattedSize: String {
+        ByteCountFormatter.string(
+            fromByteCount: Int64(record.originalByteCount),
+            countStyle: .file
+        )
+    }
 
-            ForEach(records) { record in
-                Button { openFileManager() } label: {
-                    HStack(spacing: 14) {
+    var body: some View {
+        Button { openFileManager() } label: {
+            GeometryReader { proxy in
+                ZStack(alignment: .bottomLeading) {
+                    Rectangle()
+                        .fill(.secondary.opacity(0.12))
+
+                    VStack(spacing: 0) {
                         Image(systemName: GeneralFilePresentation.iconName(
                             for: record.contentTypeIdentifier
                         ))
-                        .font(.title2)
+                        .font(.system(size: 38, weight: .regular))
                         .foregroundStyle(.tint)
-                        .frame(width: 32)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text(record.displayName)
+                                .font(.caption.weight(.semibold))
                                 .foregroundStyle(.primary)
                                 .lineLimit(2)
-                            Text(ByteCountFormatter.string(
-                                fromByteCount: Int64(record.originalByteCount),
-                                countStyle: .file
-                            ))
-                            .font(.caption)
+                            Text(formattedSize)
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                         }
-
-                        Spacer()
-
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(8)
+                        .background(.ultraThinMaterial)
                     }
-                    .padding(.horizontal)
-                    .padding(.vertical, 12)
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .accessibilityHint("Opens encrypted vault files")
-
-                if record.id != records.last?.id {
-                    Divider().padding(.leading, 62)
-                }
+                .frame(width: proxy.size.width, height: proxy.size.height)
             }
+            .aspectRatio(1, contentMode: .fit)
+            .contentShape(Rectangle())
         }
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
-        .padding()
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.45)
+        .accessibilityLabel(record.displayName)
+        .accessibilityValue("Encrypted file, \(formattedSize)")
+        .accessibilityHint(
+            isEnabled
+                ? "Opens encrypted vault files"
+                : "Exit photo selection mode to manage this file"
+        )
     }
 }
