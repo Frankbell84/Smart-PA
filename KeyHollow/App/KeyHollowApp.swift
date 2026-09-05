@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import KeyHollowFileRecognitionAddOn
+import KeyHollowFolderPresentationAddOn
 import KeyHollowGeneralFileSupportAddOn
 
 @main
@@ -26,7 +27,20 @@ struct KeyHollowApp: App {
                     RootView(
                         makeService: {
                             try VaultUnlockService(additionalVaultDataRemover: { vaultID in
-                                try VaultGeneralFileStore.destroyVaultData(vaultID: vaultID)
+                                var firstError: Error?
+                                do {
+                                    try VaultGeneralFileStore.destroyVaultData(vaultID: vaultID)
+                                } catch {
+                                    firstError = error
+                                }
+                                do {
+                                    try VaultFolderPresentationStore.destroyVaultData(
+                                        vaultID: vaultID
+                                    )
+                                } catch {
+                                    if firstError == nil { firstError = error }
+                                }
+                                if let firstError { throw firstError }
                             })
                         },
                         stageIncomingVaultFile: { url in

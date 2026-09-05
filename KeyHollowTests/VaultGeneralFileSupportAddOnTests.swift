@@ -121,6 +121,29 @@ final class VaultGeneralFileSupportAddOnTests: XCTestCase {
         await fixture.store.discardExport(export)
     }
 
+    func testAuthenticatedReadReturnsOnlyPersistedRecordBytes() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanup() }
+        let original = Data("image bytes for preview".utf8)
+        let source = try fixture.source(named: "preview.jpg", data: original)
+        let record = try await fixture.store.importFile(at: source)
+
+        let reopened = try await fixture.store.loadFile(record)
+        XCTAssertEqual(reopened, original)
+
+        let fabricated = VaultGeneralFileRecord(
+            id: record.id,
+            importedAt: record.importedAt,
+            displayName: record.displayName,
+            contentTypeIdentifier: record.contentTypeIdentifier,
+            originalByteCount: record.originalByteCount,
+            blobName: "fabricated.khf"
+        )
+        await XCTAssertThrowsErrorAsync(try await fixture.store.loadFile(fabricated)) {
+            XCTAssertEqual($0 as? VaultGeneralFileStore.StoreError, .invalidManifest)
+        }
+    }
+
     func testTamperedBlobCannotBeExported() async throws {
         let fixture = try Fixture()
         defer { fixture.cleanup() }

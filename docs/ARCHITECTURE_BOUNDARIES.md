@@ -17,6 +17,7 @@ small local core with narrow adapters around it.
 | `UI` and gallery view | User interaction and presentation | Cryptographic algorithms or direct persistence formats |
 | `App` | Composition and lifecycle entry | Feature implementation details |
 | `AddOns/GeneralFileSupport` | Encrypted general-file records, manifests, blobs, and protected ingress/egress staging | Vault keys, photo storage, SwiftUI/UIKit, portable archive formats |
+| `AddOns/FolderPresentation` | Folder metadata, neutral content references, and encrypted presentation thumbnails | Vault keys, protected photo/file content, SwiftUI/UIKit, portable archive formats |
 
 ## Enforced rules
 
@@ -69,6 +70,15 @@ manifest. It receives domain-separated seal/open operations through a narrow
 revocable interface. The application layer presents Apple's Files and share
 interfaces and bridges the unlocked session capability; neither the protected
 vault core nor the photo core imports the add-on.
+
+`KeyHollowFolderPresentationAddOn` owns only folder metadata, neutral content
+references, and encrypted presentation thumbnails. It does not import or own
+the photo store, general-file store, vault key, transfer coordinator, or UI.
+The application maps protected-store record IDs into neutral references and
+supplies scoped seal/open access while the unlocked session is valid. Deleting
+a folder returns its references to the root gallery and cannot delete protected
+content. Removing the add-on leaves the protected stores and existing
+`.khvault` format operational.
 
 ## Change policy
 
