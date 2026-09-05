@@ -16,6 +16,9 @@ photo blobs, credential envelopes, or `.khvault` version-one decoder.
 - Encrypt the file bytes and authenticated metadata before committing the item
   to the add-on manifest.
 - Show only the authenticated display name, type, and size after unlock.
+- Compose authenticated general-file records into the primary Vault screen so a
+  file-only vault never appears empty; the photo and general-file manifests
+  remain independently stored and compiled behind the presentation layer.
 - Select one or many files, export authenticated copies through the system share
   interface, or permanently delete their encrypted vault copies.
 - Keep every source file unchanged during import.

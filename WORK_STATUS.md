@@ -10,6 +10,17 @@ Correct the Build 23 vault presentation defect found during physical-iPhone vali
 
 ## Completed work
 
+- Implemented a unified primary Vault presentation that composes authenticated
+  photo and general-file records without merging their stores or manifests.
+- A general-file-only vault now displays its encrypted files on the primary
+  screen instead of showing the photo-only `Empty Vault` state.
+- Tapping a primary-screen file opens the dedicated Vault Files manager, and
+  dismissing that manager refreshes the primary file list after imports or
+  deletions.
+- Moved shared general-file presentation and scoped-access composition into one
+  UI-layer file, removing duplicate type-icon and cryptographic adapter code.
+- Added a regression assertion covering photo-only, file-only, mixed, and truly
+  empty primary-vault states.
 - Frank confirmed that Build 23 successfully encrypts and persists a selected PDF in the General File Support add-on.
 - Physical-device evidence isolated the defect to presentation: the primary Vault screen reads only the photo manifest and therefore reports `Empty Vault` even when the general-file manifest contains encrypted records.
 - Confirmed that the file is not stranded in a temporary holding area; it is present in `Vault Files`, selectable, exportable, and deletable.
@@ -24,6 +35,10 @@ Correct the Build 23 vault presentation defect found during physical-iPhone vali
 
 ## Test and build status
 
+- Corrected source architecture boundary check: passed locally.
+- Corrected source release-hygiene check: passed locally.
+- Corrected source whitespace/diff validation: passed locally.
+- macOS simulator build, full tests, and Swift security analysis: pending after publication.
 - Build 23 physical-device import persistence: passed for a PDF.
 - Build 23 primary-vault visibility with a general-file-only vault: failed; correction in progress on the isolated delivery branch.
 - Feature-branch architecture gate: passed at `6b39328`.
@@ -38,11 +53,11 @@ Correct the Build 23 vault presentation defect found during physical-iPhone vali
 
 ## Blockers
 
-- No implementation blocker. A fresh internal TestFlight build and physical-device confirmation will be required after the UI correction passes automated gates.
+- No implementation blocker. Remote macOS validation and a fresh internal TestFlight build are the remaining gates before physical-device confirmation.
 
 ## Next action
 
-Compose the photo and general-file manifests through the presentation layer so the main Vault screen reflects both stores, while keeping encryption and storage independent. Add regression coverage, run architecture/build/security gates, and deliver a higher internal TestFlight build. Keep PR #33 unmerged until physical-device validation passes.
+Publish the unified-vault correction to the assigned branch, run the macOS architecture/build/test/security gates, and—only after they pass—prepare a higher production-identity internal TestFlight build. Keep PR #33 unmerged until physical-device validation passes.
 
 ## Frank's decision required
 

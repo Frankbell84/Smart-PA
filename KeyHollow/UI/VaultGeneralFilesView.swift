@@ -1,35 +1,6 @@
 import SwiftUI
 import UIKit
-import UniformTypeIdentifiers
 import KeyHollowGeneralFileSupportAddOn
-
-private final class SessionGeneralFileAccess: VaultGeneralFileCryptographicAccess,
-    @unchecked Sendable {
-    let vaultID: UUID
-    private let capability: VaultAccessCapability
-
-    init(capability: VaultAccessCapability) {
-        vaultID = capability.vaultID
-        self.capability = capability
-    }
-
-    func seal(_ plaintext: Data, for purpose: VaultGeneralFileKeyPurpose) throws -> Data {
-        try capability.sealScopedData(plaintext, domain: domain(for: purpose))
-    }
-
-    func open(_ ciphertext: Data, for purpose: VaultGeneralFileKeyPurpose) throws -> Data {
-        try capability.openScopedData(ciphertext, domain: domain(for: purpose))
-    }
-
-    private func domain(for purpose: VaultGeneralFileKeyPurpose) -> String {
-        switch purpose {
-        case .manifest:
-            "general-files.manifest.v1"
-        case .file(let id):
-            "general-files.blob.v1.\(id.uuidString.lowercased())"
-        }
-    }
-}
 
 struct VaultGeneralFilesView: View {
     @EnvironmentObject private var session: VaultSession
@@ -239,7 +210,7 @@ struct VaultGeneralFilesView: View {
 
     private func fileRow(_ record: VaultGeneralFileRecord) -> some View {
         HStack(spacing: 14) {
-            Image(systemName: iconName(for: record.contentTypeIdentifier))
+            Image(systemName: GeneralFilePresentation.iconName(for: record.contentTypeIdentifier))
                 .font(.title2)
                 .foregroundStyle(.tint)
                 .frame(width: 32)
@@ -257,7 +228,7 @@ struct VaultGeneralFilesView: View {
 
     private func pendingFileRow(_ pending: VaultGeneralFileImportCandidate) -> some View {
         HStack(spacing: 14) {
-            Image(systemName: iconName(for: pending.contentTypeIdentifier))
+            Image(systemName: GeneralFilePresentation.iconName(for: pending.contentTypeIdentifier))
                 .font(.title2)
                 .foregroundStyle(.tint)
                 .frame(width: 32)
@@ -273,17 +244,6 @@ struct VaultGeneralFilesView: View {
             }
         }
         .accessibilityElement(children: .combine)
-    }
-
-    private func iconName(for identifier: String?) -> String {
-        guard let identifier,
-              let type = UTType(identifier) else { return "doc" }
-        if type.conforms(to: .pdf) { return "doc.richtext" }
-        if type.conforms(to: .audio) { return "waveform" }
-        if type.conforms(to: .archive) { return "archivebox" }
-        if type.conforms(to: .image) { return "photo" }
-        if type.conforms(to: .text) { return "doc.text" }
-        return "doc"
     }
 
     private func initializeStore() async {

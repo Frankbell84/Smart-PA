@@ -1,10 +1,18 @@
 import CryptoKit
 import Foundation
 import XCTest
+@testable import KeyHollow
 import KeyHollowCryptoCore
 import KeyHollowGeneralFileSupportAddOn
 
 final class VaultGeneralFileSupportAddOnTests: XCTestCase {
+    func testPrimaryVaultIsNotEmptyWhenOnlyGeneralFilesExist() {
+        XCTAssertFalse(VaultContentAvailability.isEmpty(photoCount: 0, generalFileCount: 1))
+        XCTAssertFalse(VaultContentAvailability.isEmpty(photoCount: 1, generalFileCount: 0))
+        XCTAssertFalse(VaultContentAvailability.isEmpty(photoCount: 1, generalFileCount: 1))
+        XCTAssertTrue(VaultContentAvailability.isEmpty(photoCount: 0, generalFileCount: 0))
+    }
+
     func testReviewCandidateDoesNotCommitUntilImportIsConfirmed() async throws {
         let fixture = try Fixture()
         defer { fixture.cleanup() }
