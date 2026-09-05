@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Validate internal TestFlight Build 26 on a physical iPhone; keep PR #33 draft and production untouched until the focused workflow check passes.
+Transfer the fully validated parent-owned import-sheet lifecycle correction from source commit `bf30be0`; keep PR #33 draft and production untouched while preparing the next internal TestFlight candidate.
 
 ## Completed work
 
@@ -60,6 +60,8 @@ Validate internal TestFlight Build 26 on a physical iPhone; keep PR #33 draft an
 - Added a regression decision test that distinguishes successful primary-vault imports from zero-import and intentional manager flows.
 - Transferred only validated source commit `ecc02c0` into the isolated delivery branch at `04c993c`.
 - Confirmed exact delivery parity for the corrected UI, regression test, and behavior documentation against `ecc02c0`.
+- Build 26 physical-device testing confirmed successful import and unified-grid persistence, but the parent-owned sheet still remained visible as the persisted-file manager.
+- The source correction at `bf30be0` gives the primary Vault explicit ownership of sheet completion and prevents a completed import-only flow from rendering stored records while dismissal is processed.
 
 ## Test and build status
 
@@ -100,15 +102,16 @@ Validate internal TestFlight Build 26 on a physical iPhone; keep PR #33 draft an
 - Dispatched workflow #36 from isolated delivery commit `e7a7dff` with confirmed Build 26.
 - Workflow #36 passed build-number verification, production identity, release hygiene, signed archive/module hygiene, IPA export, Apple upload acceptance, artifact retention, and signing-material cleanup.
 - Apple completed Build 26 processing and assigned it to `KeyHollow Internal` with status `Ready to Submit`.
+- Parent-owned lifecycle correction macOS simulator build, full regression/security suite, architecture enforcement, release hygiene, and Swift CodeQL: passed on PR #33 at source commit `bf30be0`.
 - Production branch and App Store review: untouched.
 
 ## Blockers
 
-- No implementation, validation, signing, upload, or Apple-processing blocker. Only focused physical-device confirmation remains.
+- No source-validation blocker. Delivery transfer, local parity checks, signed upload, Apple processing, and focused physical-device confirmation remain.
 
 ## Next action
 
-Install Build 26 and verify that importing from the primary Vault returns to the unified grid after the success acknowledgment, that the file appears exactly once, and that intentionally opening `Vault Files` still presents the stored file for management.
+Commit this delivery checkpoint, transfer only source commit `bf30be0`, verify exact source parity and all local quality gates, then advance both targets to Build 27 for the signed TestFlight pipeline.
 
 ## Frank's decision required
 
