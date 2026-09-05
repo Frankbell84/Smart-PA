@@ -50,6 +50,7 @@ Remove the user-facing general-file staging/review model entirely and replace it
 - The intentional `Vault Files` manager uses the same batch-import API for its plus button while retaining export and deletion controls.
 - Future metadata editing is explicitly decoupled from import and deferred to a deliberate post-import Vault Security/settings surface.
 - Replaced staging lifecycle tests with batch success, partial rejection, source-preservation, and maximum-selection regression coverage.
+- PR #33 passed the staging-free macOS simulator build, full regression/security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL at source commit `b964b37`.
 
 ## Test and build status
 
@@ -85,17 +86,19 @@ Remove the user-facing general-file staging/review model entirely and replace it
 - Direct-import TestFlight build-number guard self-test: passed locally.
 - Direct-import whitespace/diff validation: passed locally.
 - Obsolete staging/review implementation-symbol audit: passed locally; no symbols remain.
+- Direct-import macOS simulator build and full regression/security suite: passed on PR #33 at `b964b37`.
+- Direct-import Swift CodeQL security analysis: passed on PR #33 at `b964b37`.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
 
 ## Blockers
 
-- No local implementation blocker. Remote macOS compilation, full regression/security testing, Swift security analysis, and another internal-device check remain.
+- No implementation or automated-validation blocker. An internal TestFlight delivery and focused physical-device check remain.
 
 ## Next action
 
-Commit and push the direct-import implementation to draft PR #33, then require the macOS simulator, full regression/security suite, architecture gate, release-hygiene gate, and Swift CodeQL analysis before preparing another delivery build.
+Transfer only validated source commit `b964b37` into the isolated delivery branch, confirm exact source parity, advance to Build 28, and run the signed TestFlight delivery gates.
 
 ## Frank's decision required
 
