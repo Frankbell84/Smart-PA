@@ -6,12 +6,8 @@ struct VaultGeneralFilesView: View {
     @EnvironmentObject private var session: VaultSession
     @Environment(\.dismiss) private var dismiss
 
-    let beginImportOnAppear: Bool
-    private let onPrimaryImportFlowFinished: (() -> Void)?
-
     @State private var store: VaultGeneralFileStore?
     @State private var records: [VaultGeneralFileRecord] = []
-    @State private var pendingImports: [VaultGeneralFileImportCandidate] = []
     @State private var selectedIDs: Set<UUID> = []
     @State private var isSelecting = false
     @State private var isImporting = false
@@ -19,27 +15,11 @@ struct VaultGeneralFilesView: View {
     @State private var export: PreparedGeneralFileExport?
     @State private var message: String?
     @State private var showingDeleteConfirmation = false
-    @State private var didBeginInitialImport = false
-    @State private var didFinishImportAttempt = false
-    @State private var dismissAfterMessageAcknowledgement = false
-
-    init(
-        beginImportOnAppear: Bool = false,
-        onPrimaryImportFlowFinished: (() -> Void)? = nil
-    ) {
-        self.beginImportOnAppear = beginImportOnAppear
-        self.onPrimaryImportFlowFinished = onPrimaryImportFlowFinished
-    }
 
     var body: some View {
         NavigationStack {
             Group {
-                if isFinishedPrimaryImportFlow {
-                    Color.clear
-                        .accessibilityHidden(true)
-                } else if !pendingImports.isEmpty {
-                    importReview
-                } else if records.isEmpty && !isWorking {
+                if records.isEmpty && !isWorking {
                     ContentUnavailableView(
                         "No Vault Files",
                         systemImage: "doc.badge.plus",
@@ -79,14 +59,8 @@ struct VaultGeneralFilesView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(isSelecting || isReviewingImport ? "Cancel" : "Done") {
-                        if isReviewingImport {
-                            if beginImportOnAppear {
-                                finishPrimaryImportFlow()
-                            } else {
-                                cancelPendingImport()
-                            }
-                        } else if isSelecting {
+                    Button(isSelecting ? "Cancel" : "Done") {
+                        if isSelecting {
                             leaveSelectionMode()
                         } else {
                             dismiss()
@@ -95,7 +69,7 @@ struct VaultGeneralFilesView: View {
                     .disabled(isWorking)
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    if !isSelecting && !isReviewingImport {
+                    if !isSelecting {
                         Button("Select") { isSelecting = true }
                             .disabled(records.isEmpty || isWorking)
                         Button {
@@ -108,7 +82,7 @@ struct VaultGeneralFilesView: View {
                         .accessibilityLabel("Import files")
                     }
                 }
-                if isSelecting && !isReviewingImport {
+                if isSelecting {
                     ToolbarItemGroup(placement: .bottomBar) {
                         Button {
                             exportSelected()
@@ -135,7 +109,7 @@ struct VaultGeneralFilesView: View {
             allowsMultipleSelection: true
         ) { result in
             session.endSystemInteraction()
-            prepareImportReview(result)
+            importSelectedFiles(result)
         }
         .sheet(item: $export) { prepared in
             GeneralFileShareSheet(urls: prepared.urls) {
@@ -158,79 +132,17 @@ struct VaultGeneralFilesView: View {
             get: { message != nil },
             set: { if !$0 { message = nil } }
         )) {
-            Button(dismissAfterMessageAcknowledgement ? "Done" : "OK") {
-                let shouldDismiss = dismissAfterMessageAcknowledgement
-                dismissAfterMessageAcknowledgement = false
-                message = nil
-                if shouldDismiss {
-                    finishPrimaryImportFlow()
-                }
-            }
+            Button("OK") { message = nil }
         } message: {
             Text(message ?? "")
         }
         .task(id: session.activeVaultID) {
             await initializeStore()
-            await beginInitialImportIfNeeded()
         }
-        .onDisappear {
-            if !isWorking {
-                cancelPendingImport()
-            }
-        }
-    }
-
-    private var isReviewingImport: Bool { !pendingImports.isEmpty }
-
-    private var isFinishedPrimaryImportFlow: Bool {
-        beginImportOnAppear && didFinishImportAttempt
     }
 
     private var navigationTitle: String {
-        if isReviewingImport { return "Review Import" }
         return isSelecting ? "\(selectedIDs.count) Selected" : "Vault Files"
-    }
-
-    private var importButtonTitle: String {
-        let noun = pendingImports.count == 1 ? "File" : "Files"
-        return "Import \(pendingImports.count) \(noun) into Vault"
-    }
-
-    private var importReview: some View {
-        VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Review selected files")
-                    .font(.headline)
-                Text("Nothing has been added yet. Confirm the selection below to encrypt these files into this vault.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
-
-            List {
-                ForEach(pendingImports) { pending in
-                    pendingFileRow(pending)
-                        .deleteDisabled(isWorking)
-                }
-                .onDelete(perform: removePendingImports)
-            }
-            .listStyle(.insetGrouped)
-
-            Button {
-                importPendingFiles()
-            } label: {
-                Text(importButtonTitle)
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(isWorking)
-            .padding()
-            .accessibilityIdentifier("general-file-import-confirm")
-        }
-        .accessibilityIdentifier("general-file-import-review")
     }
 
     private func fileRow(_ record: VaultGeneralFileRecord) -> some View {
@@ -251,26 +163,6 @@ struct VaultGeneralFilesView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func pendingFileRow(_ pending: VaultGeneralFileImportCandidate) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: GeneralFilePresentation.iconName(for: pending.contentTypeIdentifier))
-                .font(.title2)
-                .foregroundStyle(.tint)
-                .frame(width: 32)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(pending.displayName)
-                    .lineLimit(2)
-                if let byteCount = pending.originalByteCount {
-                    Text(ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-
     private func initializeStore() async {
         guard store == nil,
               let context = session.activeVaultContext() else { return }
@@ -284,103 +176,30 @@ struct VaultGeneralFilesView: View {
         }
     }
 
-    @MainActor
-    private func beginInitialImportIfNeeded() async {
-        guard beginImportOnAppear,
-              !didBeginInitialImport,
-              store != nil else { return }
-        didBeginInitialImport = true
-        await Task.yield()
-        session.beginSystemInteraction()
-        isImporting = true
-    }
-
-    private func prepareImportReview(_ result: Result<[URL], Error>) {
+    private func importSelectedFiles(_ result: Result<[URL], Error>) {
         guard case .success(let urls) = result else {
-            if beginImportOnAppear {
-                finishPrimaryImportFlow()
-            }
             return
         }
-        guard !urls.isEmpty else {
-            if beginImportOnAppear {
-                finishPrimaryImportFlow()
-            }
-            return
-        }
+        guard !urls.isEmpty else { return }
         guard urls.count <= VaultGeneralFileStore.maximumBatchCount else {
-            finishImportAttempt()
             message = "Choose no more than \(VaultGeneralFileStore.maximumBatchCount) files at a time."
             return
         }
-        guard store != nil, !isWorking else { return }
-        cancelPendingImport()
-        pendingImports = urls.map(VaultGeneralFileImportCandidate.init(sourceURL:))
-    }
-
-    private func importPendingFiles() {
-        let selection = pendingImports
-        guard let store, !selection.isEmpty, !isWorking else { return }
-        dismissAfterMessageAcknowledgement = false
+        guard let store, !isWorking else { return }
         isWorking = true
 
         session.startSensitiveTask { _ in
-            defer {
-                selection.forEach { $0.discard() }
-                pendingImports.removeAll()
-                isWorking = false
-            }
-            var imported = 0
-            var failed = 0
-            for pending in selection {
+            defer { isWorking = false }
+            do {
+                let outcome = try await store.importFiles(at: urls)
                 guard !Task.isCancelled else { return }
-                do {
-                    _ = try await store.importFile(pending)
-                    imported += 1
-                } catch {
-                    failed += 1
-                }
+                records = try await store.loadManifest().files
+                message = GeneralFileImportPresentation.message(for: outcome)
+            } catch is CancellationError {
+                return
+            } catch {
+                message = "The selected files could not be imported into this vault."
             }
-            guard !Task.isCancelled else { return }
-            records = (try? await store.loadManifest().files) ?? records
-            finishImportAttempt()
-            if imported > 0 {
-                let noun = imported == 1 ? "file" : "files"
-                message = failed == 0
-                    ? "Encrypted \(imported) \(noun) into this vault. The originals were kept."
-                    : "Encrypted \(imported) \(noun). \(failed) selected items were not supported or could not be read."
-            } else {
-                message = "No files were imported. Choose regular files up to 100 MB; vault backups, folders, apps, and executable files are excluded."
-            }
-        }
-    }
-
-    private func removePendingImports(at offsets: IndexSet) {
-        let removed = offsets.map { pendingImports[$0] }
-        pendingImports.remove(atOffsets: offsets)
-        removed.forEach { $0.discard() }
-    }
-
-    private func cancelPendingImport() {
-        pendingImports.forEach { $0.discard() }
-        pendingImports.removeAll()
-    }
-
-    private func finishImportAttempt() {
-        didFinishImportAttempt = true
-        dismissAfterMessageAcknowledgement = GeneralFileImportFlow
-            .shouldReturnToPrimaryVault(
-                launchedFromPrimaryVault: beginImportOnAppear,
-                importAttemptFinished: true
-            )
-    }
-
-    private func finishPrimaryImportFlow() {
-        cancelPendingImport()
-        if let onPrimaryImportFlowFinished {
-            onPrimaryImportFlowFinished()
-        } else {
-            dismiss()
         }
     }
 
@@ -445,15 +264,6 @@ struct VaultGeneralFilesView: View {
     private func leaveSelectionMode() {
         isSelecting = false
         selectedIDs.removeAll()
-    }
-}
-
-enum GeneralFileImportFlow {
-    static func shouldReturnToPrimaryVault(
-        launchedFromPrimaryVault: Bool,
-        importAttemptFinished: Bool
-    ) -> Bool {
-        launchedFromPrimaryVault && importAttemptFinished
     }
 }
 

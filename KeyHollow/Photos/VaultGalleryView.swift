@@ -38,12 +38,12 @@ struct VaultGalleryView: View {
     @State private var decryptedPhoto: DecryptedPhoto?
     @State private var showingImportOptions = false
     @State private var showingPicker = false
+    @State private var showingFilePicker = false
     @State private var showingNewVault = false
     @State private var showingSecuritySettings = false
     @State private var showingEncryptedImport = false
     @State private var showingEncryptedExport = false
     @State private var showingVaultFiles = false
-    @State private var beginVaultFileImportOnOpen = false
     @State private var showingDeleteSelectionConfirmation = false
     @State private var importMode: VaultImportMode = .copy
     @State private var isSelecting = false
@@ -119,8 +119,8 @@ struct VaultGalleryView: View {
                 showingPicker = true
             }
             Button("Import Files to Vault") {
-                beginVaultFileImportOnOpen = true
-                showingVaultFiles = true
+                session.beginSystemInteraction()
+                showingFilePicker = true
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -130,6 +130,14 @@ struct VaultGalleryView: View {
             SecurePhotoPicker(selectionLimit: 50) { event in
                 await handleImportEvent(event)
             }
+        }
+        .fileImporter(
+            isPresented: $showingFilePicker,
+            allowedContentTypes: [.data],
+            allowsMultipleSelection: true
+        ) { result in
+            session.endSystemInteraction()
+            importGeneralFiles(result)
         }
         .sheet(isPresented: $showingNewVault) {
             AdditionalVaultSetupView(service: service)
@@ -148,15 +156,9 @@ struct VaultGalleryView: View {
                 .environmentObject(session)
         }
         .sheet(isPresented: $showingVaultFiles, onDismiss: {
-            beginVaultFileImportOnOpen = false
             Task { await reloadGeneralFiles() }
         }) {
-            VaultGeneralFilesView(
-                beginImportOnAppear: beginVaultFileImportOnOpen,
-                onPrimaryImportFlowFinished: {
-                    showingVaultFiles = false
-                }
-            )
+            VaultGeneralFilesView()
                 .environmentObject(session)
         }
         .sheet(item: $decryptedPhoto) { photo in
@@ -403,6 +405,30 @@ struct VaultGalleryView: View {
             generalFileRecords = try await generalFileStore.loadManifest().files
         } catch {
             message = "The encrypted file list could not be refreshed."
+        }
+    }
+
+    private func importGeneralFiles(_ result: Result<[URL], Error>) {
+        guard case .success(let urls) = result, !urls.isEmpty else { return }
+        guard urls.count <= VaultGeneralFileStore.maximumBatchCount else {
+            message = "Choose no more than \(VaultGeneralFileStore.maximumBatchCount) files at a time."
+            return
+        }
+        guard let generalFileStore, !isWorking else { return }
+        isWorking = true
+
+        session.startSensitiveTask { _ in
+            defer { isWorking = false }
+            do {
+                let outcome = try await generalFileStore.importFiles(at: urls)
+                guard !Task.isCancelled else { return }
+                generalFileRecords = try await generalFileStore.loadManifest().files
+                message = GeneralFileImportPresentation.message(for: outcome)
+            } catch is CancellationError {
+                return
+            } catch {
+                message = "The selected files could not be imported into this vault."
+            }
         }
     }
 

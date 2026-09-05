@@ -76,6 +76,14 @@ Prepare internal TestFlight Build 28 from the fully validated staging-free sourc
 - Frank directed that user-facing file staging be removed completely: selecting files must import directly into the same unified three-column grid as photos.
 - The replacement source removes pending candidates, the review list, second confirmation, and staging lifecycle policy while preserving the module-owned protected copy/encrypt/verify/commit path.
 - PR #33 passed the direct-import macOS simulator build, full regression/security suite, architecture enforcement, release hygiene, and Swift CodeQL at source commit `b964b37`.
+- Transferred only the seven validated implementation, regression-test, and behavior-documentation files from source commit `b964b37` into the isolated delivery branch.
+- Confirmed exact file-for-file parity for every transferred file against `b964b37`; the delivery status record remains delivery-specific.
+- Removed the pending-candidate type, review list, second confirmation button, child-dismissal policy, and every user-facing staging lifecycle symbol.
+- Added a narrow module-owned batch-import API that enforces the 50-file limit, processes each file through the existing protected copy/encrypt/verify/commit path, and returns only aggregate counts.
+- The primary Vault now presents Apple's Files picker directly and refreshes the unified three-column grid after import without presenting `Vault Files`.
+- The intentional `Vault Files` manager uses the same batch-import API for its plus button while retaining export and deletion controls.
+- Future metadata editing is explicitly decoupled from import and deferred to a deliberate post-import Vault Security/settings surface.
+- Replaced staging lifecycle tests with batch success, partial rejection, source-preservation, and maximum-selection regression coverage.
 
 ## Test and build status
 
@@ -128,14 +136,16 @@ Prepare internal TestFlight Build 28 from the fully validated staging-free sourc
 - Internal TestFlight Build 27 delivery: confirmed received by Frank.
 - Build 27 post-import experience: failed; the visible staging/manager step remains.
 - Direct-import source macOS simulator build, full regression/security suite, and Swift CodeQL: passed on PR #33 at `b964b37`.
+- Direct-import architecture boundary, release-hygiene, build-number guard, and whitespace gates: passed on the source branch.
+- Delivery direct-import architecture boundary, release-hygiene, build-number guard, whitespace, obsolete-symbol, and exact source-parity gates: passed locally.
 
 ## Blockers
 
-- No source implementation or automated-validation blocker. Build 28 transfer, signing, upload, Apple processing, and physical-device confirmation remain.
+- No source implementation, transfer, parity, or local-validation blocker. Build 28 numbering, signing, upload, Apple processing, and physical-device confirmation remain.
 
 ## Next action
 
-Commit this pre-delivery checkpoint, transfer only source commit `b964b37`, verify exact parity and local gates, advance both targets to Build 28, and run the signed TestFlight workflow.
+Commit and push the exact validated source transfer, then advance both targets to Build 28, rerun local gates, and run the signed TestFlight workflow.
 
 ## Frank's decision required
 

@@ -50,6 +50,19 @@ enum GeneralFilePresentation {
     }
 }
 
+enum GeneralFileImportPresentation {
+    static func message(for result: VaultGeneralFileImportResult) -> String {
+        if result.importedCount > 0 {
+            let noun = result.importedCount == 1 ? "file" : "files"
+            if result.failedCount > 0 {
+                return "Encrypted \(result.importedCount) \(noun) into this vault. \(result.failedCount) selected items were not supported or could not be read. The originals were kept."
+            }
+            return "Encrypted \(result.importedCount) \(noun) into this vault. The originals were kept."
+        }
+        return "No files were imported. Choose regular files up to 100 MB; vault backups, folders, apps, and executable files are excluded."
+    }
+}
+
 struct VaultGeneralFileTileView: View {
     let record: VaultGeneralFileRecord
     let isEnabled: Bool

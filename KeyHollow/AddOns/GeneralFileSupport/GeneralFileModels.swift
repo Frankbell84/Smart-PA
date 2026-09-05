@@ -1,44 +1,12 @@
 import Foundation
 
-/// A short-lived, security-scoped selection owned by the add-on while the user
-/// reviews an import. Discarding a candidate releases access without changing
-/// the encrypted vault.
-public final class VaultGeneralFileImportCandidate: Identifiable, @unchecked Sendable {
-    public let id = UUID()
-    public let displayName: String
-    public let originalByteCount: UInt64?
-    public let contentTypeIdentifier: String?
+public struct VaultGeneralFileImportResult: Equatable, Sendable {
+    public let importedCount: Int
+    public let failedCount: Int
 
-    let sourceURL: URL
-    private let accessLock = NSLock()
-    private var hasSecurityScopedAccess: Bool
-
-    public init(sourceURL: URL) {
-        self.sourceURL = sourceURL
-        displayName = sourceURL.lastPathComponent.isEmpty
-            ? "Selected File"
-            : sourceURL.lastPathComponent
-        hasSecurityScopedAccess = sourceURL.startAccessingSecurityScopedResource()
-        let values = try? sourceURL.resourceValues(forKeys: [.fileSizeKey, .typeIdentifierKey])
-        originalByteCount = values?.fileSize.flatMap { size in
-            size >= 0 ? UInt64(size) : nil
-        }
-        contentTypeIdentifier = values?.typeIdentifier
-    }
-
-    public func discard() {
-        accessLock.lock()
-        let shouldStop = hasSecurityScopedAccess
-        hasSecurityScopedAccess = false
-        accessLock.unlock()
-
-        if shouldStop {
-            sourceURL.stopAccessingSecurityScopedResource()
-        }
-    }
-
-    deinit {
-        discard()
+    public init(importedCount: Int, failedCount: Int) {
+        self.importedCount = importedCount
+        self.failedCount = failedCount
     }
 }
 

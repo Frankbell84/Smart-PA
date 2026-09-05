@@ -6,27 +6,6 @@ import KeyHollowCryptoCore
 import KeyHollowGeneralFileSupportAddOn
 
 final class VaultGeneralFileSupportAddOnTests: XCTestCase {
-    func testPrimaryImportFlowClosesAfterAnyCompletedAttempt() {
-        XCTAssertTrue(
-            GeneralFileImportFlow.shouldReturnToPrimaryVault(
-                launchedFromPrimaryVault: true,
-                importAttemptFinished: true
-            )
-        )
-        XCTAssertFalse(
-            GeneralFileImportFlow.shouldReturnToPrimaryVault(
-                launchedFromPrimaryVault: true,
-                importAttemptFinished: false
-            )
-        )
-        XCTAssertFalse(
-            GeneralFileImportFlow.shouldReturnToPrimaryVault(
-                launchedFromPrimaryVault: false,
-                importAttemptFinished: true
-            )
-        )
-    }
-
     func testPrimaryVaultIsNotEmptyWhenOnlyGeneralFilesExist() {
         XCTAssertFalse(VaultContentAvailability.isEmpty(photoCount: 0, generalFileCount: 1))
         XCTAssertFalse(VaultContentAvailability.isEmpty(photoCount: 1, generalFileCount: 0))
@@ -34,36 +13,50 @@ final class VaultGeneralFileSupportAddOnTests: XCTestCase {
         XCTAssertTrue(VaultContentAvailability.isEmpty(photoCount: 0, generalFileCount: 0))
     }
 
-    func testReviewCandidateDoesNotCommitUntilImportIsConfirmed() async throws {
+    func testBatchImportEncryptsSelectionAndLeavesSourcesUntouched() async throws {
         let fixture = try Fixture()
         defer { fixture.cleanup() }
-        let source = try fixture.source(named: "Review Me.pdf", data: Data("pdf data".utf8))
-        let candidate = VaultGeneralFileImportCandidate(sourceURL: source)
+        let firstData = Data("pdf data".utf8)
+        let secondData = Data("private notes".utf8)
+        let first = try fixture.source(named: "Invoice.pdf", data: firstData)
+        let second = try fixture.source(named: "Notes.txt", data: secondData)
 
-        XCTAssertEqual(candidate.displayName, "Review Me.pdf")
-        XCTAssertEqual(candidate.originalByteCount, 8)
-        let manifestBeforeImport = try await fixture.store.loadManifest()
-        XCTAssertTrue(manifestBeforeImport.files.isEmpty)
+        let result = try await fixture.store.importFiles(at: [first, second])
+        let manifest = try await fixture.store.loadManifest()
 
-        let record = try await fixture.store.importFile(candidate)
-        let manifestAfterImport = try await fixture.store.loadManifest()
-
-        XCTAssertEqual(record.displayName, "Review Me.pdf")
-        XCTAssertEqual(manifestAfterImport.files, [record])
+        XCTAssertEqual(result, VaultGeneralFileImportResult(importedCount: 2, failedCount: 0))
+        XCTAssertEqual(Set(manifest.files.map(\.displayName)), Set(["Invoice.pdf", "Notes.txt"]))
+        XCTAssertEqual(try Data(contentsOf: first), firstData)
+        XCTAssertEqual(try Data(contentsOf: second), secondData)
     }
 
-    func testDiscardingReviewCandidateLeavesVaultAndSourceUnchanged() async throws {
+    func testBatchImportReportsRejectedItemsWithoutRollingBackValidFiles() async throws {
         let fixture = try Fixture()
         defer { fixture.cleanup() }
-        let original = Data("not imported".utf8)
-        let source = try fixture.source(named: "Cancel.txt", data: original)
-        let candidate = VaultGeneralFileImportCandidate(sourceURL: source)
+        let valid = try fixture.source(named: "Notes.txt", data: Data("notes".utf8))
+        let rejected = try fixture.source(named: "Backup.khvault", data: Data("backup".utf8))
 
-        candidate.discard()
+        let result = try await fixture.store.importFiles(at: [valid, rejected])
+        let manifest = try await fixture.store.loadManifest()
 
-        let manifestAfterDiscard = try await fixture.store.loadManifest()
-        XCTAssertTrue(manifestAfterDiscard.files.isEmpty)
-        XCTAssertEqual(try Data(contentsOf: source), original)
+        XCTAssertEqual(result, VaultGeneralFileImportResult(importedCount: 1, failedCount: 1))
+        XCTAssertEqual(manifest.files.map(\.displayName), ["Notes.txt"])
+    }
+
+    func testBatchImportRejectsMoreThanMaximumSelection() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanup() }
+        let source = try fixture.source(named: "Notes.txt", data: Data("notes".utf8))
+        let selection = Array(
+            repeating: source,
+            count: VaultGeneralFileStore.maximumBatchCount + 1
+        )
+
+        await XCTAssertThrowsErrorAsync(try await fixture.store.importFiles(at: selection)) {
+            XCTAssertEqual($0 as? VaultGeneralFileStore.StoreError, .batchTooLarge)
+        }
+        let manifest = try await fixture.store.loadManifest()
+        XCTAssertTrue(manifest.files.isEmpty)
     }
 
     func testImportEncryptsFileAndLeavesSourceUntouched() async throws {
