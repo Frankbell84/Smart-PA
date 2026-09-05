@@ -2,7 +2,7 @@
 
 Updated: 2026-09-05
 Branch: `feature/folder-presentation-addon`
-Pull request: Not opened
+Pull request: [#35](https://github.com/Frankbell84/KeyHollow/pull/35) (draft)
 
 ## Current task
 
@@ -47,6 +47,8 @@ compatibility. App Store review and TestFlight remain untouched.
   generation and decoding remain outside the module.
 - Added folder lifecycle, input validation, encrypted-at-rest thumbnail,
   reconciliation, and vault-access mismatch tests.
+- Opened draft PR #35 so all remote Mac and security gates run before UI
+  composition begins.
 
 ## Test and build status
 
@@ -70,6 +72,8 @@ compatibility. App Store review and TestFlight remain untouched.
 - Phase 4 release-hygiene gate: passed locally.
 - Phase 4 whitespace audit: passed locally.
 - The new Swift target and tests require the remote Mac compile/test gate.
+- Remote run [#217](https://github.com/Frankbell84/KeyHollow/actions/runs/33988963578)
+  is active; build/test and Swift CodeQL results are pending.
 
 ## Blockers
 
@@ -77,9 +81,9 @@ compatibility. App Store review and TestFlight remain untouched.
 
 ## Next action
 
-Commit and push the first compiled module milestone. Open its isolated draft
-review and run the Mac simulator build, complete regression suite, architecture
-gate, and Swift security analysis before wiring any UI behavior to the module.
+Review the remote Mac simulator build, complete regression suite, architecture
+gate, and Swift security analysis. Fix any failure inside this isolated module
+before wiring UI behavior to it.
 
 ## Frank's decision required
 
