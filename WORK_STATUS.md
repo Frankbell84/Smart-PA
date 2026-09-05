@@ -2,11 +2,11 @@
 
 Updated: 2026-09-05
 Branch: `delivery/general-file-support`
-Source review: Draft PR #33
+Source review: PR #33 merged into `main` at `bbd6bfa`
 
 ## Current task
 
-Record Build 29's successful physical-device validation and hold the exact delivered candidate for Frank's final merge decision; keep production and App Store review untouched. Defer image-file thumbnail parity to the dedicated folder/presentation phase.
+Close the completed Build 29 delivery record after the validated source merge. Keep App Store review untouched and carry image-file thumbnail parity into the dedicated folder/presentation phase.
 
 ## Completed work
 
@@ -95,6 +95,9 @@ Record Build 29's successful physical-device validation and hold the exact deliv
 - Dispatched signed production TestFlight workflow #39 from isolated delivery commit `e8c116c` with Build 29 confirmed.
 - Workflow #39 passed build-number uniqueness, production identity, release hygiene, signed archive/module hygiene, IPA export, Apple upload acceptance, artifact retention, and signing-material cleanup.
 - Apple processed Build 29 into the production KeyHollow TestFlight app and assigned it to `KeyHollow Internal` with status `Ready to Submit`.
+- Frank explicitly approved the final source merge after Build 29 physical-device validation.
+- The exact approved source head `57f638e` passed all three protected checks: iPhone simulator build/regression/security tests, Swift CodeQL, and changed-code scanning with no new alerts.
+- PR #33 was made merge-ready and merged into `main` as merge commit `bbd6bfa` on 2026-09-05. The source and delivery branches were intentionally retained as recovery trails.
 
 ## Test and build status
 
@@ -161,16 +164,19 @@ Record Build 29's successful physical-device validation and hold the exact deliv
 - Frank confirmed on a physical iPhone that Build 29 works end to end, including mixed photo/file portable-vault export and restore and the smoother matching-LowKey Continue flow.
 - Physical testing confirmed that general files and Photo-library images now share the unified vault grid and persist through the protected transfer path.
 - One presentation refinement is intentionally deferred: image files imported through Apple's Files picker use a generic encrypted-file tile instead of the live thumbnail used for Photo-library imports. This is a folder/presentation concern, not a storage, encryption, or transfer defect.
+- Final protected source validation at `57f638e`: passed all three checks; Swift CodeQL completed with no unresolved changed-code alert.
+- Production source merge: passed; PR #33 is merged into `main` at `bbd6bfa`.
 
 ## Blockers
 
-- No source, validation, signing, upload, processing, TestFlight-assignment, or physical-device blocker. Final merge awaits Frank's explicit approval.
+- No blocker remains for the general-file-support delivery phase.
+- Current compiler warnings identify Swift 6 actor-isolation hardening debt; they did not fail the current build or security analysis and must be handled in a separate isolated hardening change rather than changing the tested delivery candidate.
 
 ## Next action
 
-With Frank's explicit approval, make PR #33 merge-ready and merge the completed general-file-support layer. Carry thumbnail generation and unified image-tile presentation forward as an acceptance requirement for the dedicated folder feature.
+Preserve Build 29 as the physical-device evidence baseline. Start the next planned add-on from merged `main` on a fresh isolated branch, with thumbnail generation and unified image-tile presentation included in the folder/presentation acceptance criteria.
 
 ## Frank's decision required
 
-- Frank must explicitly approve the final merge of PR #33 now that Build 29 has passed device validation.
+- No decision is required to close the completed general-file-support delivery phase or begin routine isolated development of the next planned add-on.
 - Any App Store review submission remains a separate decision requiring Frank's explicit approval.
