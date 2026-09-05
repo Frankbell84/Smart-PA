@@ -6,23 +6,23 @@ import KeyHollowCryptoCore
 import KeyHollowGeneralFileSupportAddOn
 
 final class VaultGeneralFileSupportAddOnTests: XCTestCase {
-    func testPrimaryImportFlowReturnsToVaultOnlyAfterAFileIsImported() {
+    func testPrimaryImportFlowClosesAfterAnyCompletedAttempt() {
         XCTAssertTrue(
             GeneralFileImportFlow.shouldReturnToPrimaryVault(
                 launchedFromPrimaryVault: true,
-                importedCount: 1
+                importAttemptFinished: true
             )
         )
         XCTAssertFalse(
             GeneralFileImportFlow.shouldReturnToPrimaryVault(
                 launchedFromPrimaryVault: true,
-                importedCount: 0
+                importAttemptFinished: false
             )
         )
         XCTAssertFalse(
             GeneralFileImportFlow.shouldReturnToPrimaryVault(
                 launchedFromPrimaryVault: false,
-                importedCount: 1
+                importAttemptFinished: true
             )
         )
     }

@@ -7,6 +7,7 @@ struct VaultGeneralFilesView: View {
     @Environment(\.dismiss) private var dismiss
 
     let beginImportOnAppear: Bool
+    private let onPrimaryImportFlowFinished: (() -> Void)?
 
     @State private var store: VaultGeneralFileStore?
     @State private var records: [VaultGeneralFileRecord] = []
@@ -19,16 +20,24 @@ struct VaultGeneralFilesView: View {
     @State private var message: String?
     @State private var showingDeleteConfirmation = false
     @State private var didBeginInitialImport = false
+    @State private var didFinishImportAttempt = false
     @State private var dismissAfterMessageAcknowledgement = false
 
-    init(beginImportOnAppear: Bool = false) {
+    init(
+        beginImportOnAppear: Bool = false,
+        onPrimaryImportFlowFinished: (() -> Void)? = nil
+    ) {
         self.beginImportOnAppear = beginImportOnAppear
+        self.onPrimaryImportFlowFinished = onPrimaryImportFlowFinished
     }
 
     var body: some View {
         NavigationStack {
             Group {
-                if !pendingImports.isEmpty {
+                if isFinishedPrimaryImportFlow {
+                    Color.clear
+                        .accessibilityHidden(true)
+                } else if !pendingImports.isEmpty {
                     importReview
                 } else if records.isEmpty && !isWorking {
                     ContentUnavailableView(
@@ -72,9 +81,10 @@ struct VaultGeneralFilesView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(isSelecting || isReviewingImport ? "Cancel" : "Done") {
                         if isReviewingImport {
-                            cancelPendingImport()
                             if beginImportOnAppear {
-                                dismiss()
+                                finishPrimaryImportFlow()
+                            } else {
+                                cancelPendingImport()
                             }
                         } else if isSelecting {
                             leaveSelectionMode()
@@ -153,7 +163,7 @@ struct VaultGeneralFilesView: View {
                 dismissAfterMessageAcknowledgement = false
                 message = nil
                 if shouldDismiss {
-                    dismiss()
+                    finishPrimaryImportFlow()
                 }
             }
         } message: {
@@ -171,6 +181,10 @@ struct VaultGeneralFilesView: View {
     }
 
     private var isReviewingImport: Bool { !pendingImports.isEmpty }
+
+    private var isFinishedPrimaryImportFlow: Bool {
+        beginImportOnAppear && didFinishImportAttempt
+    }
 
     private var navigationTitle: String {
         if isReviewingImport { return "Review Import" }
@@ -284,17 +298,18 @@ struct VaultGeneralFilesView: View {
     private func prepareImportReview(_ result: Result<[URL], Error>) {
         guard case .success(let urls) = result else {
             if beginImportOnAppear {
-                dismiss()
+                finishPrimaryImportFlow()
             }
             return
         }
         guard !urls.isEmpty else {
             if beginImportOnAppear {
-                dismiss()
+                finishPrimaryImportFlow()
             }
             return
         }
         guard urls.count <= VaultGeneralFileStore.maximumBatchCount else {
+            finishImportAttempt()
             message = "Choose no more than \(VaultGeneralFileStore.maximumBatchCount) files at a time."
             return
         }
@@ -328,12 +343,8 @@ struct VaultGeneralFilesView: View {
             }
             guard !Task.isCancelled else { return }
             records = (try? await store.loadManifest().files) ?? records
+            finishImportAttempt()
             if imported > 0 {
-                dismissAfterMessageAcknowledgement = GeneralFileImportFlow
-                    .shouldReturnToPrimaryVault(
-                        launchedFromPrimaryVault: beginImportOnAppear,
-                        importedCount: imported
-                    )
                 let noun = imported == 1 ? "file" : "files"
                 message = failed == 0
                     ? "Encrypted \(imported) \(noun) into this vault. The originals were kept."
@@ -353,6 +364,24 @@ struct VaultGeneralFilesView: View {
     private func cancelPendingImport() {
         pendingImports.forEach { $0.discard() }
         pendingImports.removeAll()
+    }
+
+    private func finishImportAttempt() {
+        didFinishImportAttempt = true
+        dismissAfterMessageAcknowledgement = GeneralFileImportFlow
+            .shouldReturnToPrimaryVault(
+                launchedFromPrimaryVault: beginImportOnAppear,
+                importAttemptFinished: true
+            )
+    }
+
+    private func finishPrimaryImportFlow() {
+        cancelPendingImport()
+        if let onPrimaryImportFlowFinished {
+            onPrimaryImportFlowFinished()
+        } else {
+            dismiss()
+        }
     }
 
     private var selectedRecords: [VaultGeneralFileRecord] {
@@ -422,9 +451,9 @@ struct VaultGeneralFilesView: View {
 enum GeneralFileImportFlow {
     static func shouldReturnToPrimaryVault(
         launchedFromPrimaryVault: Bool,
-        importedCount: Int
+        importAttemptFinished: Bool
     ) -> Bool {
-        launchedFromPrimaryVault && importedCount > 0
+        launchedFromPrimaryVault && importAttemptFinished
     }
 }
 

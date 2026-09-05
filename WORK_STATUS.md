@@ -62,6 +62,12 @@ Transfer the fully validated parent-owned import-sheet lifecycle correction from
 - Confirmed exact delivery parity for the corrected UI, regression test, and behavior documentation against `ecc02c0`.
 - Build 26 physical-device testing confirmed successful import and unified-grid persistence, but the parent-owned sheet still remained visible as the persisted-file manager.
 - The source correction at `bf30be0` gives the primary Vault explicit ownership of sheet completion and prevents a completed import-only flow from rendering stored records while dismissal is processed.
+- The primary Vault now owns import-flow completion through a narrow callback and closes its own sheet after the result is acknowledged.
+- Completed primary-vault imports enter a terminal presentation state, so they cannot fall through into the persisted-record manager while dismissal is being processed.
+- Picker cancellation and review cancellation use the same parent-owned close path; intentionally opening `Vault Files` remains a separate manager flow.
+- Added regression coverage for completed, unfinished, and intentional-manager lifecycle decisions and documented the ownership boundary.
+- Transferred only the validated parent-owned lifecycle source, regression test, and behavior documentation from `bf30be0` into the isolated delivery branch.
+- Confirmed exact delivery parity for every transferred file against validated source commit `bf30be0`.
 
 ## Test and build status
 
@@ -104,6 +110,11 @@ Transfer the fully validated parent-owned import-sheet lifecycle correction from
 - Apple completed Build 26 processing and assigned it to `KeyHollow Internal` with status `Ready to Submit`.
 - Parent-owned lifecycle correction macOS simulator build, full regression/security suite, architecture enforcement, release hygiene, and Swift CodeQL: passed on PR #33 at source commit `bf30be0`.
 - Production branch and App Store review: untouched.
+- Parent-owned lifecycle correction architecture boundary check: passed locally.
+- Parent-owned lifecycle correction release-hygiene check: passed locally.
+- Parent-owned lifecycle correction TestFlight build-number guard self-test: passed locally.
+- Parent-owned lifecycle correction whitespace/diff validation: passed locally.
+- Delivery parent-owned lifecycle architecture boundary, release-hygiene, build-number guard, diff, and source-parity gates: passed locally.
 
 ## Blockers
 
@@ -111,7 +122,7 @@ Transfer the fully validated parent-owned import-sheet lifecycle correction from
 
 ## Next action
 
-Commit this delivery checkpoint, transfer only source commit `bf30be0`, verify exact source parity and all local quality gates, then advance both targets to Build 27 for the signed TestFlight pipeline.
+Commit and push the validated delivery transfer, then advance both targets to Build 27 and rerun the local gates before dispatching the signed TestFlight pipeline.
 
 ## Frank's decision required
 

@@ -151,7 +151,12 @@ struct VaultGalleryView: View {
             beginVaultFileImportOnOpen = false
             Task { await reloadGeneralFiles() }
         }) {
-            VaultGeneralFilesView(beginImportOnAppear: beginVaultFileImportOnOpen)
+            VaultGeneralFilesView(
+                beginImportOnAppear: beginVaultFileImportOnOpen,
+                onPrimaryImportFlowFinished: {
+                    showingVaultFiles = false
+                }
+            )
                 .environmentObject(session)
         }
         .sheet(item: $decryptedPhoto) { photo in

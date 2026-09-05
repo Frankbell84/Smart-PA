@@ -16,6 +16,10 @@ photo blobs, credential envelopes, or `.khvault` version-one decoder.
   pending review state and return to the unified Vault grid after the user
   acknowledges the result. Opening `Vault Files` intentionally remains the
   management path for stored-file export and deletion.
+- The primary Vault owns the import sheet's completion callback. A finished
+  import attempt cannot fall through from review into the persisted-file
+  manager, even if SwiftUI's child dismissal environment does not close the
+  parent-owned sheet.
 - Accept common documents, PDFs, audio, archives, text, and other data files.
 - Encrypt the file bytes and authenticated metadata before committing the item
   to the add-on manifest.
