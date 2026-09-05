@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Validate and deliver production-identity internal TestFlight Build 23 without merging the feature into production.
+Complete physical-iPhone validation of production-identity internal TestFlight Build 23 without merging the feature into production.
 
 ## Completed work
 
@@ -16,6 +16,8 @@ Validate and deliver production-identity internal TestFlight Build 23 without me
 - Cancelling or removing pending selections releases file access and leaves the vault and source files unchanged.
 - General File Support remains an independently compiled add-on behind narrow interfaces.
 - Advanced both the KeyHollow app and thumbnail extension to Build 23.
+- Ran signed TestFlight workflow #33 from delivery commit `c1e30fd`.
+- Apple accepted and processed Build 23, and App Store Connect assigned it to the existing `KeyHollow Internal` group.
 
 ## Test and build status
 
@@ -25,17 +27,17 @@ Validate and deliver production-identity internal TestFlight Build 23 without me
 - Delivery-branch local release-hygiene, architecture, build-number guard, and diff gates: passed.
 - Delivery source parity audit: passed; all app, test, documentation, and security-script files match the fully validated feature candidate.
 - A duplicate delivery-branch CodeQL run is not required because the only remaining differences are the build number, upload branch allow-list, and this status record.
-- Signed production-identity archive and TestFlight upload workflow: pending.
-- Internal TestFlight Build 23: not uploaded yet.
+- Signed production-identity archive, embedded-extension/module-hygiene verification, IPA export, and Apple upload: passed in workflow #33.
+- Internal TestFlight Build 23: processed and available in `KeyHollow Internal` with status `Ready to Submit`.
 - Production branch and App Store review: untouched.
 
 ## Blockers
 
-- No active blocker. Upload remains gated on the signed workflow's identity, build-number, archive, module-hygiene, signing, and Apple acceptance checks.
+- Physical-device validation by Frank is the remaining gate; it cannot be completed autonomously.
 
 ## Next action
 
-Run the signed Build 23 workflow from `delivery/general-file-support`, verify Apple accepts and processes it, and make it available only to the existing production KeyHollow internal TestFlight group.
+Frank installs Build 23 and validates pending-file review, removal, cancellation, explicit import confirmation, relaunch persistence, export, and deletion on a physical iPhone. Keep PR #33 unmerged until this passes.
 
 ## Frank's decision required
 
