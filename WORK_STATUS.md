@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Verify Apple processing and internal-group availability for signed TestFlight Build 26; keep PR #33 draft and production untouched.
+Validate internal TestFlight Build 26 on a physical iPhone; keep PR #33 draft and production untouched until the focused workflow check passes.
 
 ## Completed work
 
@@ -99,15 +99,16 @@ Verify Apple processing and internal-group availability for signed TestFlight Bu
 - Build 26 delivery architecture boundary, release-hygiene, build-number guard, and diff gates: passed locally.
 - Dispatched workflow #36 from isolated delivery commit `e7a7dff` with confirmed Build 26.
 - Workflow #36 passed build-number verification, production identity, release hygiene, signed archive/module hygiene, IPA export, Apple upload acceptance, artifact retention, and signing-material cleanup.
+- Apple completed Build 26 processing and assigned it to `KeyHollow Internal` with status `Ready to Submit`.
 - Production branch and App Store review: untouched.
 
 ## Blockers
 
-- No implementation, validation, signing, or upload blocker. Apple processing/internal-group availability and physical-device confirmation remain.
+- No implementation, validation, signing, upload, or Apple-processing blocker. Only focused physical-device confirmation remains.
 
 ## Next action
 
-Wait for Apple to finish processing Build 26, confirm it is available in `KeyHollow Internal`, then hand off the focused physical-device checks.
+Install Build 26 and verify that importing from the primary Vault returns to the unified grid after the success acknowledgment, that the file appears exactly once, and that intentionally opening `Vault Files` still presents the stored file for management.
 
 ## Frank's decision required
 
