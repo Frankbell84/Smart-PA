@@ -69,6 +69,7 @@ TRANSFER_MODULE_FILES = {
     "KeyHollow/Transfer/PortableVaultRestoreTransactionJournal.swift",
     "KeyHollow/Transfer/EncryptedVaultTransferCoordinator.swift",
 }
+FILE_RECOGNITION_PREFIX = "KeyHollow/AddOns/FileRecognition/"
 
 
 def relative(file: Path) -> str:
@@ -345,6 +346,32 @@ def main() -> int:
         if path.startswith("KeyHollow/AddOns/") and "KeyHollow" in imported:
             violations.append(
                 f"{path}: add-on module imports the application target instead of a narrow interface"
+            )
+
+        if path.startswith(FILE_RECOGNITION_PREFIX):
+            unexpected = imported - {"Foundation"}
+            if unexpected:
+                violations.append(
+                    f"{path}: file-recognition add-on imports outside its allowlist: "
+                    f"{', '.join(sorted(unexpected))}"
+                )
+
+        if (
+            "startAccessingSecurityScopedResource" in source
+            and not path.startswith(FILE_RECOGNITION_PREFIX)
+        ):
+            violations.append(
+                f"{path}: security-scoped vault-file access must remain inside "
+                "the file-recognition add-on"
+            )
+
+        if (
+            "KeyHollowPortableImports" in source
+            and not path.startswith(FILE_RECOGNITION_PREFIX)
+        ):
+            violations.append(
+                f"{path}: incoming vault staging must remain inside the "
+                "file-recognition add-on"
             )
 
         if path in CRYPTO_MODULE_FILES or path.startswith(CRYPTO_MODULE_PREFIXES):

@@ -6,6 +6,51 @@ import UIKit
 final class VaultFileRecognitionAddOnTests: XCTestCase {
     private let recognizer = KHVaultFileRecognizer()
 
+    func testIngressCopiesRecognizedFileWhileSourceRemainsUntouched() throws {
+        let sourceRoot = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "VaultFileIngressTests-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: sourceRoot,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: sourceRoot) }
+
+        let sourceURL = sourceRoot.appendingPathComponent("Family Backup.khvault")
+        let original = Data("authenticated encrypted test container".utf8)
+        try original.write(to: sourceURL, options: .atomic)
+
+        let staged = try XCTUnwrap(KHVaultFileIngress().stageIfRecognized(sourceURL))
+        defer { staged.discard() }
+
+        XCTAssertEqual(staged.displayName, sourceURL.lastPathComponent)
+        XCTAssertEqual(staged.byteCount, UInt64(original.count))
+        XCTAssertNotEqual(staged.url, sourceURL)
+        XCTAssertEqual(try Data(contentsOf: staged.url), original)
+        XCTAssertEqual(try Data(contentsOf: sourceURL), original)
+    }
+
+    func testIngressRejectsEmptyVaultFile() throws {
+        let sourceURL = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "Empty-\(UUID().uuidString).khvault"
+        )
+        _ = FileManager.default.createFile(atPath: sourceURL.path, contents: Data())
+        defer { try? FileManager.default.removeItem(at: sourceURL) }
+
+        XCTAssertThrowsError(try KHVaultFileIngress().stageIfRecognized(sourceURL)) { error in
+            XCTAssertEqual(error as? VaultFileIngressError, .unsupportedFile)
+        }
+    }
+
+    func testIngressIgnoresUnrelatedFileWithoutCreatingAStagedCopy() throws {
+        let sourceURL = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "NotAVault-\(UUID().uuidString).zip"
+        )
+
+        XCTAssertNil(try KHVaultFileIngress().stageIfRecognized(sourceURL))
+    }
+
     func testRecognizesKHVaultFileURL() {
         let url = URL(fileURLWithPath: "/tmp/Family Backup.khvault")
 

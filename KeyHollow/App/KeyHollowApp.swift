@@ -6,7 +6,7 @@ import KeyHollowFileRecognitionAddOn
 struct KeyHollowApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var session = VaultSession()
-    private let vaultFileRecognizer = KHVaultFileRecognizer()
+    private let vaultFileIngress = KHVaultFileIngress()
 
     private var isHostedUnitTest: Bool {
         NSClassFromString("XCTestCase") != nil
@@ -24,8 +24,8 @@ struct KeyHollowApp: App {
                 ZStack {
                     RootView(
                         makeService: { try VaultUnlockService() },
-                        recognizeIncomingVaultFile: { url in
-                            vaultFileRecognizer.recognize(url)?.url
+                        stageIncomingVaultFile: { url in
+                            try vaultFileIngress.stageIfRecognized(url)
                         }
                     )
                         .environmentObject(session)
