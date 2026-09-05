@@ -38,6 +38,10 @@ Correct the failed Build 26 post-import lifecycle so completed imports cannot fa
 - Added a regression decision test that distinguishes successful primary-vault imports from zero-import and intentional manager flows.
 - Build 26 physical-device testing confirmed that importing succeeds and the file appears in the unified grid, but the originating sheet still remains visible as the persisted-record manager.
 - The underlying defect is now isolated to sheet lifecycle ownership: pending candidates clear correctly, but child-level dismissal is not reliably closing the parent-owned sheet.
+- The primary Vault now owns import-flow completion through a narrow callback and closes its own sheet after the result is acknowledged.
+- Completed primary-vault imports enter a terminal presentation state, so they cannot fall through into the persisted-record manager while dismissal is being processed.
+- Picker cancellation and review cancellation use the same parent-owned close path; intentionally opening `Vault Files` remains a separate manager flow.
+- Added regression coverage for completed, unfinished, and intentional-manager lifecycle decisions and documented the ownership boundary.
 
 ## Test and build status
 
@@ -62,6 +66,10 @@ Correct the failed Build 26 post-import lifecycle so completed imports cannot fa
 - Corrected post-import whitespace/diff validation: passed locally.
 - Corrected post-import macOS simulator build and full regression/security suite: passed on PR #33 at `ecc02c0`.
 - Corrected post-import Swift CodeQL security analysis: passed on PR #33 at `ecc02c0`.
+- Parent-owned lifecycle correction architecture boundary check: passed locally.
+- Parent-owned lifecycle correction release-hygiene check: passed locally.
+- Parent-owned lifecycle correction TestFlight build-number guard self-test: passed locally.
+- Parent-owned lifecycle correction whitespace/diff validation: passed locally.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
@@ -72,7 +80,7 @@ Correct the failed Build 26 post-import lifecycle so completed imports cannot fa
 
 ## Next action
 
-Add a narrow parent-controlled completion callback, prevent import-only mode from rendering persisted records after success, and cover the lifecycle decision with regression tests before another delivery build.
+Publish the parent-owned lifecycle correction to draft PR #33 and require the macOS simulator, full regression/security suite, architecture gate, release-hygiene gate, and Swift CodeQL analysis before preparing another delivery build.
 
 ## Frank's decision required
 
