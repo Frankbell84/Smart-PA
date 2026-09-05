@@ -6,6 +6,33 @@ import KeyHollowCryptoCore
 import KeyHollowGeneralFileSupportAddOn
 
 final class VaultGeneralFileSupportAddOnTests: XCTestCase {
+    func testImportLowKeyContinueAppearsOnlyForACompleteValidMatch() {
+        XCTAssertTrue(
+            ImportLowKeyContinuation.shouldReveal(
+                newPasscode: "73918462",
+                confirmation: "73918462",
+                requiredLength: 8,
+                rejectionMessage: nil
+            )
+        )
+        XCTAssertFalse(
+            ImportLowKeyContinuation.shouldReveal(
+                newPasscode: "73918462",
+                confirmation: "73918461",
+                requiredLength: 8,
+                rejectionMessage: nil
+            )
+        )
+        XCTAssertFalse(
+            ImportLowKeyContinuation.shouldReveal(
+                newPasscode: "73918462",
+                confirmation: "73918462",
+                requiredLength: 8,
+                rejectionMessage: "Predictable"
+            )
+        )
+    }
+
     func testPrimaryVaultIsNotEmptyWhenOnlyGeneralFilesExist() {
         XCTAssertFalse(VaultContentAvailability.isEmpty(photoCount: 0, generalFileCount: 1))
         XCTAssertFalse(VaultContentAvailability.isEmpty(photoCount: 1, generalFileCount: 0))

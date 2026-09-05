@@ -14,20 +14,11 @@ final class SessionGeneralFileAccess: VaultGeneralFileCryptographicAccess,
     }
 
     func seal(_ plaintext: Data, for purpose: VaultGeneralFileKeyPurpose) throws -> Data {
-        try capability.sealScopedData(plaintext, domain: domain(for: purpose))
+        try capability.sealScopedData(plaintext, domain: purpose.cryptographicDomain)
     }
 
     func open(_ ciphertext: Data, for purpose: VaultGeneralFileKeyPurpose) throws -> Data {
-        try capability.openScopedData(ciphertext, domain: domain(for: purpose))
-    }
-
-    private func domain(for purpose: VaultGeneralFileKeyPurpose) -> String {
-        switch purpose {
-        case .manifest:
-            "general-files.manifest.v1"
-        case .file(let id):
-            "general-files.blob.v1.\(id.uuidString.lowercased())"
-        }
+        try capability.openScopedData(ciphertext, domain: purpose.cryptographicDomain)
     }
 }
 

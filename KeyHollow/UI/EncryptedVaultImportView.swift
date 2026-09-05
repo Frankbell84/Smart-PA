@@ -15,7 +15,7 @@ struct EncryptedVaultImportView: View {
 
     @State private var selectedArchive: StagedVaultFile?
     @State private var recoveryCode = ""
-    @State private var validatedPhotoCount: Int?
+    @State private var validatedContent: ValidatedVaultContentSummary?
     @State private var tier: PasscodeTier = .enhanced
     @State private var customLength = 10
     @State private var newPasscode = ""
@@ -48,7 +48,7 @@ struct EncryptedVaultImportView: View {
                     Button(selectedArchive == nil ? "Choose .khvault File" : "Choose a Different File") {
                         beginFileSelection()
                     }
-                    .disabled(isWorking || validatedPhotoCount != nil)
+                    .disabled(isWorking || validatedContent != nil)
 
                     if let selectedArchive {
                         LabeledContent("Selected", value: selectedArchive.displayName)
@@ -70,11 +70,11 @@ struct EncryptedVaultImportView: View {
                         .onChange(of: recoveryCode) { _, value in
                             recoveryCode = Self.sanitizeRecoveryCode(value)
                         }
-                        .disabled(validatedPhotoCount != nil)
+                        .disabled(validatedContent != nil)
 
-                    if let validatedPhotoCount {
+                    if let validatedContent {
                         Label(
-                            "Authenticated and verified: \(validatedPhotoCount) photos",
+                            validatedContent.verificationMessage,
                             systemImage: "checkmark.shield.fill"
                         )
                         .foregroundStyle(.green)
@@ -87,7 +87,7 @@ struct EncryptedVaultImportView: View {
                     }
                 }
 
-                if validatedPhotoCount != nil {
+                if validatedContent != nil {
                     Section("3. Create a new local LowKey") {
                         Picker("Security level", selection: $tier) {
                             ForEach(PasscodeTier.allCases) { tier in
@@ -127,6 +127,14 @@ struct EncryptedVaultImportView: View {
                                 passcodeConfirmation = sanitized
                             }
 
+                        if canContinueFromConfirmation {
+                            Button("Continue") {
+                                advanceToInstallControls(using: proxy)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+
                         Text("The recovery code authenticates the file only. It will never unlock KeyHollow. This new LowKey is required on this iPhone.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -151,7 +159,7 @@ struct EncryptedVaultImportView: View {
                     Section { Text(message).foregroundStyle(.secondary) }
                 }
 
-                if validatedPhotoCount != nil {
+                if validatedContent != nil {
                     Section {
                         Button("Install as New Vault") {
                             dismissKeyboard()
@@ -185,7 +193,7 @@ struct EncryptedVaultImportView: View {
                 }
                 .overlay {
                     if isWorking {
-                        ProgressView(validatedPhotoCount == nil ? "Authenticating every file…" : "Re-authenticating and installing…")
+                        ProgressView(validatedContent == nil ? "Authenticating every file…" : "Re-authenticating and installing…")
                             .padding()
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                     }
@@ -230,9 +238,12 @@ struct EncryptedVaultImportView: View {
     }
 
     private var canContinueFromConfirmation: Bool {
-        newPasscode.count == requiredLength &&
-        passcodeConfirmation == newPasscode &&
-        rejectionMessage == nil
+        ImportLowKeyContinuation.shouldReveal(
+            newPasscode: newPasscode,
+            confirmation: passcodeConfirmation,
+            requiredLength: requiredLength,
+            rejectionMessage: rejectionMessage
+        )
     }
 
     private func finishKeyboardEntry(using proxy: ScrollViewProxy) {
@@ -328,12 +339,16 @@ struct EncryptedVaultImportView: View {
             do {
                 let restore = try await EncryptedVaultTransferCoordinator().stageAndValidateRestore(
                     archiveURL: selectedArchive.url,
-                    credential: credential
+                    credential: credential,
+                    supplementalContent: GeneralFilePortableTransferBridge()
                 )
-                let photoCount = restore.manifest.photos.count
+                let summary = ValidatedVaultContentSummary(
+                    photoCount: restore.manifest.photos.count,
+                    generalFileCount: restore.supplementalItemCount
+                )
                 restore.discard()
                 guard !Task.isCancelled else { return }
-                validatedPhotoCount = photoCount
+                validatedContent = summary
                 isWorking = false
             } catch is CancellationError {
                 isWorking = false
@@ -347,7 +362,7 @@ struct EncryptedVaultImportView: View {
 
     private func installRestore() {
         guard canInstall,
-              validatedPhotoCount != nil,
+              validatedContent != nil,
               let selectedArchive,
               !isWorking else { return }
         dismissKeyboard()
@@ -366,7 +381,8 @@ struct EncryptedVaultImportView: View {
                 // a new LowKey.
                 let authenticated = try await EncryptedVaultTransferCoordinator().stageAndValidateRestore(
                     archiveURL: selectedArchive.url,
-                    credential: credential
+                    credential: credential,
+                    supplementalContent: GeneralFilePortableTransferBridge()
                 )
                 restore = authenticated
                 try Task.checkCancellation()
@@ -377,7 +393,7 @@ struct EncryptedVaultImportView: View {
                 restore = nil
                 Self.discardTemporaryArchive(selectedArchive)
                 self.selectedArchive = nil
-                validatedPhotoCount = nil
+                validatedContent = nil
                 recoveryCode = ""
                 isWorking = false
                 session.unlock(vaultID: unlocked.vaultID, key: unlocked.vaultKey)
@@ -405,7 +421,7 @@ struct EncryptedVaultImportView: View {
     }
 
     private func discardUninstalledMaterial() {
-        validatedPhotoCount = nil
+        validatedContent = nil
         if let selectedArchive {
             Self.discardTemporaryArchive(selectedArchive)
         }
@@ -429,6 +445,30 @@ struct EncryptedVaultImportView: View {
 
     private static func formattedBytes(_ bytes: UInt64) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
+    }
+}
+
+enum ImportLowKeyContinuation {
+    static func shouldReveal(
+        newPasscode: String,
+        confirmation: String,
+        requiredLength: Int,
+        rejectionMessage: String?
+    ) -> Bool {
+        newPasscode.count == requiredLength
+            && confirmation == newPasscode
+            && rejectionMessage == nil
+    }
+}
+
+private struct ValidatedVaultContentSummary: Equatable {
+    let photoCount: Int
+    let generalFileCount: Int
+
+    var verificationMessage: String {
+        let photoNoun = photoCount == 1 ? "photo" : "photos"
+        let fileNoun = generalFileCount == 1 ? "file" : "files"
+        return "Authenticated and verified: \(photoCount) \(photoNoun), \(generalFileCount) \(fileNoun)"
     }
 }
 
