@@ -126,6 +126,25 @@ public actor VaultGeneralFileStore {
         return manifest
     }
 
+    /// Returns one authenticated file in memory for an explicitly selected
+    /// record. Presentation adapters use this narrow path for previews without
+    /// receiving storage locations or cryptographic keys.
+    public func loadFile(_ record: VaultGeneralFileRecord) throws -> Data {
+        let manifest = try loadManifest()
+        guard manifest.files.contains(record), Self.isSafeBlobName(record.blobName) else {
+            throw StoreError.invalidManifest
+        }
+        let ciphertext = try Data(
+            contentsOf: root.appendingPathComponent(record.blobName, isDirectory: false),
+            options: [.mappedIfSafe]
+        )
+        let plaintext = try access.open(ciphertext, for: .file(record.id))
+        guard UInt64(plaintext.count) == record.originalByteCount else {
+            throw StoreError.verificationFailed
+        }
+        return plaintext
+    }
+
     public func importFile(at sourceURL: URL) throws -> VaultGeneralFileRecord {
         try Task.checkCancellation()
         let staged = try stageSourceFile(sourceURL)

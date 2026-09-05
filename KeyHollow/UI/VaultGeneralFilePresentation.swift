@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 import KeyHollowGeneralFileSupportAddOn
 
@@ -56,6 +57,7 @@ enum GeneralFileImportPresentation {
 
 struct VaultGeneralFileTileView: View {
     let record: VaultGeneralFileRecord
+    let thumbnail: UIImage?
     let isEnabled: Bool
     let openFileManager: () -> Void
 
@@ -74,12 +76,20 @@ struct VaultGeneralFileTileView: View {
                         .fill(.secondary.opacity(0.12))
 
                     VStack(spacing: 0) {
-                        Image(systemName: GeneralFilePresentation.iconName(
-                            for: record.contentTypeIdentifier
-                        ))
-                        .font(.system(size: 38, weight: .regular))
-                        .foregroundStyle(.tint)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        if let thumbnail {
+                            Image(uiImage: thumbnail)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .clipped()
+                        } else {
+                            Image(systemName: GeneralFilePresentation.iconName(
+                                for: record.contentTypeIdentifier
+                            ))
+                            .font(.system(size: 38, weight: .regular))
+                            .foregroundStyle(.tint)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(record.displayName)

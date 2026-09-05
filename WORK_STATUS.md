@@ -6,11 +6,12 @@ Pull request: [#35](https://github.com/Frankbell84/KeyHollow/pull/35) (draft)
 
 ## Current task
 
-Phase 4 folder and presentation work has begun on a fresh isolated branch from
-the annotated `checkpoint/pre-phase-4-clean-baseline` tag at merged commit
-`69154ff`. Define and implement the add-on through narrow interfaces while
-preserving protected vault stores, existing vaults, and `.khvault`
-compatibility. App Store review and TestFlight remain untouched.
+Phase 4 is integrating the independently compiled folder/presentation add-on
+through the app composition layer. The current milestone gives general image
+files the same gallery thumbnail treatment as Photos imports, using only an
+authenticated record-level read and encrypted presentation cache. Protected
+store formats, existing vaults, and `.khvault` compatibility remain unchanged.
+App Store review and TestFlight remain untouched.
 
 ## Completed work
 
@@ -76,6 +77,9 @@ compatibility. App Store review and TestFlight remain untouched.
 - Mac simulator build and complete regression/security suite: passed in 7m37s.
 - Swift CodeQL: passed in 27m04s with no failed security gate.
 - Simulator and test artifacts were produced with recorded SHA-256 digests.
+- Authenticated general-file preview read, scoped folder-presentation access,
+  presentation-aware vault cleanup, and the gallery thumbnail view seam are
+  implemented locally and awaiting the next composition checkpoint.
 
 ## Blockers
 
@@ -83,9 +87,10 @@ compatibility. App Store review and TestFlight remain untouched.
 
 ## Next action
 
-Commit and push this green boundary checkpoint. Then wire folder organization
-and encrypted general-image thumbnail presentation through the app composition
-layer without changing the protected photo or general-file stores.
+Checkpoint the narrow app bridge, then complete encrypted general-image
+thumbnail composition in the root gallery. Run local architecture, hygiene,
+and diff gates before publishing the milestone to draft PR #35 for the full
+Mac simulator and Swift security gates.
 
 ## Frank's decision required
 
