@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Validate internal TestFlight Build 29 on a physical iPhone for mixed photo/file portable-vault export and restore plus the smoother LowKey confirmation flow; keep PR #33 draft, production, and App Store review untouched.
+Record Build 29's successful physical-device validation and hold the exact delivered candidate for Frank's final merge decision; keep production and App Store review untouched. Defer image-file thumbnail parity to the dedicated folder/presentation phase.
 
 ## Completed work
 
@@ -158,16 +158,19 @@ Validate internal TestFlight Build 29 on a physical iPhone for mixed photo/file 
 - Build 29 delivery architecture boundary, release-hygiene, build-number guard self-test, whitespace, and exact semantic source-parity gates: passed locally at `3ab9b62`.
 - Signed Build 29 delivery workflow #39: completed successfully from commit `e8c116c`.
 - Internal TestFlight Build 29: processed, assigned to `KeyHollow Internal`, and available with status `Ready to Submit`.
+- Frank confirmed on a physical iPhone that Build 29 works end to end, including mixed photo/file portable-vault export and restore and the smoother matching-LowKey Continue flow.
+- Physical testing confirmed that general files and Photo-library images now share the unified vault grid and persist through the protected transfer path.
+- One presentation refinement is intentionally deferred: image files imported through Apple's Files picker use a generic encrypted-file tile instead of the live thumbnail used for Photo-library imports. This is a folder/presentation concern, not a storage, encryption, or transfer defect.
 
 ## Blockers
 
-- No source, validation, signing, upload, processing, or TestFlight-assignment blocker. Only focused physical-device confirmation remains.
+- No source, validation, signing, upload, processing, TestFlight-assignment, or physical-device blocker. Final merge awaits Frank's explicit approval.
 
 ## Next action
 
-Install Build 29 and validate one new mixed photo/file archive end to end, one legacy photo-only archive, and the inline Continue action after matching LowKey confirmation.
+With Frank's explicit approval, make PR #33 merge-ready and merge the completed general-file-support layer. Carry thumbnail generation and unified image-tile presentation forward as an acceptance requirement for the dedicated folder feature.
 
 ## Frank's decision required
 
-- After Build 29 reaches TestFlight, Frank must confirm a mixed photo/file vault exports and restores with every item intact, an older photo-only archive still restores, and matching LowKey confirmation reveals a smooth Continue action.
-- Final merge and any App Store review submission remain separate decisions requiring Frank's explicit approval after device validation.
+- Frank must explicitly approve the final merge of PR #33 now that Build 29 has passed device validation.
+- Any App Store review submission remains a separate decision requiring Frank's explicit approval.
