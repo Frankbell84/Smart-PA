@@ -3,6 +3,7 @@ import Foundation
 public actor VaultGeneralFileStore {
     public enum StoreError: Error, Equatable {
         case accessMismatch
+        case batchTooLarge
         case emptyFile
         case fileTooLarge
         case invalidManifest
@@ -111,10 +112,28 @@ public actor VaultGeneralFileStore {
         }
     }
 
-    public func importFile(_ candidate: VaultGeneralFileImportCandidate) throws
-        -> VaultGeneralFileRecord {
-        defer { candidate.discard() }
-        return try importFile(at: candidate.sourceURL)
+    public func importFiles(at sourceURLs: [URL]) throws -> VaultGeneralFileImportResult {
+        guard sourceURLs.count <= Self.maximumBatchCount else {
+            throw StoreError.batchTooLarge
+        }
+
+        var importedCount = 0
+        var failedCount = 0
+        for sourceURL in sourceURLs {
+            try Task.checkCancellation()
+            do {
+                _ = try importFile(at: sourceURL)
+                importedCount += 1
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                failedCount += 1
+            }
+        }
+        return VaultGeneralFileImportResult(
+            importedCount: importedCount,
+            failedCount: failedCount
+        )
     }
 
     public func prepareExport(_ records: [VaultGeneralFileRecord]) throws -> PreparedGeneralFileExport {

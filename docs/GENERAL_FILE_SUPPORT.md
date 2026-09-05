@@ -9,17 +9,14 @@ photo blobs, credential envelopes, or `.khvault` version-one decoder.
 - Import up to 50 regular files per selection from Apple's Files interface.
 - Open the Files picker directly from the vault's primary import menu; the
   capability is not hidden inside security or overflow settings.
-- Review the pending selection before import. No selected file is committed to
-  the encrypted vault until the user taps the explicit Import into Vault action;
-  canceling or removing a pending item leaves the vault unchanged.
-- After a successful import launched from the primary Vault screen, discard the
-  pending review state and return to the unified Vault grid after the user
-  acknowledges the result. Opening `Vault Files` intentionally remains the
-  management path for stored-file export and deletion.
-- The primary Vault owns the import sheet's completion callback. A finished
-  import attempt cannot fall through from review into the persisted-file
-  manager, even if SwiftUI's child dismissal environment does not close the
-  parent-owned sheet.
+- Import the selected files immediately after Apple's picker closes, then
+  refresh the same unified three-column Vault grid used by photos. There is no
+  KeyHollow staging, review, or second confirmation screen.
+- Canceling Apple's picker leaves the vault unchanged. Opening `Vault Files`
+  intentionally remains the management path for stored-file export and
+  deletion, not an intermediate import destination.
+- Future metadata editing is intentionally decoupled from import and deferred
+  to a post-import Vault Security/settings surface.
 - Accept common documents, PDFs, audio, archives, text, and other data files.
 - Encrypt the file bytes and authenticated metadata before committing the item
   to the add-on manifest.
@@ -45,9 +42,9 @@ and streaming large-file encryption remain a separately reviewed add-on.
 - The add-on receives authenticated seal/open operations through
   `VaultGeneralFileCryptographicAccess`; it never receives or retains a vault
   key.
-- The add-on owns the security-scoped file-selection lifetime during import
-  review; the presentation layer receives only bounded candidate metadata and
-  explicit confirm/discard actions.
+- The add-on owns the complete bounded batch-import operation. Each selected
+  security-scoped URL is copied, encrypted, verified, and committed before the
+  next item is processed; the UI receives only aggregate success/failure counts.
 - The app session derives domain-separated keys and retains synchronous
   revocation ownership.
 - Incoming files are copied from security-scoped URLs into protected temporary

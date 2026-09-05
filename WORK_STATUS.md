@@ -44,6 +44,12 @@ Remove the user-facing general-file staging/review model entirely and replace it
 - Added regression coverage for completed, unfinished, and intentional-manager lifecycle decisions and documented the ownership boundary.
 - Build 27 physical-device testing confirmed that parent-controlled dismissal still does not reliably eliminate the post-selection staging/manager experience.
 - Frank directed that the staging/review step be removed: selecting files must encrypt them immediately and refresh the same unified three-column grid used by photos.
+- Removed the pending-candidate type, review list, second confirmation button, child-dismissal policy, and every user-facing staging lifecycle symbol.
+- Added a narrow module-owned batch-import API that enforces the 50-file limit, processes each file through the existing protected copy/encrypt/verify/commit path, and returns only aggregate counts.
+- The primary Vault now presents Apple's Files picker directly and refreshes the unified three-column grid after import without presenting `Vault Files`.
+- The intentional `Vault Files` manager uses the same batch-import API for its plus button while retaining export and deletion controls.
+- Future metadata editing is explicitly decoupled from import and deferred to a deliberate post-import Vault Security/settings surface.
+- Replaced staging lifecycle tests with batch success, partial rejection, source-preservation, and maximum-selection regression coverage.
 
 ## Test and build status
 
@@ -74,17 +80,22 @@ Remove the user-facing general-file staging/review model entirely and replace it
 - Parent-owned lifecycle correction whitespace/diff validation: passed locally.
 - Parent-owned lifecycle correction macOS simulator build and full regression/security suite: passed on PR #33 at `bf30be0`.
 - Parent-owned lifecycle correction Swift CodeQL security analysis: passed on PR #33 at `bf30be0`.
+- Direct-import architecture boundary check: passed locally.
+- Direct-import release-hygiene check: passed locally.
+- Direct-import TestFlight build-number guard self-test: passed locally.
+- Direct-import whitespace/diff validation: passed locally.
+- Obsolete staging/review implementation-symbol audit: passed locally; no symbols remain.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
 
 ## Blockers
 
-- No storage or encryption blocker. The obsolete pending-selection model must be removed cleanly, followed by full automated validation and another internal-device check.
+- No local implementation blocker. Remote macOS compilation, full regression/security testing, Swift security analysis, and another internal-device check remain.
 
 ## Next action
 
-Commit this device-test checkpoint, remove the pending-candidate API and review UI, add a module-owned direct batch-import API, route both pickers through it, and update regression tests and the behavior contract before running the full quality gates.
+Commit and push the direct-import implementation to draft PR #33, then require the macOS simulator, full regression/security suite, architecture gate, release-hygiene gate, and Swift CodeQL analysis before preparing another delivery build.
 
 ## Frank's decision required
 
