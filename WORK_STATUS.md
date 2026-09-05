@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Advance the exact validated staging-free delivery candidate from Build 27 to Build 28 and run the complete pre-upload gate; keep PR #33 draft, production, and App Store review untouched.
+Validate internal TestFlight Build 28 on a physical iPhone for the direct, staging-free file-import experience; keep PR #33 draft, production, and App Store review untouched.
 
 ## Completed work
 
@@ -79,6 +79,9 @@ Advance the exact validated staging-free delivery candidate from Build 27 to Bui
 - Transferred only the seven validated implementation, regression-test, and behavior-documentation files from source commit `b964b37` into the isolated delivery branch.
 - Confirmed exact file-for-file parity for every transferred file against `b964b37`; the delivery status record remains delivery-specific.
 - Advanced the KeyHollow app and thumbnail extension together from Build 27 to Build 28; no app identity or version-number field changed.
+- Dispatched signed production TestFlight workflow #38 from delivery commit `6053978` with branch `delivery/general-file-support` and confirmed Build 28.
+- Workflow #38 passed build-number uniqueness, production identity, release hygiene, signed archive/module hygiene, IPA export, Apple upload acceptance, artifact retention, and signing-material cleanup.
+- Apple processed Build 28 into the production KeyHollow TestFlight app and assigned it to `KeyHollow Internal` with status `Ready to Submit`.
 - Removed the pending-candidate type, review list, second confirmation button, child-dismissal policy, and every user-facing staging lifecycle symbol.
 - Added a narrow module-owned batch-import API that enforces the 50-file limit, processes each file through the existing protected copy/encrypt/verify/commit path, and returns only aggregate counts.
 - The primary Vault now presents Apple's Files picker directly and refreshes the unified three-column grid after import without presenting `Vault Files`.
@@ -140,14 +143,16 @@ Advance the exact validated staging-free delivery candidate from Build 27 to Bui
 - Direct-import architecture boundary, release-hygiene, build-number guard, and whitespace gates: passed on the source branch.
 - Delivery direct-import architecture boundary, release-hygiene, build-number guard, whitespace, obsolete-symbol, and exact source-parity gates: passed locally.
 - Build 28 app/extension number alignment, architecture boundary, release-hygiene, build-number guard self-test, and whitespace gates: passed locally.
+- Signed Build 28 delivery workflow #38: completed successfully from commit `6053978`.
+- Internal TestFlight Build 28: processed, assigned to `KeyHollow Internal`, and available with status `Ready to Submit`.
 
 ## Blockers
 
-- No source implementation, transfer, parity, numbering, or local-validation blocker. Build 28 signing, upload, Apple processing, and physical-device confirmation remain.
+- No source, validation, signing, upload, processing, or TestFlight-assignment blocker. Only focused physical-device confirmation remains.
 
 ## Next action
 
-Commit and push the numbered Build 28 candidate, then dispatch the signed TestFlight workflow and require every delivery gate before Apple processing and internal-group assignment.
+Install Build 28, select one or more ordinary files from the primary Vault import menu, and confirm that Apple's picker returns directly to the unified three-column grid with no KeyHollow staging/review screen and each file appears exactly once. Then intentionally open `Vault Files` to confirm export and deletion management still work.
 
 ## Frank's decision required
 
