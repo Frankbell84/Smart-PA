@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import KeyHollowGeneralFileSupportAddOn
 import KeyHollowPhotoCore
 import KeyHollowPhotosAdapter
 
@@ -30,6 +31,9 @@ struct VaultGalleryView: View {
 
     @State private var store: VaultPhotoStore?
     @State private var records: [VaultPhotoRecord] = []
+    @State private var generalFileStore: VaultGeneralFileStore?
+    @State private var generalFileRecords: [VaultGeneralFileRecord] = []
+    @State private var contentStoresLoaded = false
     @State private var thumbnails: [UUID: UIImage] = [:]
     @State private var decryptedPhoto: DecryptedPhoto?
     @State private var showingImportOptions = false
@@ -61,21 +65,37 @@ struct VaultGalleryView: View {
             Divider()
 
             Group {
-                if records.isEmpty && !isWorking {
+                if !contentStoresLoaded {
+                    ProgressView("Opening vault…")
+                } else if VaultContentAvailability.isEmpty(
+                    photoCount: records.count,
+                    generalFileCount: generalFileRecords.count
+                ) && !isWorking {
                     ContentUnavailableView(
                         "Empty Vault",
                         systemImage: "photo.on.rectangle.angled",
-                        description: Text("Import photos to store encrypted copies inside this vault.")
+                        description: Text("Import photos or files to store encrypted copies inside this vault.")
                     )
                 } else {
                     ScrollView {
-                        LazyVGrid(columns: columns, spacing: 3) {
-                            ForEach(records) { record in
-                                thumbnailCell(record)
+                        LazyVStack(spacing: 0) {
+                            if !generalFileRecords.isEmpty {
+                                VaultGeneralFileSummaryView(
+                                    records: generalFileRecords,
+                                    openFileManager: { showingVaultFiles = true }
+                                )
+                            }
+
+                            if !records.isEmpty {
+                                LazyVGrid(columns: columns, spacing: 3) {
+                                    ForEach(records) { record in
+                                        thumbnailCell(record)
+                                    }
+                                }
+                                .padding(.horizontal, 3)
+                                .padding(.vertical, 3)
                             }
                         }
-                        .padding(.horizontal, 3)
-                        .padding(.vertical, 3)
                     }
                 }
             }
@@ -132,6 +152,7 @@ struct VaultGalleryView: View {
         }
         .sheet(isPresented: $showingVaultFiles, onDismiss: {
             beginVaultFileImportOnOpen = false
+            Task { await reloadGeneralFiles() }
         }) {
             VaultGeneralFilesView(beginImportOnAppear: beginVaultFileImportOnOpen)
                 .environmentObject(session)
@@ -164,10 +185,14 @@ struct VaultGalleryView: View {
         .task(id: session.activeVaultID) {
             store = nil
             records = []
+            generalFileStore = nil
+            generalFileRecords = []
+            contentStoresLoaded = false
             thumbnails = [:]
             decryptedPhoto = nil
             leaveSelectionMode()
-            await initializeStore()
+            await initializeStores()
+            contentStoresLoaded = true
         }
     }
 
@@ -344,16 +369,38 @@ struct VaultGalleryView: View {
         }
     }
 
-    private func initializeStore() async {
-        guard store == nil,
-              let context = session.activeVaultContext() else { return }
+    private func initializeStores() async {
+        guard let context = session.activeVaultContext() else { return }
 
+        if store == nil {
+            do {
+                let createdStore = try VaultPhotoStore(vaultID: context.id, access: context.access)
+                store = createdStore
+                try await reload(using: createdStore)
+            } catch {
+                message = "The encrypted photo store could not be opened."
+            }
+        }
+
+        if generalFileStore == nil {
+            do {
+                let access = SessionGeneralFileAccess(capability: context.access)
+                let createdStore = try VaultGeneralFileStore(vaultID: context.id, access: access)
+                generalFileStore = createdStore
+                generalFileRecords = try await createdStore.loadManifest().files
+            } catch {
+                message = "The encrypted file store could not be opened."
+            }
+        }
+    }
+
+    @MainActor
+    private func reloadGeneralFiles() async {
+        guard let generalFileStore else { return }
         do {
-            let createdStore = try VaultPhotoStore(vaultID: context.id, access: context.access)
-            store = createdStore
-            try await reload(using: createdStore)
+            generalFileRecords = try await generalFileStore.loadManifest().files
         } catch {
-            message = "The encrypted photo store could not be opened."
+            message = "The encrypted file list could not be refreshed."
         }
     }
 
