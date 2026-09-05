@@ -1,14 +1,16 @@
 # KeyHollow Work Status
 
 Updated: 2026-09-05
-Branch: `chore/phase-four-preflight`
-Pull request: [#34](https://github.com/Frankbell84/KeyHollow/pull/34) (draft)
+Branch: `feature/folder-presentation-addon`
+Pull request: Not opened
 
 ## Current task
 
-Preserve the completed, warning-free pre-Phase 4 cleanup as the clean baseline
-pending explicit merge approval. App Store review and TestFlight remain
-untouched.
+Phase 4 folder and presentation work has begun on a fresh isolated branch from
+the annotated `checkpoint/pre-phase-4-clean-baseline` tag at merged commit
+`69154ff`. Define and implement the add-on through narrow interfaces while
+preserving protected vault stores, existing vaults, and `.khvault`
+compatibility. App Store review and TestFlight remain untouched.
 
 ## Completed work
 
@@ -31,6 +33,10 @@ untouched.
   exact Phase 4 entry requirements.
 - Preserved the deferred presentation requirement: images imported through
   Files receive encrypted thumbnail parity during the folder/presentation phase.
+- Merged the preflight cleanup through PR #34 and published the annotated
+  `checkpoint/pre-phase-4-clean-baseline` rollback tag at `69154ff`.
+- Created `feature/folder-presentation-addon` directly from that clean tagged
+  checkpoint; no Phase 4 implementation has been added yet.
 
 ## Test and build status
 
@@ -38,8 +44,8 @@ untouched.
 - Release-hygiene gate: passed locally.
 - TestFlight build-number guard self-test: passed locally.
 - Whitespace and obsolete-status audit: passed locally.
-- Final remote CI run [#215](https://github.com/Frankbell84/KeyHollow/actions/runs/33985539241)
-  at `cce693e`: passed.
+- Final merged-baseline CI run [#216](https://github.com/Frankbell84/KeyHollow/actions/runs/33986912069)
+  at `7fb5487`: passed.
 - Mac simulator build and complete regression/security suite: passed in 6m49s.
 - Both first-party add-ons compiled under strict concurrency with
   warnings-as-errors; no add-on diagnostics remained.
@@ -47,8 +53,10 @@ untouched.
   multiple-destination warning.
 - Artifact uploads through the pinned Node 24 action: passed; simulator and
   security-test artifacts were produced with recorded SHA-256 digests.
-- Swift CodeQL: passed in 24m20s with zero unresolved AST nodes and no failed
-  security gate.
+- Swift CodeQL: passed with no failed security gate.
+- PR #34 merged into `main` as `69154ff`; all required checks were green.
+- Phase 4 inherits that green baseline. Phase 4 changes have not yet been
+  compiled or tested.
 
 ## Blockers
 
@@ -56,13 +64,15 @@ untouched.
 
 ## Next action
 
-Commit and push this final evidence record. Keep PR #34 in draft until Frank
-explicitly approves merging the clean baseline into `main`. After merge, tag
-the clean checkpoint and open Phase 4 on a fresh isolated branch.
+Commit and push this Phase 4 start checkpoint. Then inventory the current
+gallery, General File Support, transfer, and composition seams and define the
+smallest compiled folder/presentation add-on contract without introducing a
+dependency from protected core modules back into the add-on.
 
 ## Frank's decision required
 
-- Approve or defer merging draft PR #34 into `main`.
-- A new TestFlight build is not required for this behavior-neutral cleanup.
+- No routine decision is currently required; Frank explicitly started Phase 4.
+- Folder and presentation implementation may proceed autonomously within the
+  documented acceptance criteria.
 - Any future TestFlight delivery or App Store review change still requires
   Frank's explicit approval.
