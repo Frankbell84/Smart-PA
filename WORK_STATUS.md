@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Validate internal TestFlight Build 27 on a physical iPhone; keep PR #33 draft, production, and App Store review untouched until the focused lifecycle check passes.
+Prepare internal TestFlight Build 28 from the fully validated staging-free source commit `b964b37`; keep PR #33 draft, production, and App Store review untouched until the focused direct-import device check passes.
 
 ## Completed work
 
@@ -72,6 +72,10 @@ Validate internal TestFlight Build 27 on a physical iPhone; keep PR #33 draft, p
 - Dispatched signed TestFlight workflow #37 from isolated delivery commit `b58acdc` with branch `delivery/general-file-support` and confirmed Build 27.
 - Workflow #37 passed build-number uniqueness, production identity, release hygiene, signed archive/module hygiene, IPA export, Apple upload acceptance, artifact retention, and signing-material cleanup.
 - Frank confirmed that the Build 27 TestFlight update reached his device.
+- Build 27 physical-device testing confirmed that parent-owned dismissal still did not remove the visible staging/manager experience.
+- Frank directed that user-facing file staging be removed completely: selecting files must import directly into the same unified three-column grid as photos.
+- The replacement source removes pending candidates, the review list, second confirmation, and staging lifecycle policy while preserving the module-owned protected copy/encrypt/verify/commit path.
+- PR #33 passed the direct-import macOS simulator build, full regression/security suite, architecture enforcement, release hygiene, and Swift CodeQL at source commit `b964b37`.
 
 ## Test and build status
 
@@ -122,16 +126,18 @@ Validate internal TestFlight Build 27 on a physical iPhone; keep PR #33 draft, p
 - Build 27 app/extension build-number alignment, architecture boundary, release-hygiene, build-number guard, and diff gates: passed locally.
 - Signed Build 27 delivery workflow #37: completed successfully from commit `b58acdc`.
 - Internal TestFlight Build 27 delivery: confirmed received by Frank.
+- Build 27 post-import experience: failed; the visible staging/manager step remains.
+- Direct-import source macOS simulator build, full regression/security suite, and Swift CodeQL: passed on PR #33 at `b964b37`.
 
 ## Blockers
 
-- No implementation, automated-validation, signing, upload, or delivery blocker. Only the focused physical-device lifecycle confirmation remains.
+- No source implementation or automated-validation blocker. Build 28 transfer, signing, upload, Apple processing, and physical-device confirmation remain.
 
 ## Next action
 
-Install Build 27, import one ordinary file from the primary Vault, acknowledge the result, and confirm that the import sheet closes automatically and the file appears exactly once in the three-column grid. Then intentionally open `Vault Files` to confirm the stored-file manager still works.
+Commit this pre-delivery checkpoint, transfer only source commit `b964b37`, verify exact parity and local gates, advance both targets to Build 28, and run the signed TestFlight workflow.
 
 ## Frank's decision required
 
-- Frank must confirm that Build 27 returns to the unified grid after a successful primary-vault import and that intentionally opening Vault Files still shows the stored file.
+- After Build 28 reaches TestFlight, Frank must confirm that file selection returns directly to the unified grid with no KeyHollow staging/review screen and that intentionally opening Vault Files still shows the stored file.
 - Final merge and any App Store review submission remain separate decisions requiring Frank's explicit approval after device validation.
