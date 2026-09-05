@@ -32,6 +32,10 @@ Refine the explicit file-import review flow so a successful primary-vault import
 - PR #33 completed the refined macOS simulator build, full regression/security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL analysis at `7b41ffc`.
 - Build 25 physical-device testing confirmed that the unified mixed-content grid works and files remain encrypted, persisted, and reachable.
 - The pending import candidates already clear after confirmation, but the same `Vault Files` sheet immediately switches to its persisted-record manager, making the imported file appear to remain in staging.
+- Successful primary-vault imports now clear pending candidates and return to the unified grid after the user acknowledges the result.
+- Canceling the primary-vault review or Files picker now returns to the unified grid instead of revealing the stored-file manager as if it were staging.
+- Intentionally opening `Vault Files` still presents persisted encrypted records for export and deletion.
+- Added a regression decision test that distinguishes successful primary-vault imports from zero-import and intentional manager flows.
 
 ## Test and build status
 
@@ -50,17 +54,21 @@ Refine the explicit file-import review flow so a successful primary-vault import
 - Refined Swift CodeQL security analysis: passed on PR #33 at `7b41ffc`.
 - Build 25 unified mixed-content grid and file persistence: passed on a physical iPhone.
 - Build 25 post-import flow clarity: failed; the completed import remains in the file-manager sheet and looks like uncleared staging.
+- Corrected post-import source architecture boundary check: passed locally.
+- Corrected post-import release-hygiene check: passed locally.
+- Corrected post-import TestFlight build-number guard self-test: passed locally.
+- Corrected post-import whitespace/diff validation: passed locally.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
 
 ## Blockers
 
-- No implementation blocker. The post-import transition needs a narrow UI correction, automated validation, and another internal device check.
+- No implementation blocker. Local and remote automated validation plus another internal device check remain.
 
 ## Next action
 
-Implement a tested completion transition that dismisses a successful primary-vault import after its confirmation message, while preserving the persistent `Vault Files` manager when users intentionally open it. Then run the complete PR gates before another delivery build.
+Run local and remote architecture, simulator, regression/security, and Swift CodeQL gates for the corrected transition. Only after they pass, prepare another isolated internal TestFlight build.
 
 ## Frank's decision required
 

@@ -19,6 +19,7 @@ struct VaultGeneralFilesView: View {
     @State private var message: String?
     @State private var showingDeleteConfirmation = false
     @State private var didBeginInitialImport = false
+    @State private var dismissAfterMessageAcknowledgement = false
 
     init(beginImportOnAppear: Bool = false) {
         self.beginImportOnAppear = beginImportOnAppear
@@ -72,6 +73,9 @@ struct VaultGeneralFilesView: View {
                     Button(isSelecting || isReviewingImport ? "Cancel" : "Done") {
                         if isReviewingImport {
                             cancelPendingImport()
+                            if beginImportOnAppear {
+                                dismiss()
+                            }
                         } else if isSelecting {
                             leaveSelectionMode()
                         } else {
@@ -144,7 +148,14 @@ struct VaultGeneralFilesView: View {
             get: { message != nil },
             set: { if !$0 { message = nil } }
         )) {
-            Button("OK") { message = nil }
+            Button(dismissAfterMessageAcknowledgement ? "Done" : "OK") {
+                let shouldDismiss = dismissAfterMessageAcknowledgement
+                dismissAfterMessageAcknowledgement = false
+                message = nil
+                if shouldDismiss {
+                    dismiss()
+                }
+            }
         } message: {
             Text(message ?? "")
         }
@@ -271,8 +282,18 @@ struct VaultGeneralFilesView: View {
     }
 
     private func prepareImportReview(_ result: Result<[URL], Error>) {
-        guard case .success(let urls) = result else { return }
-        guard !urls.isEmpty else { return }
+        guard case .success(let urls) = result else {
+            if beginImportOnAppear {
+                dismiss()
+            }
+            return
+        }
+        guard !urls.isEmpty else {
+            if beginImportOnAppear {
+                dismiss()
+            }
+            return
+        }
         guard urls.count <= VaultGeneralFileStore.maximumBatchCount else {
             message = "Choose no more than \(VaultGeneralFileStore.maximumBatchCount) files at a time."
             return
@@ -285,6 +306,7 @@ struct VaultGeneralFilesView: View {
     private func importPendingFiles() {
         let selection = pendingImports
         guard let store, !selection.isEmpty, !isWorking else { return }
+        dismissAfterMessageAcknowledgement = false
         isWorking = true
 
         session.startSensitiveTask { _ in
@@ -307,6 +329,11 @@ struct VaultGeneralFilesView: View {
             guard !Task.isCancelled else { return }
             records = (try? await store.loadManifest().files) ?? records
             if imported > 0 {
+                dismissAfterMessageAcknowledgement = GeneralFileImportFlow
+                    .shouldReturnToPrimaryVault(
+                        launchedFromPrimaryVault: beginImportOnAppear,
+                        importedCount: imported
+                    )
                 let noun = imported == 1 ? "file" : "files"
                 message = failed == 0
                     ? "Encrypted \(imported) \(noun) into this vault. The originals were kept."
@@ -389,6 +416,15 @@ struct VaultGeneralFilesView: View {
     private func leaveSelectionMode() {
         isSelecting = false
         selectedIDs.removeAll()
+    }
+}
+
+enum GeneralFileImportFlow {
+    static func shouldReturnToPrimaryVault(
+        launchedFromPrimaryVault: Bool,
+        importedCount: Int
+    ) -> Bool {
+        launchedFromPrimaryVault && importedCount > 0
     }
 }
 
