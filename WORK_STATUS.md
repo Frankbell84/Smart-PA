@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Validate isolated internal TestFlight Build 24 on a physical iPhone: general files must appear in the primary Vault screen and remain fully usable through the dedicated file manager.
+Prepare the fully validated unified mixed-content grid for isolated internal TestFlight Build 25 without merging PR #33 or changing production.
 
 ## Completed work
 
@@ -37,6 +37,10 @@ Validate isolated internal TestFlight Build 24 on a physical iPhone: general fil
 - Apple accepted the Build 24 upload for processing; no App Store review submission was changed.
 - Ran signed TestFlight workflow #33 from delivery commit `c1e30fd`.
 - Apple accepted and processed Build 23, and App Store Connect assigned it to the existing `KeyHollow Internal` group.
+- Frank confirmed on a physical iPhone that Build 24 fixes the functional defect: general files persist and are reachable from the primary Vault screen.
+- Build 24 exposed a presentation-quality issue only: general files use an oversized list card while photos use compact square tiles.
+- The isolated source refinement replaces that split presentation with one three-column grid while keeping photo and general-file stores, manifests, and compiled modules separate.
+- PR #33 passed the refined macOS simulator build, full regression/security suite, architecture enforcement, release hygiene, and Swift CodeQL at source commit `7b41ffc`.
 
 ## Test and build status
 
@@ -47,6 +51,9 @@ Validate isolated internal TestFlight Build 24 on a physical iPhone: general fil
 - Corrected Swift CodeQL security analysis: passed on PR #33 at source commit `84262d0`.
 - Build 23 physical-device import persistence: passed for a PDF.
 - Build 23 primary-vault visibility with a general-file-only vault: failed; corrected source is fully validated and awaiting Build 24 device confirmation.
+- Build 24 primary-vault general-file visibility and navigation: passed on a physical iPhone.
+- Build 24 mixed-content visual consistency: refinement required before merge.
+- Refined source macOS simulator build, full regression/security suite, and Swift CodeQL: passed on PR #33 at `7b41ffc`.
 - Feature-branch architecture gate: passed at `6b39328`.
 - Feature-branch iOS simulator build and full regression/security suite: passed at `6b39328`.
 - Feature-branch Swift CodeQL analysis: passed at `6b39328`.
@@ -56,18 +63,18 @@ Validate isolated internal TestFlight Build 24 on a physical iPhone: general fil
 - Signed production-identity archive, embedded-extension/module-hygiene verification, IPA export, and Apple upload: passed in workflow #33.
 - Signed Build 24 archive, embedded-extension/module-hygiene verification, IPA export, and Apple upload: passed in workflow #34.
 - Internal TestFlight Build 23: processed and available in `KeyHollow Internal` with status `Ready to Submit`.
-- Internal TestFlight Build 24: upload accepted by Apple; final processing and automatic internal-group availability await confirmation.
+- Internal TestFlight Build 24: processed, installed, and functionally validated on a physical iPhone.
 - Production branch and App Store review: untouched.
 
 ## Blockers
 
-- No implementation or automated-validation blocker. App Store Connect signed out immediately after upload, so final Apple processing visibility requires a fresh sign-in or confirmation that Build 24 arrived in TestFlight.
+- No implementation or automated-validation blocker. A fresh isolated Build 25 and physical-device visual confirmation remain.
 
 ## Next action
 
-After Build 24 appears in TestFlight, install it and verify that a vault containing only a PDF or other general file no longer says `Empty Vault`, that the file is visible on the primary Vault screen, and that tapping it opens Vault Files. Keep PR #33 unmerged until that device validation passes.
+Transfer only the validated unified-grid source change into this delivery branch, rerun delivery checks, increment both targets to Build 25, and start the signed TestFlight workflow. Keep PR #33 draft and production untouched.
 
 ## Frank's decision required
 
-- Frank must confirm that Build 24 appears in TestFlight and that a general-file-only vault no longer appears empty and opens through the primary Vault screen.
+- After Build 25 arrives, Frank must confirm that photos and general files share a coherent grid and that file navigation remains clear.
 - Final merge and any App Store review submission remain separate decisions requiring Frank's explicit approval after device validation.
