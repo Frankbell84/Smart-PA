@@ -95,15 +95,17 @@ Prepare and dispatch signed internal TestFlight Build 26 from the clean validate
 - Corrected post-import macOS simulator build, full regression/security suite, and Swift CodeQL: passed on PR #33 at source commit `ecc02c0`.
 - Delivery post-import architecture boundary, release-hygiene, build-number guard, and diff gates: passed at `04c993c`.
 - Delivery source parity for the corrected UI, regression test, and behavior documentation: passed against `ecc02c0`.
+- Both the KeyHollow app and thumbnail extension are aligned at Build 26.
+- Build 26 delivery architecture boundary, release-hygiene, build-number guard, and diff gates: passed locally.
 - Production branch and App Store review: untouched.
 
 ## Blockers
 
-- No implementation, transfer, or source-validation blocker. Build-number preparation, signed Build 26 upload, Apple processing, and physical-device confirmation remain.
+- No implementation, transfer, build-number, or local-validation blocker. Signed Build 26 upload, Apple processing, and physical-device confirmation remain.
 
 ## Next action
 
-Increment both app targets to Build 26, re-run the delivery safeguards, then dispatch the signed TestFlight upload workflow.
+Dispatch the signed TestFlight workflow for Build 26, verify every archive/upload gate, then wait for Apple processing and internal-group availability.
 
 ## Frank's decision required
 
