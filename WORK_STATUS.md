@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Transfer the fully validated parent-owned import-sheet lifecycle correction from source commit `bf30be0`; keep PR #33 draft and production untouched while preparing the next internal TestFlight candidate.
+Validate internal TestFlight Build 27 on a physical iPhone; keep PR #33 draft, production, and App Store review untouched until the focused lifecycle check passes.
 
 ## Completed work
 
@@ -69,6 +69,9 @@ Transfer the fully validated parent-owned import-sheet lifecycle correction from
 - Transferred only the validated parent-owned lifecycle source, regression test, and behavior documentation from `bf30be0` into the isolated delivery branch.
 - Confirmed exact delivery parity for every transferred file against validated source commit `bf30be0`.
 - Advanced both the KeyHollow app and thumbnail extension from Build 26 to Build 27 for the corrected internal candidate.
+- Dispatched signed TestFlight workflow #37 from isolated delivery commit `b58acdc` with branch `delivery/general-file-support` and confirmed Build 27.
+- Workflow #37 passed build-number uniqueness, production identity, release hygiene, signed archive/module hygiene, IPA export, Apple upload acceptance, artifact retention, and signing-material cleanup.
+- Frank confirmed that the Build 27 TestFlight update reached his device.
 
 ## Test and build status
 
@@ -117,16 +120,18 @@ Transfer the fully validated parent-owned import-sheet lifecycle correction from
 - Parent-owned lifecycle correction whitespace/diff validation: passed locally.
 - Delivery parent-owned lifecycle architecture boundary, release-hygiene, build-number guard, diff, and source-parity gates: passed locally.
 - Build 27 app/extension build-number alignment, architecture boundary, release-hygiene, build-number guard, and diff gates: passed locally.
+- Signed Build 27 delivery workflow #37: completed successfully from commit `b58acdc`.
+- Internal TestFlight Build 27 delivery: confirmed received by Frank.
 
 ## Blockers
 
-- No source-validation blocker. Delivery transfer, local parity checks, signed upload, Apple processing, and focused physical-device confirmation remain.
+- No implementation, automated-validation, signing, upload, or delivery blocker. Only the focused physical-device lifecycle confirmation remains.
 
 ## Next action
 
-Commit and push the Build 27 delivery checkpoint, then dispatch the signed TestFlight workflow and require production identity, build-number uniqueness, archive/module hygiene, upload acceptance, Apple processing, and internal-group availability.
+Install Build 27, import one ordinary file from the primary Vault, acknowledge the result, and confirm that the import sheet closes automatically and the file appears exactly once in the three-column grid. Then intentionally open `Vault Files` to confirm the stored-file manager still works.
 
 ## Frank's decision required
 
-- After Build 26 arrives, Frank must confirm that a successful primary-vault file import returns to the unified grid and that intentionally opening Vault Files still shows the stored file.
+- Frank must confirm that Build 27 returns to the unified grid after a successful primary-vault import and that intentionally opening Vault Files still shows the stored file.
 - Final merge and any App Store review submission remain separate decisions requiring Frank's explicit approval after device validation.
