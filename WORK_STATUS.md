@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Prepare isolated internal TestFlight Build 29 from the fully validated mixed-content transfer repair; keep PR #33 draft, production, and App Store review untouched.
+Deliver isolated internal TestFlight Build 29 from the fully validated mixed-content transfer repair; keep PR #33 draft, production, and App Store review untouched.
 
 ## Completed work
 
@@ -90,6 +90,8 @@ Prepare isolated internal TestFlight Build 29 from the fully validated mixed-con
 - Replaced staging lifecycle tests with batch success, partial rejection, source-preservation, and maximum-selection regression coverage.
 - Frank confirmed Build 28's direct, staging-free ordinary-file import works, then found that portable-vault restore returns photos but omits general files and that matching new-vault confirmation digits do not expose an immediate Continue action.
 - PR #33 passed the mixed-content macOS simulator build, full regression/security suite, architecture enforcement, release hygiene, and Swift CodeQL at source commit `2ac4d75`.
+- Transferred only the 13 validated implementation and regression-test files from `2ac4d75` into the isolated delivery branch and preserved the delivery-specific status history.
+- Advanced the KeyHollow app and thumbnail extension together from Build 28 to Build 29; no app identity or marketing-version field changed.
 
 ## Test and build status
 
@@ -150,14 +152,15 @@ Prepare isolated internal TestFlight Build 29 from the fully validated mixed-con
 - Build 28 direct, staging-free general-file import and unified-grid presentation: passed on a physical iPhone.
 - Build 28 mixed-content `.khvault` export/restore: failed on a physical iPhone; photos restore but general files are absent.
 - Mixed-content source macOS simulator build, full regression/security suite, and Swift CodeQL: passed on PR #33 at `2ac4d75`.
+- Build 29 delivery architecture boundary, release-hygiene, build-number guard self-test, whitespace, and exact semantic source-parity gates: passed locally at `3ab9b62`.
 
 ## Blockers
 
-- No source or validation blocker. Build 29 delivery and focused physical-device confirmation remain.
+- No source or validation blocker. Signed Build 29 upload, Apple processing, and focused physical-device confirmation remain.
 
 ## Next action
 
-Transfer only the validated mixed-content repair from `2ac4d75`, advance the app and thumbnail extension together to Build 29, pass delivery hygiene gates, and upload the signed candidate to the existing internal TestFlight group.
+Dispatch the signed TestFlight workflow from isolated delivery commit `3ab9b62`, verify Apple accepts and processes Build 29 into the existing internal group, then hand off focused physical-device validation.
 
 ## Frank's decision required
 
