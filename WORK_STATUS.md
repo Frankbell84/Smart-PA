@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Deliver isolated internal TestFlight Build 29 from the fully validated mixed-content transfer repair; keep PR #33 draft, production, and App Store review untouched.
+Validate internal TestFlight Build 29 on a physical iPhone for mixed photo/file portable-vault export and restore plus the smoother LowKey confirmation flow; keep PR #33 draft, production, and App Store review untouched.
 
 ## Completed work
 
@@ -92,6 +92,9 @@ Deliver isolated internal TestFlight Build 29 from the fully validated mixed-con
 - PR #33 passed the mixed-content macOS simulator build, full regression/security suite, architecture enforcement, release hygiene, and Swift CodeQL at source commit `2ac4d75`.
 - Transferred only the 13 validated implementation and regression-test files from `2ac4d75` into the isolated delivery branch and preserved the delivery-specific status history.
 - Advanced the KeyHollow app and thumbnail extension together from Build 28 to Build 29; no app identity or marketing-version field changed.
+- Dispatched signed production TestFlight workflow #39 from isolated delivery commit `e8c116c` with Build 29 confirmed.
+- Workflow #39 passed build-number uniqueness, production identity, release hygiene, signed archive/module hygiene, IPA export, Apple upload acceptance, artifact retention, and signing-material cleanup.
+- Apple processed Build 29 into the production KeyHollow TestFlight app and assigned it to `KeyHollow Internal` with status `Ready to Submit`.
 
 ## Test and build status
 
@@ -153,14 +156,16 @@ Deliver isolated internal TestFlight Build 29 from the fully validated mixed-con
 - Build 28 mixed-content `.khvault` export/restore: failed on a physical iPhone; photos restore but general files are absent.
 - Mixed-content source macOS simulator build, full regression/security suite, and Swift CodeQL: passed on PR #33 at `2ac4d75`.
 - Build 29 delivery architecture boundary, release-hygiene, build-number guard self-test, whitespace, and exact semantic source-parity gates: passed locally at `3ab9b62`.
+- Signed Build 29 delivery workflow #39: completed successfully from commit `e8c116c`.
+- Internal TestFlight Build 29: processed, assigned to `KeyHollow Internal`, and available with status `Ready to Submit`.
 
 ## Blockers
 
-- No source or validation blocker. Signed Build 29 upload, Apple processing, and focused physical-device confirmation remain.
+- No source, validation, signing, upload, processing, or TestFlight-assignment blocker. Only focused physical-device confirmation remains.
 
 ## Next action
 
-Dispatch the signed TestFlight workflow from isolated delivery commit `3ab9b62`, verify Apple accepts and processes Build 29 into the existing internal group, then hand off focused physical-device validation.
+Install Build 29 and validate one new mixed photo/file archive end to end, one legacy photo-only archive, and the inline Continue action after matching LowKey confirmation.
 
 ## Frank's decision required
 
