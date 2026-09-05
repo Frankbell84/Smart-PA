@@ -54,6 +54,13 @@ Close the mixed-content portable-vault transfer gap and smooth the new-vault Low
 - Build 28 reached the production KeyHollow internal TestFlight group and Frank confirmed direct, staging-free general-file import works on a physical iPhone.
 - Build 28 physical testing exposed two follow-up gaps: matching confirmation digits do not reveal an immediate Continue action, and a portable-vault export/restore preserves photos but omits general files.
 - Source audit confirmed the transfer defect is structural rather than presentational: the portable archive catalog, exporter, validator, and installer currently operate only on `PhotoData` and the photo manifest; `GeneralFileData` is never added to or restored from the archive.
+- Added a versioned supplemental-ciphertext seam to the compiled transfer module without allowing the protected core to import the general-file add-on.
+- Added an app-composition bridge that asks the independently compiled general-file add-on to authenticate its manifest and every encrypted blob before export and again after archive extraction.
+- New mixed-content archives carry the authenticated general-file manifest and blobs in a traversal-safe namespace; catalog version 1 photo-only archives remain accepted for backward compatibility.
+- Restore now validates all photo and general-file ciphertext before installation, commits both stores under one authenticated transaction journal, and rolls both back if credential publication or an interrupted install fails.
+- Added mixed photo/file export, validation, install, plaintext-equivalence, legacy-catalog compatibility, and dual-store rollback regression coverage.
+- The import verification summary now reports both photo and file counts.
+- Matching, policy-compliant confirmation digits now reveal an inline Continue action directly beneath the second LowKey field while preserving the keyboard toolbar action.
 
 ## Test and build status
 
@@ -93,17 +100,21 @@ Close the mixed-content portable-vault transfer gap and smooth the new-vault Low
 - Direct-import Swift CodeQL security analysis: passed on PR #33 at `b964b37`.
 - Build 28 direct, staging-free general-file import and unified-grid presentation: passed on a physical iPhone.
 - Build 28 mixed-content `.khvault` export/restore: failed on a physical iPhone; photos restore but general files are absent.
+- Mixed-content repair architecture boundary check: passed locally; TransferCore remains independent from all add-ons.
+- Mixed-content repair release-hygiene check: passed locally.
+- Mixed-content repair whitespace/diff validation: passed locally.
+- Mixed-content simulator compilation, full regression/security suite, and Swift CodeQL: pending remote validation.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
 
 ## Blockers
 
-- No external blocker. The mixed-content archive format, validation, transactional installation, compatibility tests, and LowKey continuation refinement remain to be implemented and validated.
+- No implementation blocker. Remote macOS compilation, the full regression/security suite, and Swift CodeQL remain required before TestFlight delivery.
 
 ## Next action
 
-Extend the versioned portable archive path through narrow interfaces so new archives carry both authenticated photo and general-file stores, old photo-only archives remain importable, and restore commits neither store unless all validation succeeds. Add the conditional inline Continue action, then run local and remote security/build gates before another isolated TestFlight delivery.
+Commit and publish the isolated mixed-content repair, run the complete protected PR gates, correct any compiler or security findings, and only then prepare another isolated TestFlight build for focused physical testing.
 
 ## Frank's decision required
 

@@ -62,6 +62,7 @@ public struct PortableVaultRestoreTransactionJournal {
 
     let journalRoot: URL
     let photoDataRoot: URL
+    let generalFileDataRoot: URL
 
     private let authenticationKey: SymmetricKey
     private let fileManager = FileManager.default
@@ -105,7 +106,8 @@ public struct PortableVaultRestoreTransactionJournal {
     init(
         authenticationKey: SymmetricKey,
         journalRootOverride: URL? = nil,
-        photoDataRootOverride: URL? = nil
+        photoDataRootOverride: URL? = nil,
+        generalFileDataRootOverride: URL? = nil
     ) throws {
         self.authenticationKey = authenticationKey
 
@@ -137,8 +139,23 @@ public struct PortableVaultRestoreTransactionJournal {
                 .standardizedFileURL
         }
 
+        if let generalFileDataRootOverride {
+            generalFileDataRoot = generalFileDataRootOverride.standardizedFileURL
+        } else {
+            let appSupport = try fileManager.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+            generalFileDataRoot = appSupport
+                .appendingPathComponent("KeyHollow/GeneralFileData", isDirectory: true)
+                .standardizedFileURL
+        }
+
         try Self.prepareProtectedRoot(journalRoot)
         try Self.prepareProtectedRoot(photoDataRoot)
+        try Self.prepareProtectedRoot(generalFileDataRoot)
     }
 
     func begin(
@@ -245,6 +262,13 @@ public struct PortableVaultRestoreTransactionJournal {
         if fileManager.fileExists(atPath: destinationURL.path) {
             try? fileManager.removeItem(at: destinationURL)
         }
+        let generalFileDestinationURL = generalFileDataRoot.appendingPathComponent(
+            record.destinationVaultID.uuidString.lowercased(),
+            isDirectory: true
+        )
+        if fileManager.fileExists(atPath: generalFileDestinationURL.path) {
+            try? fileManager.removeItem(at: generalFileDestinationURL)
+        }
 
         let remainingEnvelope: VaultEnvelope?
         do {
@@ -258,7 +282,8 @@ public struct PortableVaultRestoreTransactionJournal {
             Self.digest($0) == record.credentialEnvelopeSHA256
         } ?? false
         guard !transactionEnvelopeRemains,
-              !fileManager.fileExists(atPath: destinationURL.path) else {
+              !fileManager.fileExists(atPath: destinationURL.path),
+              !fileManager.fileExists(atPath: generalFileDestinationURL.path) else {
             throw PortableVaultRestoreTransactionError.rollbackIncomplete
         }
         try finish(record)

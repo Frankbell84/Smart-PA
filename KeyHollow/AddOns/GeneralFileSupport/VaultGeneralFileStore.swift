@@ -73,6 +73,53 @@ public actor VaultGeneralFileStore {
         return manifest
     }
 
+    /// Authenticates the manifest and every referenced encrypted blob before
+    /// exposing their ciphertext URLs to the portable-transfer module.
+    public func authenticatedArchiveInventory() throws -> VaultGeneralFileArchiveInventory {
+        let manifest = try validateAllEncryptedFiles()
+        guard !manifest.files.isEmpty else {
+            return VaultGeneralFileArchiveInventory(
+                manifest: manifest,
+                manifestURL: nil,
+                blobURLsByName: [:]
+            )
+        }
+
+        return VaultGeneralFileArchiveInventory(
+            manifest: manifest,
+            manifestURL: manifestURL,
+            blobURLsByName: Dictionary(uniqueKeysWithValues: manifest.files.map { record in
+                (record.blobName, root.appendingPathComponent(record.blobName, isDirectory: false))
+            })
+        )
+    }
+
+    /// Verifies that every persisted record has one safe, authenticated blob.
+    /// Decrypted bytes exist only transiently in memory and are never written.
+    public func validateAllEncryptedFiles() throws -> VaultGeneralFileManifest {
+        let manifest = try loadManifest()
+        var recordIDs = Set<UUID>()
+        var blobNames = Set<String>()
+
+        for record in manifest.files {
+            try Task.checkCancellation()
+            guard recordIDs.insert(record.id).inserted,
+                  blobNames.insert(record.blobName).inserted,
+                  Self.isSafeBlobName(record.blobName) else {
+                throw StoreError.invalidManifest
+            }
+            let ciphertext = try Data(
+                contentsOf: root.appendingPathComponent(record.blobName, isDirectory: false),
+                options: [.mappedIfSafe]
+            )
+            let plaintext = try access.open(ciphertext, for: .file(record.id))
+            guard UInt64(plaintext.count) == record.originalByteCount else {
+                throw StoreError.verificationFailed
+            }
+        }
+        return manifest
+    }
+
     public func importFile(at sourceURL: URL) throws -> VaultGeneralFileRecord {
         try Task.checkCancellation()
         let staged = try stageSourceFile(sourceURL)
@@ -215,6 +262,16 @@ public actor VaultGeneralFileStore {
     }
 
     private var manifestURL: URL { root.appendingPathComponent("manifest.khm") }
+
+    private static func isSafeBlobName(_ name: String) -> Bool {
+        !name.isEmpty
+            && name.utf8.count <= 255
+            && !name.contains("/")
+            && !name.contains("\\")
+            && !name.contains("\0")
+            && URL(fileURLWithPath: name).lastPathComponent == name
+            && URL(fileURLWithPath: name).pathExtension.lowercased() == "khf"
+    }
 
     private func saveManifest(_ manifest: VaultGeneralFileManifest) throws {
         try Task.checkCancellation()

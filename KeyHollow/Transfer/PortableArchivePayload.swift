@@ -34,6 +34,8 @@ enum PortableArchivePayloadEntryRole: String, Codable, Sendable {
     case manifest
     case original
     case thumbnail
+    case supplementalManifest
+    case supplementalBlob
 }
 
 struct PortableArchivePayloadEntry: Codable, Equatable, Sendable {
@@ -44,13 +46,14 @@ struct PortableArchivePayloadEntry: Codable, Equatable, Sendable {
 }
 
 public struct PortableArchivePayloadCatalog: Codable, Equatable, Sendable {
-    static let currentVersion = 1
+    static let legacyPhotoOnlyVersion = 1
+    static let currentVersion = 2
 
     let version: Int
     let entries: [PortableArchivePayloadEntry]
 
     func validate() throws {
-        guard version == Self.currentVersion,
+        guard (Self.legacyPhotoOnlyVersion...Self.currentVersion).contains(version),
               !entries.isEmpty,
               entries.count <= PortableArchivePayloadFormat.maximumEntryCount else {
             throw PortableArchivePayloadError.invalidCatalog
@@ -58,6 +61,8 @@ public struct PortableArchivePayloadCatalog: Codable, Equatable, Sendable {
 
         var names = Set<String>()
         var manifestCount = 0
+        var supplementalManifestCount = 0
+        var supplementalBlobCount = 0
         var totalByteCount: UInt64 = 0
 
         for entry in entries {
@@ -82,12 +87,20 @@ public struct PortableArchivePayloadCatalog: Codable, Equatable, Sendable {
 
             if entry.role == .manifest {
                 manifestCount += 1
+            } else if entry.role == .supplementalManifest {
+                supplementalManifestCount += 1
+            } else if entry.role == .supplementalBlob {
+                supplementalBlobCount += 1
             }
         }
 
         guard manifestCount == 1,
               entries.first?.role == .manifest,
-              entries.first?.storageName == "manifest.khm" else {
+              entries.first?.storageName == "manifest.khm",
+              supplementalManifestCount <= 1,
+              supplementalBlobCount == 0 || supplementalManifestCount == 1,
+              version >= Self.currentVersion
+                || (supplementalManifestCount == 0 && supplementalBlobCount == 0) else {
             throw PortableArchivePayloadError.invalidCatalog
         }
     }
@@ -100,10 +113,10 @@ public struct PortableArchivePayloadCatalog: Codable, Equatable, Sendable {
               name.utf8.count <= 255,
               name != ".",
               name != "..",
-              !name.contains("/"),
               !name.contains("\\"),
               !name.contains("\0"),
-              URL(fileURLWithPath: name).lastPathComponent == name else {
+              !name.hasPrefix("/"),
+              !name.hasSuffix("/") else {
             throw PortableArchivePayloadError.invalidEntry(name)
         }
 
@@ -115,20 +128,75 @@ public struct PortableArchivePayloadCatalog: Codable, Equatable, Sendable {
             }
             expectedExtension = "khm"
         case .original:
+            guard !name.contains("/") else {
+                throw PortableArchivePayloadError.invalidEntry(name)
+            }
             expectedExtension = "khp"
         case .thumbnail:
+            guard !name.contains("/") else {
+                throw PortableArchivePayloadError.invalidEntry(name)
+            }
             expectedExtension = "kht"
+        case .supplementalManifest:
+            guard name == "supplemental/manifest.khm" else {
+                throw PortableArchivePayloadError.invalidEntry(name)
+            }
+            expectedExtension = "khm"
+        case .supplementalBlob:
+            let components = name.split(separator: "/", omittingEmptySubsequences: false)
+            guard components.count == 2,
+                  components[0] == "supplemental",
+                  !components[1].isEmpty,
+                  components[1] != ".",
+                  components[1] != ".." else {
+                throw PortableArchivePayloadError.invalidEntry(name)
+            }
+            expectedExtension = "khf"
         }
 
-        guard URL(fileURLWithPath: name).pathExtension.lowercased() == expectedExtension else {
+        let leaf = String(name.split(separator: "/").last ?? "")
+        guard URL(fileURLWithPath: leaf).lastPathComponent == leaf,
+              URL(fileURLWithPath: leaf).pathExtension.lowercased() == expectedExtension else {
             throw PortableArchivePayloadError.invalidEntry(name)
         }
     }
 }
 
+public struct PortableVaultSupplementalArchiveEntry: Sendable {
+    public let storageName: String
+    public let sourceURL: URL
+
+    public init(storageName: String, sourceURL: URL) {
+        self.storageName = storageName
+        self.sourceURL = sourceURL
+    }
+}
+
+public struct PortableVaultSupplementalArchiveInventory: Sendable {
+    public let manifestURL: URL?
+    public let entries: [PortableVaultSupplementalArchiveEntry]
+    public let itemCount: Int
+
+    public init(
+        manifestURL: URL?,
+        entries: [PortableVaultSupplementalArchiveEntry],
+        itemCount: Int
+    ) {
+        self.manifestURL = manifestURL
+        self.entries = entries
+        self.itemCount = itemCount
+    }
+
+    public static let empty = PortableVaultSupplementalArchiveInventory(
+        manifestURL: nil,
+        entries: [],
+        itemCount: 0
+    )
+}
+
 struct PortableArchivePayloadSource: Sendable {
-    let rootURL: URL
     let catalog: PortableArchivePayloadCatalog
+    private let sourceURLsByStorageName: [String: URL]
 
     static func create(
         rootURL: URL,
@@ -146,11 +214,77 @@ struct PortableArchivePayloadSource: Sendable {
             requestedEntries.append((photo.thumbnailName, .thumbnail))
         }
 
+        return try create(requestedEntries.map { entry in
+            (
+                entry.0,
+                entry.1,
+                rootURL.appendingPathComponent(entry.0, isDirectory: false)
+            )
+        })
+    }
+
+    static func create(
+        photoRootURL: URL,
+        photoManifest: VaultPhotoManifest,
+        supplementalInventory: PortableVaultSupplementalArchiveInventory
+    ) throws -> PortableArchivePayloadSource {
+        guard photoManifest.version == VaultPhotoManifest.currentVersion else {
+            throw PortableArchivePayloadError.invalidCatalog
+        }
+
+        var requestedEntries: [(String, PortableArchivePayloadEntryRole, URL)] = [
+            (
+                "manifest.khm",
+                .manifest,
+                photoRootURL.appendingPathComponent("manifest.khm", isDirectory: false)
+            )
+        ]
+        for photo in photoManifest.photos {
+            requestedEntries.append((
+                photo.blobName,
+                .original,
+                photoRootURL.appendingPathComponent(photo.blobName, isDirectory: false)
+            ))
+            requestedEntries.append((
+                photo.thumbnailName,
+                .thumbnail,
+                photoRootURL.appendingPathComponent(photo.thumbnailName, isDirectory: false)
+            ))
+        }
+
+        guard supplementalInventory.itemCount >= 0 else {
+            throw PortableArchivePayloadError.invalidCatalog
+        }
+        if supplementalInventory.itemCount == 0 {
+            guard supplementalInventory.manifestURL == nil,
+                  supplementalInventory.entries.isEmpty else {
+                throw PortableArchivePayloadError.invalidCatalog
+            }
+        } else {
+            guard let manifestURL = supplementalInventory.manifestURL,
+                  supplementalInventory.entries.count == supplementalInventory.itemCount else {
+                throw PortableArchivePayloadError.missingEntry("supplemental/manifest.khm")
+            }
+            requestedEntries.append(("supplemental/manifest.khm", .supplementalManifest, manifestURL))
+            for entry in supplementalInventory.entries {
+                requestedEntries.append((
+                    "supplemental/\(entry.storageName)",
+                    .supplementalBlob,
+                    entry.sourceURL
+                ))
+            }
+        }
+        return try create(requestedEntries)
+    }
+
+    private static func create(
+        _ requestedEntries: [(String, PortableArchivePayloadEntryRole, URL)]
+    ) throws -> PortableArchivePayloadSource {
         var entries: [PortableArchivePayloadEntry] = []
+        var sourceURLsByStorageName: [String: URL] = [:]
         entries.reserveCapacity(requestedEntries.count)
-        for (storageName, role) in requestedEntries {
+        for (storageName, role, fileURL) in requestedEntries {
             try PortableArchivePayloadCatalog.validateStorageName(storageName, role: role)
-            let fileURL = rootURL.appendingPathComponent(storageName, isDirectory: false)
             let properties = try fileURL.resourceValues(
                 forKeys: [.fileSizeKey, .isRegularFileKey, .isSymbolicLinkKey]
             )
@@ -170,6 +304,9 @@ struct PortableArchivePayloadSource: Sendable {
                     ciphertextSHA256: digest
                 )
             )
+            guard sourceURLsByStorageName.updateValue(fileURL, forKey: storageName) == nil else {
+                throw PortableArchivePayloadError.duplicateEntry(storageName)
+            }
         }
 
         let catalog = PortableArchivePayloadCatalog(
@@ -177,7 +314,17 @@ struct PortableArchivePayloadSource: Sendable {
             entries: entries
         )
         try catalog.validate()
-        return PortableArchivePayloadSource(rootURL: rootURL, catalog: catalog)
+        return PortableArchivePayloadSource(
+            catalog: catalog,
+            sourceURLsByStorageName: sourceURLsByStorageName
+        )
+    }
+
+    fileprivate func sourceURL(for storageName: String) throws -> URL {
+        guard let url = sourceURLsByStorageName[storageName] else {
+            throw PortableArchivePayloadError.missingEntry(storageName)
+        }
+        return url
     }
 
     fileprivate static func hashFile(_ fileURL: URL) throws -> Data {
@@ -215,10 +362,7 @@ enum PortableArchivePayloadWriter {
 
         for entry in source.catalog.entries {
             try Task.checkCancellation()
-            let fileURL = source.rootURL.appendingPathComponent(
-                entry.storageName,
-                isDirectory: false
-            )
+            let fileURL = try source.sourceURL(for: entry.storageName)
             let handle = try FileHandle(forReadingFrom: fileURL)
             var hasher = SHA256()
             var writtenByteCount: UInt64 = 0
@@ -276,12 +420,31 @@ final class PortableArchiveStagedPayload {
         ownsDirectory = false
     }
 
-    func commit(to destinationURL: URL) throws {
+    func commit(
+        to destinationURL: URL,
+        generalFileDestinationURL: URL? = nil
+    ) throws {
         guard ownsDirectory else {
             throw PortableArchivePayloadError.alreadyFinished
         }
         guard !FileManager.default.fileExists(atPath: destinationURL.path) else {
             throw PortableArchivePayloadError.destinationExists
+        }
+        if let generalFileDestinationURL {
+            guard !FileManager.default.fileExists(atPath: generalFileDestinationURL.path) else {
+                throw PortableArchivePayloadError.destinationExists
+            }
+            let stagedGeneralFiles = directoryURL.appendingPathComponent(
+                "supplemental",
+                isDirectory: true
+            )
+            guard FileManager.default.fileExists(atPath: stagedGeneralFiles.path) else {
+                throw PortableArchivePayloadError.missingEntry("supplemental/manifest.khm")
+            }
+            try FileManager.default.moveItem(
+                at: stagedGeneralFiles,
+                to: generalFileDestinationURL
+            )
         }
         try FileManager.default.moveItem(at: directoryURL, to: destinationURL)
         ownsDirectory = false
@@ -463,6 +626,15 @@ final class PortableArchivePayloadExtractor {
             entry.storageName,
             isDirectory: false
         )
+        let parentURL = destinationURL.deletingLastPathComponent()
+        if parentURL != stagingURL,
+           !FileManager.default.fileExists(atPath: parentURL.path) {
+            try FileManager.default.createDirectory(
+                at: parentURL,
+                withIntermediateDirectories: false,
+                attributes: [.protectionKey: FileProtectionType.complete]
+            )
+        }
         guard FileManager.default.createFile(
             atPath: destinationURL.path,
             contents: nil,

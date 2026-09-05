@@ -24,7 +24,7 @@ struct EncryptedVaultExportView: View {
             ScrollViewReader { proxy in
                 Form {
                     Section {
-                        Text("This creates a portable .khvault copy of only the vault that is currently open. The vault and its photos remain in KeyHollow.")
+                        Text("This creates a portable .khvault copy of only the vault that is currently open. Its photos and files remain in KeyHollow.")
                             .foregroundStyle(.secondary)
                     }
 
@@ -229,7 +229,10 @@ struct EncryptedVaultExportView: View {
                     createdAt: reauthenticated.createdAt,
                     access: access,
                     credential: credential,
-                    destinationURL: destination
+                    destinationURL: destination,
+                    supplementalContent: GeneralFilePortableTransferBridge(
+                        access: SessionGeneralFileAccess(capability: access)
+                    )
                 )
                 try Task.checkCancellation()
 

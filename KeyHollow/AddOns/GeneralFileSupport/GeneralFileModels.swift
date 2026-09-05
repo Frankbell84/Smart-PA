@@ -35,7 +35,7 @@ public struct VaultGeneralFileRecord: Codable, Identifiable, Hashable, Sendable 
     }
 }
 
-public struct VaultGeneralFileManifest: Codable, Sendable {
+public struct VaultGeneralFileManifest: Codable, Equatable, Sendable {
     public static let currentVersion = 1
 
     public let version: Int
@@ -51,9 +51,36 @@ public struct VaultGeneralFileManifest: Codable, Sendable {
     }
 }
 
+/// Authenticated ciphertext inventory exposed through the add-on boundary for
+/// portable-vault transfer. The transfer layer never receives plaintext files.
+public struct VaultGeneralFileArchiveInventory: Sendable {
+    public let manifest: VaultGeneralFileManifest
+    public let manifestURL: URL?
+    public let blobURLsByName: [String: URL]
+
+    public init(
+        manifest: VaultGeneralFileManifest,
+        manifestURL: URL?,
+        blobURLsByName: [String: URL]
+    ) {
+        self.manifest = manifest
+        self.manifestURL = manifestURL
+        self.blobURLsByName = blobURLsByName
+    }
+}
+
 public enum VaultGeneralFileKeyPurpose: Sendable {
     case manifest
     case file(UUID)
+
+    public var cryptographicDomain: String {
+        switch self {
+        case .manifest:
+            "general-files.manifest.v1"
+        case .file(let id):
+            "general-files.blob.v1.\(id.uuidString.lowercased())"
+        }
+    }
 }
 
 /// The add-on can authenticate encrypted data while the unlocked session keeps

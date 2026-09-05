@@ -7,6 +7,25 @@ import XCTest
 @testable import KeyHollowVaultCore
 
 final class PortableArchivePayloadTests: XCTestCase {
+    func testLegacyPhotoOnlyCatalogRemainsSupported() throws {
+        let legacy = PortableArchivePayloadCatalog(
+            version: PortableArchivePayloadCatalog.legacyPhotoOnlyVersion,
+            entries: [
+                PortableArchivePayloadEntry(
+                    storageName: "manifest.khm",
+                    role: .manifest,
+                    ciphertextByteCount: 28,
+                    ciphertextSHA256: Data(
+                        repeating: 0x11,
+                        count: PortableArchivePayloadFormat.sha256ByteCount
+                    )
+                )
+            ]
+        )
+
+        XCTAssertNoThrow(try legacy.validate())
+    }
+
     func testEncryptedVaultPayloadRoundTripsWithoutPlaintextMedia() async throws {
         let sourceRoot = temporaryURL(label: "source")
         let archiveURL = temporaryURL(label: "archive").appendingPathExtension("khvault")
