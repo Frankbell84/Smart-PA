@@ -2,11 +2,11 @@
 
 Updated: 2026-09-05
 Branch: `feature/general-file-support`
-Pull request: Draft PR #33
+Pull request: PR #33 merged into `main` at `bbd6bfa`
 
 ## Current task
 
-Prepare the fully validated general-file-support candidate for Frank's final merge decision while keeping production and App Store review untouched. Defer thumbnail parity for images imported through Files to the dedicated folder/presentation phase.
+Close the completed general-file-support phase and prepare the next add-on on a fresh isolated branch. App Store review remains untouched. Thumbnail parity for images imported through Files is carried into the dedicated folder/presentation phase.
 
 ## Completed work
 
@@ -66,6 +66,9 @@ Prepare the fully validated general-file-support candidate for Frank's final mer
 - Frank confirmed on a physical iPhone that Build 29 works end to end, including mixed photo/file portable-vault export and restore and the smoother matching-LowKey Continue flow.
 - Physical testing confirmed that general files and Photo-library images now share the unified vault grid and persist through the protected transfer path.
 - One presentation refinement is intentionally deferred: image files imported through Apple's Files picker use a generic encrypted-file tile instead of the live thumbnail used for Photo-library imports. This is a folder/presentation concern, not a storage, encryption, or transfer defect.
+- Frank explicitly approved the final merge after Build 29 physical-device validation.
+- The exact approved head `57f638e` passed all three protected checks: iPhone simulator build/regression/security tests, Swift CodeQL, and changed-code scanning with no new alerts.
+- PR #33 was made merge-ready and merged into `main` as merge commit `bbd6bfa` on 2026-09-05. The feature branch was intentionally retained as a recovery trail.
 
 ## Test and build status
 
@@ -114,19 +117,22 @@ Prepare the fully validated general-file-support candidate for Frank's final mer
 - Build 29 mixed photo/file export and restore on a physical iPhone: passed.
 - Build 29 matching-LowKey inline Continue interaction on a physical iPhone: passed.
 - Image-file thumbnail parity with Photo-library imports: deferred to the folder/presentation phase by design.
+- Final protected validation at approved head `57f638e`: passed all three checks; Swift CodeQL completed in 20 minutes with no unresolved changed-code alert.
+- Production source merge: passed; PR #33 is merged into `main` at `bbd6bfa`.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
-- Production and App Store review: untouched.
+- App Store review submission: untouched.
 
 ## Blockers
 
-- No implementation, validation, signing, upload, processing, TestFlight-assignment, or physical-device blocker. Final merge awaits Frank's explicit approval.
+- No blocker remains for the general-file-support phase.
+- Current compiler warnings identify Swift 6 actor-isolation hardening debt; they did not fail the current build or security analysis and must be handled in a separate isolated hardening change rather than altering the device-tested candidate.
 
 ## Next action
 
-With Frank's explicit approval, make PR #33 merge-ready and merge the completed general-file-support layer. Carry thumbnail generation and unified image-tile presentation forward as an acceptance requirement for the dedicated folder feature.
+Create the next add-on from the new `main` baseline on a fresh isolated branch. Treat thumbnail generation and unified image-tile presentation as an acceptance requirement of the folder/presentation module, and run the same architecture, simulator, security, TestFlight, and physical-device gates before any future merge.
 
 ## Frank's decision required
 
-- Frank must explicitly approve the final merge of PR #33 now that Build 29 has passed device validation.
+- No decision is required to close the completed general-file-support phase or begin routine isolated development of the next planned add-on.
 - Any App Store review submission remains a separate decision requiring Frank's explicit approval.
