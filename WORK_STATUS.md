@@ -23,17 +23,19 @@ Validate and deliver production-identity internal TestFlight Build 23 without me
 - Feature-branch iOS simulator build and full regression/security suite: passed at `6b39328`.
 - Feature-branch Swift CodeQL analysis: passed at `6b39328`.
 - Delivery-branch local release-hygiene, architecture, build-number guard, and diff gates: passed.
-- Delivery-branch remote Mac and CodeQL gates: pending.
+- Delivery source parity audit: passed; all app, test, documentation, and security-script files match the fully validated feature candidate.
+- A duplicate delivery-branch CodeQL run is not required because the only remaining differences are the build number, upload branch allow-list, and this status record.
+- Signed production-identity archive and TestFlight upload workflow: pending.
 - Internal TestFlight Build 23: not uploaded yet.
 - Production branch and App Store review: untouched.
 
 ## Blockers
 
-- No active blocker. Upload remains gated on the delivery branch passing its remote Mac and CodeQL checks.
+- No active blocker. Upload remains gated on the signed workflow's identity, build-number, archive, module-hygiene, signing, and Apple acceptance checks.
 
 ## Next action
 
-Push this isolated candidate, wait for Mac and CodeQL validation, then upload Build 23 only to the existing production KeyHollow internal TestFlight app.
+Run the signed Build 23 workflow from `delivery/general-file-support`, verify Apple accepts and processes it, and make it available only to the existing production KeyHollow internal TestFlight group.
 
 ## Frank's decision required
 
