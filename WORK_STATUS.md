@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Prepare the fully validated unified mixed-content grid for isolated internal TestFlight Build 25 without merging PR #33 or changing production.
+Run the signed isolated TestFlight Build 25 delivery after validating the unified mixed-content grid and preserving production.
 
 ## Completed work
 
@@ -41,6 +41,9 @@ Prepare the fully validated unified mixed-content grid for isolated internal Tes
 - Build 24 exposed a presentation-quality issue only: general files use an oversized list card while photos use compact square tiles.
 - The isolated source refinement replaces that split presentation with one three-column grid while keeping photo and general-file stores, manifests, and compiled modules separate.
 - PR #33 passed the refined macOS simulator build, full regression/security suite, architecture enforcement, release hygiene, and Swift CodeQL at source commit `7b41ffc`.
+- Transferred only the validated unified-grid source and documentation into this isolated delivery branch at `a12c4b7`.
+- Confirmed exact parity for the three transferred source/documentation files against validated source commit `7b41ffc`.
+- Advanced both the KeyHollow app and thumbnail extension to Build 25.
 - Replaced the oversized primary-screen file panel with compact file tiles inside the same three-column grid used by photo thumbnails.
 - File tiles retain file-type identity, display name, size, accessibility labels, and navigation into the dedicated file manager.
 - Photo-selection mode visibly disables file tiles because its save/delete actions remain intentionally photo-specific.
@@ -58,6 +61,10 @@ Prepare the fully validated unified mixed-content grid for isolated internal Tes
 - Build 24 primary-vault general-file visibility and navigation: passed on a physical iPhone.
 - Build 24 mixed-content visual consistency: refinement required before merge.
 - Refined source macOS simulator build, full regression/security suite, and Swift CodeQL: passed on PR #33 at `7b41ffc`.
+- Delivery architecture boundary check: passed after the unified-grid transfer.
+- Delivery release-hygiene check: passed after the unified-grid transfer.
+- Delivery TestFlight build-number guard self-test: passed after the unified-grid transfer.
+- Delivery source parity for the transferred UI files and behavior record: passed against `7b41ffc`.
 - Feature-branch architecture gate: passed at `6b39328`.
 - Feature-branch iOS simulator build and full regression/security suite: passed at `6b39328`.
 - Feature-branch Swift CodeQL analysis: passed at `6b39328`.
@@ -72,11 +79,11 @@ Prepare the fully validated unified mixed-content grid for isolated internal Tes
 
 ## Blockers
 
-- No implementation or automated-validation blocker. A fresh isolated Build 25 and physical-device visual confirmation remain.
+- No implementation or automated-validation blocker. Signed Build 25 delivery and physical-device visual confirmation remain.
 
 ## Next action
 
-Transfer only the validated unified-grid source change into this delivery branch, rerun delivery checks, increment both targets to Build 25, and start the signed TestFlight workflow. Keep PR #33 draft and production untouched.
+Commit and push the Build 25 delivery checkpoint, start the signed TestFlight workflow, verify Apple accepts the upload, and wait for physical-device visual confirmation. Keep PR #33 draft and production untouched.
 
 ## Frank's decision required
 
