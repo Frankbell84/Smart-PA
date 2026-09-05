@@ -91,7 +91,15 @@ jobs:
 
           xcrun simctl boot "$SIMULATOR_ID" || true
           xcrun simctl bootstatus "$SIMULATOR_ID" -b
-          echo "SIMULATOR_DESTINATION=platform=iOS Simulator,id=$SIMULATOR_ID" >> "$GITHUB_ENV"
+          SIMULATOR_ARCH=$(uname -m)
+          case "$SIMULATOR_ARCH" in
+            arm64|x86_64) ;;
+            *)
+              echo "Unsupported macOS runner architecture: $SIMULATOR_ARCH"
+              exit 1
+              ;;
+          esac
+          echo "SIMULATOR_DESTINATION=platform=iOS Simulator,id=$SIMULATOR_ID,arch=$SIMULATOR_ARCH" >> "$GITHUB_ENV"
 
       - name: Build for iOS Simulator
         run: |
