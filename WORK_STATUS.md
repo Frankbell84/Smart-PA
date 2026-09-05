@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Wait for Apple to process isolated internal TestFlight Build 25, then validate the unified mixed-content grid on a physical iPhone.
+Validate the processed internal TestFlight Build 25 unified mixed-content grid on a physical iPhone before any merge decision.
 
 ## Completed work
 
@@ -46,6 +46,7 @@ Wait for Apple to process isolated internal TestFlight Build 25, then validate t
 - Advanced both the KeyHollow app and thumbnail extension to Build 25.
 - Ran signed TestFlight workflow #35 from delivery commit `a4c0faf`.
 - Workflow #35 passed build-number verification, production identity, release hygiene, signed archive/module hygiene, IPA export, and Apple upload acceptance.
+- Apple completed Build 25 processing and assigned it to the existing `KeyHollow Internal` group with status `Ready to Submit`.
 - Replaced the oversized primary-screen file panel with compact file tiles inside the same three-column grid used by photo thumbnails.
 - File tiles retain file-type identity, display name, size, accessibility labels, and navigation into the dedicated file manager.
 - Photo-selection mode visibly disables file tiles because its save/delete actions remain intentionally photo-specific.
@@ -68,7 +69,7 @@ Wait for Apple to process isolated internal TestFlight Build 25, then validate t
 - Delivery TestFlight build-number guard self-test: passed after the unified-grid transfer.
 - Delivery source parity for the transferred UI files and behavior record: passed against `7b41ffc`.
 - Signed Build 25 archive, embedded-extension/module-hygiene verification, IPA export, and Apple upload: passed in workflow #35.
-- Internal TestFlight Build 25: upload accepted by Apple; processing and automatic internal-group availability await confirmation.
+- Internal TestFlight Build 25: processed and available in `KeyHollow Internal` with status `Ready to Submit`.
 - Feature-branch architecture gate: passed at `6b39328`.
 - Feature-branch iOS simulator build and full regression/security suite: passed at `6b39328`.
 - Feature-branch Swift CodeQL analysis: passed at `6b39328`.
@@ -83,7 +84,7 @@ Wait for Apple to process isolated internal TestFlight Build 25, then validate t
 
 ## Blockers
 
-- No implementation, automated-validation, signing, or upload blocker. Apple processing and physical-device visual confirmation remain.
+- No implementation, automated-validation, signing, upload, or Apple-processing blocker. Physical-device visual confirmation remains.
 
 ## Next action
 
