@@ -16,6 +16,9 @@ because it works locally.
    purchases outside the protected local vault core.
 7. Avoid shared mutable global state. Cancellation, locking, and sensitive-data
    lifetime must remain explicit at interface boundaries.
+8. Compile every first-party add-on with strict concurrency and Swift warnings
+   treated as errors. A warning-free add-on build is part of the module boundary,
+   not optional polish.
 
 ## Compatibility contract
 

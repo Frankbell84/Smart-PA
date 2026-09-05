@@ -137,6 +137,11 @@ def main() -> int:
             if re.search(r"(?m)^    type:\s*library\.static\s*$", body) is None:
                 violations.append(f"project.yml: {target} must be a static library")
 
+            if "SWIFT_TREAT_WARNINGS_AS_ERRORS: YES" not in body:
+                violations.append(
+                    f"project.yml: {target} must compile Swift warnings as errors"
+                )
+
             source_marker = f"- path: KeyHollow/AddOns/{addon_name}"
             if source_marker not in body:
                 violations.append(

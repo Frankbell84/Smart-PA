@@ -1,110 +1,85 @@
 # KeyHollow Development Checkpoint
 
-**Updated:** September 3, 2026  
-**Purpose:** Durable restart point for the validated Phase Three baseline and the modularization effort.
+**Updated:** September 5, 2026
+**Purpose:** Durable restart point immediately before Phase 4.
 
 ## Executive status
 
-- The validated Phase Three candidate has been merged into production.
-- Production TestFlight Build 12 was uploaded, processed, and assigned to the existing internal testing group.
-- Build 12 passed the complete automated gate and the physical-iPhone validation performed by the owner.
-- The owner reported that all tested behavior works.
-- A dedicated rollback checkpoint branch preserves the exact validated merge.
-- A separate modular-architecture branch has been created from that checkpoint.
-- Three independently compiled boundaries are fully validated:
-  `KeyHollowCryptoCore`, `KeyHollowVaultCore`, and `KeyHollowPhotoCore`.
-- The fourth boundary, `KeyHollowTransferCore`, is fully validated by its Mac
-  build, regression, stress, launch, and Swift security gates.
-- The fifth boundary, `KeyHollowPhotosAdapter`, and the final composition-root
-  injection are implemented on the isolated branch and awaiting validation.
+- The compiled modular foundation is complete and merged.
+- The exact modular baseline is preserved by tag
+  `checkpoint/modular-baseline-build-13` at `1913d43`.
+- `KeyHollowCryptoCore`, `KeyHollowVaultCore`, `KeyHollowPhotoCore`,
+  `KeyHollowTransferCore`, and `KeyHollowPhotosAdapter` are independently
+  compiled behind one-way dependency boundaries.
+- `.khvault` File Recognition and the isolated Quick Look thumbnail extension
+  are merged through PR #32 at `24cfc57` and validated on a physical iPhone.
+- General File Support is merged through PR #33 at `bbd6bfa` after Build 29
+  passed physical-iPhone validation.
+- Build 29 proved direct general-file import, unified photo/file presentation,
+  and mixed photo/file `.khvault` export and restore.
+- App Store review was not changed by these development merges.
 
-## What Phase Three accomplished
+## Current architecture
 
-- Enforced source-level boundaries around the local vault and cryptographic core.
-- Added a permanent architecture check intended to prevent UI, Photos, networking, cloud, analytics, or payment code from leaking into the vault core.
-- Added a deterministic encrypted-transfer stress test using 50 photos.
-- Covered vault export and restoration, including valid and invalid recovery-code behavior.
-- Covered existing vault lifecycle and security regressions.
-- Completed simulator compilation and testing.
-- Completed Swift security analysis.
-- Completed physical-iPhone validation of Build 12.
+The protected modules own cryptography, credential persistence, encrypted photo
+storage, portable transfer, and Apple Photos integration. Customer-facing
+features are separate static add-ons under `KeyHollow/AddOns`. Add-ons may use
+narrow core interfaces, but the protected core never imports an add-on.
+Concrete wiring belongs only to the app composition and presentation layer.
 
-## Verified quality gates
+The architecture gate enforces compiled targets, dependency direction,
+framework allowlists, add-on isolation, and warning-as-error settings for every
+first-party add-on. The release-hygiene gate rejects temporary files, editor
+debris, and abandoned document-icon implementations.
 
-- Architecture boundary check: passed.
-- Simulator build: passed.
-- Full automated regression and security suite: passed.
-- Fifty-photo encrypted-transfer test: passed.
-- Swift security analysis: passed.
-- Production signing and archive validation: passed.
-- Apple upload and processing: passed.
-- Physical-device test: passed; owner reported everything works.
+## Validated evidence
 
-## Isolation and branch state
+- Architecture boundary gate: passed.
+- Release-hygiene gate: passed.
+- Complete simulator build and regression/security suite: passed.
+- Swift CodeQL analysis: passed with no unresolved changed-code alerts.
+- Production-identity TestFlight Build 29: processed and assigned internally.
+- Physical-device validation: passed by the owner.
+- General-file-support merge: `bbd6bfa` on `main`.
 
-- Validated production merge: `3deb92d` (`Merge validated Phase Three production candidate`).
-- Rollback checkpoint: `checkpoint/phase-three-build-12-validated`.
-- Active modularization branch: `refactor/modular-architecture`.
-- Tested Phase Three production candidate: `delivery/phase-three-production` at `6fef0bf` (`Prepare phase three production TestFlight build 12`).
-- Phase Three validation branch: `validation/phase-three-device-hardening` at `a25b910`.
-- Phase Two branch: `security/phase-two-revocation-memory` at `3b30c3b`.
-- Stage One branch: `test/stage-one-core-baseline` at `601b3cd`.
-- The production candidate pull request has been merged.
-- The separate KeyHollow Beta listing was removed from App Store Connect.
-- Removal of the obsolete beta delivery workflow is isolated in its own draft cleanup change and is not merged.
-- The older remote beta delivery branch still exists; it should not be deleted without a separate deliberate cleanup decision.
+## Phase 4 scope
 
-## Current architectural reality
+Phase 4 is the folder and presentation add-on. It must begin from current
+`main` on a new isolated feature branch and draft pull request. Its initial
+acceptance requirements are:
 
-The important responsibilities are logically separated and protected by
-source-boundary checks. Cryptography, vault-domain persistence, and encrypted
-photo storage, and portable vault transfer are now independently compiled and
-fully validated. The app session retains revocation and task
-lifetime. Apple Photos integration is now isolated in its own platform adapter,
-while UI and navigation remain in the app target.
+1. Add folder organization without merging or replacing protected stores.
+2. Preserve all existing vaults and `.khvault` compatibility.
+3. Give images imported through Files safe local encrypted thumbnails and the
+   same polished grid treatment as Photo-library imports.
+4. Keep metadata editing separate from import; expose it only through a
+   deliberate post-import settings or item-details surface.
+5. Leave the protected core functional if the add-on is removed or disabled.
 
-## Next goal
+## Required Phase 4 gates
 
-Complete and validate modularization without mixing the structural refactor with feature development.
+1. Isolated branch and draft review.
+2. Narrow-interface and dependency-direction review.
+3. Architecture and release-hygiene enforcement.
+4. Warning-free simulator build plus full unit, lifecycle, transfer, security,
+   and launch tests.
+5. Swift CodeQL with no unresolved findings.
+6. Guarded production-identity TestFlight delivery branch.
+7. Physical-iPhone feature, interruption, low-storage, rollback, and
+   data-integrity testing.
+8. Explicit owner approval only after all evidence is recorded.
 
-### Approved order when work resumes
+## Known non-blocking boundaries
 
-1. Run the Mac build, complete regression, architecture, and Swift security
-   gates for `KeyHollowPhotosAdapter` and the final app composition.
-2. Fix only extraction-related failures; do not change behavior or archive
-   compatibility.
-3. Upload the completed modular candidate to TestFlight.
-4. Repeat the physical-iPhone validation before merging the modular refactor.
-
-## Proposed module sequence
-
-1. Vault and cryptographic core.
-2. Encrypted archive transfer.
-3. Photos-system adapter.
-4. User interface and app composition.
-
-The exact module names may change, but the dependency direction must remain one-way: the app and UI can depend on the core interfaces; the core must not depend on the UI, Photos, network, cloud, analytics, or payment frameworks.
-
-## Guardrails for the next phase
-
-- Do not add product features during modularization.
-- Do not merge the modularization branch merely because it compiles.
-- Preserve the Build 12 behavior as the reference behavior.
-- Keep the dedicated rollback checkpoint branch unchanged while moving code.
-- Move one boundary at a time and keep each change reviewable.
-- Require all existing tests, architecture checks, security analysis, and device tests to pass again.
-- Keep beta-workflow cleanup separate from the functional production merge.
-
-## Estimated next-phase duration
-
-- Merge, tag, and establish rollback point: about half a day.
-- Separate vault and cryptographic core: one to two focused days.
-- Separate transfer and Photos handling: about two focused days.
-- Reconnect UI and repair affected tests: about one focused day.
-- Automated and physical-device validation: one to two days.
-
-Expected total: approximately one working week, with additional time only if the structural move exposes a defect.
+- UI and navigation intentionally remain in the application target; they are
+  composition and presentation, not protected-core responsibilities.
+- Build numbers advance only on guarded delivery branches. Source `main` is the
+  feature baseline and must not be confused with a specific TestFlight build.
+- App Store submission remains a separate owner decision.
 
 ## Resume instruction
 
-When development resumes, start by reading this file and inspecting the current remote pull-request and branch states. Do not assume they are unchanged. Continue only on the modular-architecture branch, beginning with the pending Mac validation of `KeyHollowCryptoCore`.
+Read this file and `WORK_STATUS.md`, fetch remote `main`, and verify that the
+expected head has not changed. Complete the preflight cleanup review before
+creating the Phase 4 folder/presentation branch. Do not reuse the completed
+General File Support or delivery branches.

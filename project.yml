@@ -100,6 +100,7 @@ targets:
         PRODUCT_NAME: KeyHollowFileRecognitionAddOn
         SWIFT_VERSION: 5.0
         SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
         DEFINES_MODULE: YES
         SKIP_INSTALL: YES
 
@@ -113,6 +114,7 @@ targets:
         PRODUCT_NAME: KeyHollowGeneralFileSupportAddOn
         SWIFT_VERSION: 5.0
         SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
         DEFINES_MODULE: YES
         SKIP_INSTALL: YES
 

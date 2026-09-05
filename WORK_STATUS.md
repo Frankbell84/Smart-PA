@@ -6,129 +6,52 @@ Pull request: Not opened
 
 ## Current task
 
-Perform a dedicated pre-Phase 4 cleanup from merged production commit `bbd6b`: refresh obsolete restart documentation, audit and address the known Swift 6 concurrency warnings without changing customer behavior, and prove the resulting baseline with the standard architecture, hygiene, build, test, and security gates. App Store review remains untouched.
+Validate the behavior-neutral pre-Phase 4 cleanup against the Mac simulator,
+complete regression/security suite, and Swift CodeQL. App Store review and
+TestFlight remain untouched.
 
 ## Completed work
 
-- PR #33 was explicitly approved after Build 29 device validation and merged into `main` as `bbd6bfa`.
-- Created this isolated cleanup branch directly from verified remote `main`; no feature or delivery branch was reused.
-- General File Support remains an independently compiled add-on behind narrow interfaces.
-- Selecting files creates pending review candidates and does not change the vault manifest.
-- The review screen provides an explicit `Import N Files into Vault` confirmation.
-- Removing or cancelling pending candidates leaves the vault and source files unchanged.
-- Security-scoped file access is owned and released by the add-on rather than the UI.
-- Build 23 physical-device testing confirmed that a selected PDF is encrypted and persisted in the add-on store.
-- Physical-device evidence isolated the remaining defect to presentation: the primary Vault screen read only the photo manifest and incorrectly reported `Empty Vault` when encrypted general files existed.
-- Implemented a unified primary Vault presentation that composes authenticated photo and general-file records without merging their stores or manifests.
-- A general-file-only vault now displays its encrypted files on the primary screen.
-- Tapping a primary-screen file opens the dedicated Vault Files manager, and dismissing that manager refreshes the primary file list after imports or deletions.
-- Moved shared general-file presentation and scoped-access composition into one UI-layer file, removing duplicate type-icon and cryptographic adapter code.
-- Added a regression assertion covering photo-only, file-only, mixed, and truly empty primary-vault states.
-- PR #33 completed the corrected macOS simulator build, full regression/security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL analysis at `84262d0`.
-- Frank confirmed on a physical iPhone that Build 24 fixes the functional defect: general files persist and are reachable from the primary Vault screen.
-- Build 24 exposed a presentation-quality issue only: general files use an oversized list card while photos use compact square tiles.
-- Replaced the oversized primary-screen file panel with compact file tiles inside the same three-column grid used by photo thumbnails.
-- File tiles retain file-type identity, display name, size, accessibility labels, and navigation into the dedicated file manager.
-- Photo-selection mode visibly disables file tiles because its save/delete actions remain intentionally photo-specific.
-- Updated the add-on behavior record to document the unified mixed-content grid without weakening the separate manifests or compiled-module boundary.
-- PR #33 completed the refined macOS simulator build, full regression/security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL analysis at `7b41ffc`.
-- Build 25 physical-device testing confirmed that the unified mixed-content grid works and files remain encrypted, persisted, and reachable.
-- The pending import candidates already clear after confirmation, but the same `Vault Files` sheet immediately switches to its persisted-record manager, making the imported file appear to remain in staging.
-- Successful primary-vault imports now clear pending candidates and return to the unified grid after the user acknowledges the result.
-- Canceling the primary-vault review or Files picker now returns to the unified grid instead of revealing the stored-file manager as if it were staging.
-- Intentionally opening `Vault Files` still presents persisted encrypted records for export and deletion.
-- Added a regression decision test that distinguishes successful primary-vault imports from zero-import and intentional manager flows.
-- Build 26 physical-device testing confirmed that importing succeeds and the file appears in the unified grid, but the originating sheet still remains visible as the persisted-record manager.
-- The underlying defect is now isolated to sheet lifecycle ownership: pending candidates clear correctly, but child-level dismissal is not reliably closing the parent-owned sheet.
-- The primary Vault now owns import-flow completion through a narrow callback and closes its own sheet after the result is acknowledged.
-- Completed primary-vault imports enter a terminal presentation state, so they cannot fall through into the persisted-record manager while dismissal is being processed.
-- Picker cancellation and review cancellation use the same parent-owned close path; intentionally opening `Vault Files` remains a separate manager flow.
-- Added regression coverage for completed, unfinished, and intentional-manager lifecycle decisions and documented the ownership boundary.
-- Build 27 physical-device testing confirmed that parent-controlled dismissal still does not reliably eliminate the post-selection staging/manager experience.
-- Frank directed that the staging/review step be removed: selecting files must encrypt them immediately and refresh the same unified three-column grid used by photos.
-- Removed the pending-candidate type, review list, second confirmation button, child-dismissal policy, and every user-facing staging lifecycle symbol.
-- Added a narrow module-owned batch-import API that enforces the 50-file limit, processes each file through the existing protected copy/encrypt/verify/commit path, and returns only aggregate counts.
-- The primary Vault now presents Apple's Files picker directly and refreshes the unified three-column grid after import without presenting `Vault Files`.
-- The intentional `Vault Files` manager uses the same batch-import API for its plus button while retaining export and deletion controls.
-- Future metadata editing is explicitly decoupled from import and deferred to a deliberate post-import Vault Security/settings surface.
-- Replaced staging lifecycle tests with batch success, partial rejection, source-preservation, and maximum-selection regression coverage.
-- PR #33 passed the staging-free macOS simulator build, full regression/security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL at source commit `b964b37`.
-- Build 28 reached the production KeyHollow internal TestFlight group and Frank confirmed direct, staging-free general-file import works on a physical iPhone.
-- Build 28 physical testing exposed two follow-up gaps: matching confirmation digits do not reveal an immediate Continue action, and a portable-vault export/restore preserves photos but omits general files.
-- Source audit confirmed the transfer defect is structural rather than presentational: the portable archive catalog, exporter, validator, and installer currently operate only on `PhotoData` and the photo manifest; `GeneralFileData` is never added to or restored from the archive.
-- Added a versioned supplemental-ciphertext seam to the compiled transfer module without allowing the protected core to import the general-file add-on.
-- Added an app-composition bridge that asks the independently compiled general-file add-on to authenticate its manifest and every encrypted blob before export and again after archive extraction.
-- New mixed-content archives carry the authenticated general-file manifest and blobs in a traversal-safe namespace; catalog version 1 photo-only archives remain accepted for backward compatibility.
-- Restore now validates all photo and general-file ciphertext before installation, commits both stores under one authenticated transaction journal, and rolls both back if credential publication or an interrupted install fails.
-- Added mixed photo/file export, validation, install, plaintext-equivalence, legacy-catalog compatibility, and dual-store rollback regression coverage.
-- The import verification summary now reports both photo and file counts.
-- Matching, policy-compliant confirmation digits now reveal an inline Continue action directly beneath the second LowKey field while preserving the keyboard toolbar action.
-- PR #33 completed the corrected macOS simulator build, full mixed photo/file regression and security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL analysis at `2ac4d75`.
-- The exact validated implementation and tests were transferred to isolated delivery Build 29; signed workflow #39 passed and Apple assigned Build 29 to `KeyHollow Internal` with status `Ready to Submit`.
-- Frank confirmed on a physical iPhone that Build 29 works end to end, including mixed photo/file portable-vault export and restore and the smoother matching-LowKey Continue flow.
-- Physical testing confirmed that general files and Photo-library images now share the unified vault grid and persist through the protected transfer path.
-- One presentation refinement is intentionally deferred: image files imported through Apple's Files picker use a generic encrypted-file tile instead of the live thumbnail used for Photo-library imports. This is a folder/presentation concern, not a storage, encryption, or transfer defect.
+- Began from verified remote `main` at merged General File Support commit
+  `bbd6bfa`; no completed feature or delivery branch was reused.
+- Preserved the compiled core modules and the independently compiled File
+  Recognition and General File Support add-ons.
+- Removed the General File Support actor-initializer warnings by resolving file
+  locations and dependencies locally before assigning actor-owned state. No
+  storage path, encryption, import, export, or deletion behavior changed.
+- Made warnings-as-errors mandatory for every registered first-party add-on and
+  extended the architecture gate to enforce that rule for future add-ons.
+- Updated all artifact-upload workflow pins from the deprecated Node 20 action
+  to the exact reviewed Node 24 action commit.
+- Refreshed the modularization plan and durable project checkpoint to reflect
+  the completed modular baseline, merged add-ons, validated Build 29, and the
+  exact Phase 4 entry requirements.
+- Preserved the deferred presentation requirement: images imported through
+  Files receive encrypted thumbnail parity during the folder/presentation phase.
 
 ## Test and build status
 
-- Corrected source architecture boundary check: passed locally.
-- Corrected source release-hygiene check: passed locally.
-- Corrected source whitespace/diff validation: passed locally.
-- Previous remote simulator build, full tests, and Swift CodeQL passed at `6b39328`.
-- Build 23 general-file encryption and persistence on a physical iPhone: passed for a PDF.
-- Build 23 primary-vault visibility with a general-file-only vault: failed; correction is now published for review.
-- Build 24 primary-vault general-file visibility and navigation: passed on a physical iPhone.
-- Build 24 mixed-content visual consistency: refinement required before merge.
-- Refined source architecture boundary check: passed locally.
-- Refined source release-hygiene check: passed locally.
-- Refined source whitespace/diff validation: passed locally.
-- Refined macOS simulator build and full regression/security suite: passed on PR #33 at `7b41ffc`.
-- Refined Swift CodeQL security analysis: passed on PR #33 at `7b41ffc`.
-- Build 25 unified mixed-content grid and file persistence: passed on a physical iPhone.
-- Build 25 post-import flow clarity: failed; the completed import remains in the file-manager sheet and looks like uncleared staging.
-- Corrected post-import source architecture boundary check: passed locally.
-- Corrected post-import release-hygiene check: passed locally.
-- Corrected post-import TestFlight build-number guard self-test: passed locally.
-- Corrected post-import whitespace/diff validation: passed locally.
-- Corrected post-import macOS simulator build and full regression/security suite: passed on PR #33 at `ecc02c0`.
-- Corrected post-import Swift CodeQL security analysis: passed on PR #33 at `ecc02c0`.
-- Parent-owned lifecycle correction architecture boundary check: passed locally.
-- Parent-owned lifecycle correction release-hygiene check: passed locally.
-- Parent-owned lifecycle correction TestFlight build-number guard self-test: passed locally.
-- Parent-owned lifecycle correction whitespace/diff validation: passed locally.
-- Parent-owned lifecycle correction macOS simulator build and full regression/security suite: passed on PR #33 at `bf30be0`.
-- Parent-owned lifecycle correction Swift CodeQL security analysis: passed on PR #33 at `bf30be0`.
-- Direct-import architecture boundary check: passed locally.
-- Direct-import release-hygiene check: passed locally.
-- Direct-import TestFlight build-number guard self-test: passed locally.
-- Direct-import whitespace/diff validation: passed locally.
-- Obsolete staging/review implementation-symbol audit: passed locally; no symbols remain.
-- Direct-import macOS simulator build and full regression/security suite: passed on PR #33 at `b964b37`.
-- Direct-import Swift CodeQL security analysis: passed on PR #33 at `b964b37`.
-- Build 28 direct, staging-free general-file import and unified-grid presentation: passed on a physical iPhone.
-- Build 28 mixed-content `.khvault` export/restore: failed on a physical iPhone; photos restore but general files are absent.
-- Mixed-content repair architecture boundary check: passed locally; TransferCore remains independent from all add-ons.
-- Mixed-content repair release-hygiene check: passed locally.
-- Mixed-content repair whitespace/diff validation: passed locally.
-- Mixed-content macOS simulator compilation and full regression/security suite: passed on PR #33 at `2ac4d75`.
-- Mixed-content Swift CodeQL security analysis: passed on PR #33 at `2ac4d75`.
-- Signed internal TestFlight Build 29 delivery, Apple processing, and `KeyHollow Internal` assignment: passed.
-- Build 29 mixed photo/file export and restore on a physical iPhone: passed.
-- Build 29 matching-LowKey inline Continue interaction on a physical iPhone: passed.
-- Image-file thumbnail parity with Photo-library imports: deferred to the folder/presentation phase by design.
-- Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
-- Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
-- Production source is unchanged after `bbd6bfa`; App Store review is untouched.
+- Architecture boundary gate: passed locally.
+- Release-hygiene gate: passed locally.
+- TestFlight build-number guard self-test: passed locally.
+- Whitespace and obsolete-status audit: passed locally.
+- Mac simulator build and complete regression/security suite: pending remote CI.
+- Swift CodeQL analysis: pending remote CI.
 
 ## Blockers
 
-- No current blocker. The Mac build and Swift analysis will be required after cleanup changes are published.
+- No code blocker. Remote Mac and CodeQL validation require a pull request for
+  this published branch.
 
 ## Next action
 
-Commit and push this starting checkpoint, audit all stale phase records and current Swift 6 warnings, make only behavior-neutral cleanup changes, and run the complete protected validation sequence before declaring the Phase 4 baseline clean.
+Commit and push this cleanup checkpoint, open an isolated draft pull request,
+and review the complete Mac build/test/security evidence. If all gates are
+green, request explicit approval before merging the clean baseline into `main`.
 
 ## Frank's decision required
 
-- No decision is required for routine preflight cleanup and validation.
-- Any merge into `main`, TestFlight delivery, or App Store review submission remains a separate decision requiring Frank's explicit approval.
+- No decision is required for routine validation or repairs that do not change
+  customer behavior.
+- Merging the cleanup into `main`, delivering another TestFlight build, or
+  changing App Store review requires Frank's explicit approval.
