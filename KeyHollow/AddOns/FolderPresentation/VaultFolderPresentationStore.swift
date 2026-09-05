@@ -11,6 +11,7 @@ public actor VaultFolderPresentationStore {
     }
 
     public static let maximumFolderNameLength = 80
+    public static let maximumThumbnailByteCount = 2 * 1_024 * 1_024
 
     private let fileManager: FileManager
     private let root: URL
@@ -123,7 +124,10 @@ public actor VaultFolderPresentationStore {
         _ plaintext: Data,
         for item: VaultPresentedContentReference
     ) throws {
-        guard !plaintext.isEmpty else { throw StoreError.verificationFailed }
+        guard !plaintext.isEmpty,
+              plaintext.count <= Self.maximumThumbnailByteCount else {
+            throw StoreError.verificationFailed
+        }
         var manifest = try loadManifest()
         let previous = manifest.thumbnails.first(where: { $0.item == item })
         let blobName = "\(UUID().uuidString.lowercased()).kht"

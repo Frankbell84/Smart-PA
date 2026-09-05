@@ -85,6 +85,24 @@ final class VaultFolderPresentationAddOnTests: XCTestCase {
         XCTAssertNil(removedThumbnail)
     }
 
+    func testOversizedThumbnailIsRejectedWithoutChangingManifest() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanup() }
+        let item = VaultPresentedContentReference(kind: .generalFile, id: UUID())
+        let oversized = Data(
+            repeating: 0xA5,
+            count: VaultFolderPresentationStore.maximumThumbnailByteCount + 1
+        )
+
+        await XCTAssertThrowsErrorAsync(
+            try await fixture.store.storeThumbnail(oversized, for: item)
+        ) { error in
+            XCTAssertEqual(error as? VaultFolderPresentationStore.StoreError, .verificationFailed)
+        }
+        let manifest = try await fixture.store.loadManifest()
+        XCTAssertTrue(manifest.thumbnails.isEmpty)
+    }
+
     func testAccessMustMatchVault() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(
             "FolderPresentationMismatch-\(UUID().uuidString)",

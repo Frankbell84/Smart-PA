@@ -1,5 +1,7 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
+import KeyHollowFolderPresentationAddOn
 import KeyHollowGeneralFileSupportAddOn
 import KeyHollowPhotoCore
 import KeyHollowPhotosAdapter
@@ -33,8 +35,10 @@ struct VaultGalleryView: View {
     @State private var records: [VaultPhotoRecord] = []
     @State private var generalFileStore: VaultGeneralFileStore?
     @State private var generalFileRecords: [VaultGeneralFileRecord] = []
+    @State private var presentationStore: VaultFolderPresentationStore?
     @State private var contentStoresLoaded = false
     @State private var thumbnails: [UUID: UIImage] = [:]
+    @State private var generalFileThumbnails: [UUID: UIImage] = [:]
     @State private var decryptedPhoto: DecryptedPhoto?
     @State private var showingImportOptions = false
     @State private var showingPicker = false
@@ -82,9 +86,13 @@ struct VaultGalleryView: View {
                             ForEach(generalFileRecords) { record in
                                 VaultGeneralFileTileView(
                                     record: record,
+                                    thumbnail: generalFileThumbnails[record.id],
                                     isEnabled: !isSelecting,
                                     openFileManager: { showingVaultFiles = true }
                                 )
+                                .task(id: record.id) {
+                                    await loadGeneralFileThumbnailIfNeeded(record)
+                                }
                             }
 
                             ForEach(records) { record in
@@ -191,8 +199,10 @@ struct VaultGalleryView: View {
             records = []
             generalFileStore = nil
             generalFileRecords = []
+            presentationStore = nil
             contentStoresLoaded = false
             thumbnails = [:]
+            generalFileThumbnails = [:]
             decryptedPhoto = nil
             leaveSelectionMode()
             await initializeStores()
@@ -386,6 +396,18 @@ struct VaultGalleryView: View {
             }
         }
 
+        if presentationStore == nil {
+            do {
+                let access = SessionFolderPresentationAccess(capability: context.access)
+                presentationStore = try VaultFolderPresentationStore(
+                    vaultID: context.id,
+                    access: access
+                )
+            } catch {
+                message = "The encrypted presentation store could not be opened."
+            }
+        }
+
         if generalFileStore == nil {
             do {
                 let access = SessionGeneralFileAccess(capability: context.access)
@@ -403,6 +425,8 @@ struct VaultGalleryView: View {
         guard let generalFileStore else { return }
         do {
             generalFileRecords = try await generalFileStore.loadManifest().files
+            let validIDs = Set(generalFileRecords.map(\.id))
+            generalFileThumbnails = generalFileThumbnails.filter { validIDs.contains($0.key) }
         } catch {
             message = "The encrypted file list could not be refreshed."
         }
@@ -554,6 +578,74 @@ struct VaultGalleryView: View {
             thumbnails.removeValue(forKey: eviction)
         }
         thumbnails[record.id] = image
+    }
+
+    @MainActor
+    private func loadGeneralFileThumbnailIfNeeded(
+        _ record: VaultGeneralFileRecord
+    ) async {
+        guard generalFileThumbnails[record.id] == nil,
+              let generalFileStore,
+              let presentationStore,
+              session.isUnlocked,
+              UTType(record.contentTypeIdentifier)?.conforms(to: .image) == true else {
+            return
+        }
+
+        let reference = VaultPresentedContentReference(kind: .generalFile, id: record.id)
+        do {
+            if let cachedData = try await presentationStore.loadThumbnail(for: reference),
+               !Task.isCancelled,
+               let cachedImage = UIImage(data: cachedData) {
+                cacheGeneralFileThumbnail(cachedImage, id: record.id)
+                return
+            }
+
+            let originalData = try await generalFileStore.loadFile(record)
+            guard !Task.isCancelled,
+                  let originalImage = UIImage(data: originalData),
+                  let thumbnailData = Self.makeThumbnailData(from: originalImage),
+                  let thumbnailImage = UIImage(data: thumbnailData) else {
+                return
+            }
+            try await presentationStore.storeThumbnail(thumbnailData, for: reference)
+            guard !Task.isCancelled else { return }
+            cacheGeneralFileThumbnail(thumbnailImage, id: record.id)
+        } catch is CancellationError {
+            return
+        } catch {
+            // A presentation preview must never block access to protected content.
+            return
+        }
+    }
+
+    @MainActor
+    private func cacheGeneralFileThumbnail(_ image: UIImage, id: UUID) {
+        if generalFileThumbnails.count >= maximumCachedThumbnails,
+           let eviction = generalFileThumbnails.keys.first(where: { $0 != id }) {
+            generalFileThumbnails.removeValue(forKey: eviction)
+        }
+        generalFileThumbnails[id] = image
+    }
+
+    private static func makeThumbnailData(from image: UIImage) -> Data? {
+        let sourceWidth = CGFloat(image.cgImage?.width ?? Int(image.size.width * image.scale))
+        let sourceHeight = CGFloat(image.cgImage?.height ?? Int(image.size.height * image.scale))
+        let longestEdge = max(sourceWidth, sourceHeight)
+        guard longestEdge > 0 else { return nil }
+
+        let scale = min(1, 512 / longestEdge)
+        let targetSize = CGSize(
+            width: max(1, (sourceWidth * scale).rounded()),
+            height: max(1, (sourceHeight * scale).rounded())
+        )
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let thumbnail = UIGraphicsImageRenderer(size: targetSize, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+        return thumbnail.jpegData(compressionQuality: 0.82)
     }
 
     private func importResultMessage(action: String, importedCount: Int, failedCount: Int) -> String {

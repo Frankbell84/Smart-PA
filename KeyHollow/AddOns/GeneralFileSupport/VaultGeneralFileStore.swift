@@ -130,6 +130,7 @@ public actor VaultGeneralFileStore {
     /// record. Presentation adapters use this narrow path for previews without
     /// receiving storage locations or cryptographic keys.
     public func loadFile(_ record: VaultGeneralFileRecord) throws -> Data {
+        try Task.checkCancellation()
         let manifest = try loadManifest()
         guard manifest.files.contains(record), Self.isSafeBlobName(record.blobName) else {
             throw StoreError.invalidManifest
@@ -139,6 +140,7 @@ public actor VaultGeneralFileStore {
             options: [.mappedIfSafe]
         )
         let plaintext = try access.open(ciphertext, for: .file(record.id))
+        try Task.checkCancellation()
         guard UInt64(plaintext.count) == record.originalByteCount else {
             throw StoreError.verificationFailed
         }

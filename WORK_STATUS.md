@@ -72,14 +72,25 @@ App Store review and TestFlight remain untouched.
 - Phase 4 architecture boundary gate: passed locally.
 - Phase 4 release-hygiene gate: passed locally.
 - Phase 4 whitespace audit: passed locally.
+- Thumbnail-composition architecture and release-hygiene gates: passed locally.
+- Thumbnail-composition build-number guard self-test: passed locally.
+- Thumbnail-composition diff integrity check: passed locally.
 - Definitive Phase 4 run [#219](https://github.com/Frankbell84/KeyHollow/actions/runs/33989008013)
   at `802252d`: passed in 28m43s.
 - Mac simulator build and complete regression/security suite: passed in 7m37s.
 - Swift CodeQL: passed in 27m04s with no failed security gate.
 - Simulator and test artifacts were produced with recorded SHA-256 digests.
 - Authenticated general-file preview read, scoped folder-presentation access,
-  presentation-aware vault cleanup, and the gallery thumbnail view seam are
-  implemented locally and awaiting the next composition checkpoint.
+  presentation-aware vault cleanup, and the gallery thumbnail view seam were
+  checkpointed and pushed as `57ed011`.
+- Completed root-gallery composition for images imported through Files: the app
+  first loads an authenticated encrypted presentation thumbnail, otherwise it
+  decrypts only the selected manifest record, creates a bounded 512-pixel JPEG,
+  and stores that preview in the independent encrypted presentation add-on.
+- Added cancellation checks to authenticated general-file reads and a strict
+  2 MiB presentation-thumbnail ceiling with regression coverage.
+- Ordered presentation-store initialization before file records appear so a
+  fast first render cannot skip thumbnail generation.
 
 ## Blockers
 
@@ -87,10 +98,10 @@ App Store review and TestFlight remain untouched.
 
 ## Next action
 
-Checkpoint the narrow app bridge, then complete encrypted general-image
-thumbnail composition in the root gallery. Run local architecture, hygiene,
-and diff gates before publishing the milestone to draft PR #35 for the full
-Mac simulator and Swift security gates.
+Commit and push the completed encrypted-thumbnail composition milestone to
+draft PR #35. Treat its Mac simulator build, complete regression suite, and
+Swift security scan as the required gate before adding visible folder creation,
+navigation, and move-to-folder controls.
 
 ## Frank's decision required
 
