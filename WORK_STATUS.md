@@ -6,7 +6,7 @@ Pull request: Draft PR #33
 
 ## Current task
 
-Remove the user-facing general-file staging/review model entirely and replace it with one narrow direct batch-import operation shared by the primary Vault and intentional Vault Files manager; keep the add-on isolated and production untouched.
+Close the mixed-content portable-vault transfer gap and smooth the new-vault LowKey confirmation flow on the isolated general-file branch; preserve backward compatibility with existing photo-only `.khvault` archives and keep production untouched.
 
 ## Completed work
 
@@ -51,6 +51,9 @@ Remove the user-facing general-file staging/review model entirely and replace it
 - Future metadata editing is explicitly decoupled from import and deferred to a deliberate post-import Vault Security/settings surface.
 - Replaced staging lifecycle tests with batch success, partial rejection, source-preservation, and maximum-selection regression coverage.
 - PR #33 passed the staging-free macOS simulator build, full regression/security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL at source commit `b964b37`.
+- Build 28 reached the production KeyHollow internal TestFlight group and Frank confirmed direct, staging-free general-file import works on a physical iPhone.
+- Build 28 physical testing exposed two follow-up gaps: matching confirmation digits do not reveal an immediate Continue action, and a portable-vault export/restore preserves photos but omits general files.
+- Source audit confirmed the transfer defect is structural rather than presentational: the portable archive catalog, exporter, validator, and installer currently operate only on `PhotoData` and the photo manifest; `GeneralFileData` is never added to or restored from the archive.
 
 ## Test and build status
 
@@ -88,19 +91,21 @@ Remove the user-facing general-file staging/review model entirely and replace it
 - Obsolete staging/review implementation-symbol audit: passed locally; no symbols remain.
 - Direct-import macOS simulator build and full regression/security suite: passed on PR #33 at `b964b37`.
 - Direct-import Swift CodeQL security analysis: passed on PR #33 at `b964b37`.
+- Build 28 direct, staging-free general-file import and unified-grid presentation: passed on a physical iPhone.
+- Build 28 mixed-content `.khvault` export/restore: failed on a physical iPhone; photos restore but general files are absent.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
 
 ## Blockers
 
-- No implementation or automated-validation blocker. An internal TestFlight delivery and focused physical-device check remain.
+- No external blocker. The mixed-content archive format, validation, transactional installation, compatibility tests, and LowKey continuation refinement remain to be implemented and validated.
 
 ## Next action
 
-Transfer only validated source commit `b964b37` into the isolated delivery branch, confirm exact source parity, advance to Build 28, and run the signed TestFlight delivery gates.
+Extend the versioned portable archive path through narrow interfaces so new archives carry both authenticated photo and general-file stores, old photo-only archives remain importable, and restore commits neither store unless all validation succeeds. Add the conditional inline Continue action, then run local and remote security/build gates before another isolated TestFlight delivery.
 
 ## Frank's decision required
 
-- After the next corrected build reaches TestFlight, Frank must confirm that selecting files imports directly into the unified grid with no staging/review screen and that intentionally opening `Vault Files` still shows stored files for management.
+- After the next corrected build reaches TestFlight, Frank must confirm a mixed photo/file vault exports and restores with every item intact, an older photo-only archive still restores, and the matching LowKey confirmation reveals a smooth Continue action.
 - Final merge and any App Store review submission remain separate decisions requiring Frank's explicit approval after device validation.
