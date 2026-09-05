@@ -82,6 +82,12 @@ App Store review and TestFlight remain untouched.
 - The thumbnail path now safely requires a non-nil content type before image
   preview work begins. Files without a declared image type remain accessible
   through their normal generic tile and are never guessed from untrusted bytes.
+- Corrected Phase 4 run [#223](https://github.com/Frankbell84/KeyHollow/actions/runs/33993203704)
+  at `55366a2`: passed in 23m31s.
+- Mac simulator build and complete regression/security suite: passed in 6m34s.
+- Swift CodeQL: passed in 22m46s with no failed security gate.
+- Security-test and simulator artifacts were produced with recorded SHA-256
+  digests.
 - Definitive Phase 4 run [#219](https://github.com/Frankbell84/KeyHollow/actions/runs/33989008013)
   at `802252d`: passed in 28m43s.
 - Mac simulator build and complete regression/security suite: passed in 7m37s.
@@ -105,10 +111,10 @@ App Store review and TestFlight remain untouched.
 
 ## Next action
 
-Publish the optional-content-type compiler correction to draft PR #35 and
-require a fresh Mac simulator build, complete regression suite, and Swift
-security scan before adding visible folder creation, navigation, and
-move-to-folder controls.
+Begin the visible folder milestone: create folders, show root/folder contents,
+move photo and general-file references through neutral add-on interfaces, and
+delete folders without deleting protected content. Preserve current selection,
+import, export, and restore behavior, then run the same local and remote gates.
 
 ## Frank's decision required
 
