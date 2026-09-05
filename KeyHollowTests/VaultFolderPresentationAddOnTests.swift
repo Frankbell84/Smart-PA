@@ -27,6 +27,26 @@ final class VaultFolderPresentationAddOnTests: XCTestCase {
         XCTAssertTrue(deletedManifest.folders.isEmpty)
     }
 
+    func testMovingBetweenFoldersAndRootKeepsAtMostOneMembership() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanup() }
+        let item = VaultPresentedContentReference(kind: .photo, id: UUID())
+        let first = try await fixture.store.createFolder(named: "First")
+        let second = try await fixture.store.createFolder(named: "Second")
+
+        try await fixture.store.move(item, to: first.id)
+        try await fixture.store.move(item, to: second.id)
+        var manifest = try await fixture.store.loadManifest()
+        XCTAssertEqual(manifest.memberships.count, 1)
+        XCTAssertEqual(manifest.memberships.first?.folderID, second.id)
+
+        try await fixture.store.move(item, to: nil)
+        manifest = try await fixture.store.loadManifest()
+        XCTAssertTrue(manifest.memberships.isEmpty)
+        let rootFolderID = try await fixture.store.folderID(for: item)
+        XCTAssertNil(rootFolderID)
+    }
+
     func testDuplicateAndInvalidFolderNamesFailWithoutChangingManifest() async throws {
         let fixture = try Fixture()
         defer { fixture.cleanup() }

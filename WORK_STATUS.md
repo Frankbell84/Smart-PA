@@ -50,6 +50,20 @@ App Store review and TestFlight remain untouched.
   reconciliation, and vault-access mismatch tests.
 - Opened draft PR #35 so all remote Mac and security gates run before UI
   composition begins.
+- Added the visible one-level folder gallery milestone locally: encrypted
+  folder creation/rename, root and folder navigation, item counts, and folder
+  tiles live entirely in app presentation and the independent add-on.
+- Added move destinations for both protected photo references and encrypted
+  general-file references. Moving never decrypts, copies, or changes protected
+  content.
+- Folder deletion explicitly returns membership references to the vault root;
+  it cannot delete photos or files.
+- Folder-scoped photo selection preserves the established save/delete behavior
+  without selecting hidden photos from another folder.
+- Added reconciliation after protected-store refreshes so stale presentation
+  membership and thumbnail metadata are removed without touching content.
+- Added regression coverage proving moves between folders and back to the root
+  maintain at most one membership per item.
 
 ## Test and build status
 
@@ -104,6 +118,10 @@ App Store review and TestFlight remain untouched.
   2 MiB presentation-thumbnail ceiling with regression coverage.
 - Ordered presentation-store initialization before file records appear so a
   fast first render cannot skip thumbnail generation.
+- Visible-folder architecture boundary gate: passed locally.
+- Visible-folder release-hygiene gate: passed locally.
+- Visible-folder build-number guard self-test: passed locally.
+- Visible-folder diff integrity check: passed locally.
 
 ## Blockers
 
@@ -111,10 +129,9 @@ App Store review and TestFlight remain untouched.
 
 ## Next action
 
-Begin the visible folder milestone: create folders, show root/folder contents,
-move photo and general-file references through neutral add-on interfaces, and
-delete folders without deleting protected content. Preserve current selection,
-import, export, and restore behavior, then run the same local and remote gates.
+Commit and push the visible folder milestone to draft PR #35, then require the
+Mac simulator build, complete regression/security suite, and Swift CodeQL gate.
+Only after those pass should the branch advance toward TestFlight preparation.
 
 ## Frank's decision required
 
