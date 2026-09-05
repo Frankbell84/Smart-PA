@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Deliver the fully validated unified-vault correction as isolated internal TestFlight Build 24 for physical-iPhone confirmation.
+Validate isolated internal TestFlight Build 24 on a physical iPhone: general files must appear in the primary Vault screen and remain fully usable through the dedicated file manager.
 
 ## Completed work
 
@@ -32,6 +32,9 @@ Deliver the fully validated unified-vault correction as isolated internal TestFl
 - General File Support remains an independently compiled add-on behind narrow interfaces.
 - Advanced both the KeyHollow app and thumbnail extension to Build 24 for the corrected internal candidate.
 - Build 23 remains the physical-device evidence baseline that exposed the presentation defect.
+- Ran signed TestFlight workflow #34 from delivery commit `1d29108`.
+- Workflow #34 passed the App Store Connect build-number guard, production-identity check, release hygiene, archive/module hygiene, IPA export, signing, and Apple upload.
+- Apple accepted the Build 24 upload for processing; no App Store review submission was changed.
 - Ran signed TestFlight workflow #33 from delivery commit `c1e30fd`.
 - Apple accepted and processed Build 23, and App Store Connect assigned it to the existing `KeyHollow Internal` group.
 
@@ -51,18 +54,20 @@ Deliver the fully validated unified-vault correction as isolated internal TestFl
 - Delivery source parity audit: passed; all app, test, documentation, and security-script files match the fully validated feature candidate.
 - A duplicate delivery-branch CodeQL run is not required because the only remaining differences are the build number, upload branch allow-list, and this status record.
 - Signed production-identity archive, embedded-extension/module-hygiene verification, IPA export, and Apple upload: passed in workflow #33.
+- Signed Build 24 archive, embedded-extension/module-hygiene verification, IPA export, and Apple upload: passed in workflow #34.
 - Internal TestFlight Build 23: processed and available in `KeyHollow Internal` with status `Ready to Submit`.
+- Internal TestFlight Build 24: upload accepted by Apple; final processing and automatic internal-group availability await confirmation.
 - Production branch and App Store review: untouched.
 
 ## Blockers
 
-- No implementation or automated-validation blocker. Signed Build 24 delivery and physical-device confirmation remain.
+- No implementation or automated-validation blocker. App Store Connect signed out immediately after upload, so final Apple processing visibility requires a fresh sign-in or confirmation that Build 24 arrived in TestFlight.
 
 ## Next action
 
-Run the signed production-identity TestFlight workflow for Build 24, verify Apple processing and internal-group availability, and keep PR #33 unmerged until physical-device validation passes.
+After Build 24 appears in TestFlight, install it and verify that a vault containing only a PDF or other general file no longer says `Empty Vault`, that the file is visible on the primary Vault screen, and that tapping it opens Vault Files. Keep PR #33 unmerged until that device validation passes.
 
 ## Frank's decision required
 
-- After the corrected build reaches TestFlight, Frank must confirm that a general-file-only vault no longer appears empty and that the file opens through the primary Vault screen.
+- Frank must confirm that Build 24 appears in TestFlight and that a general-file-only vault no longer appears empty and opens through the primary Vault screen.
 - Final merge and any App Store review submission remain separate decisions requiring Frank's explicit approval after device validation.
