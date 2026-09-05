@@ -75,6 +75,13 @@ App Store review and TestFlight remain untouched.
 - Thumbnail-composition architecture and release-hygiene gates: passed locally.
 - Thumbnail-composition build-number guard self-test: passed locally.
 - Thumbnail-composition diff integrity check: passed locally.
+- Remote Phase 4 run [#222](https://github.com/Frankbell84/KeyHollow/actions/runs/33992220446)
+  rejected `b55e40a` at compile time because the optional general-file content
+  type was not explicitly unwrapped before creating `UTType`. The architecture
+  and hygiene steps passed; tests did not run after the compiler stopped.
+- The thumbnail path now safely requires a non-nil content type before image
+  preview work begins. Files without a declared image type remain accessible
+  through their normal generic tile and are never guessed from untrusted bytes.
 - Definitive Phase 4 run [#219](https://github.com/Frankbell84/KeyHollow/actions/runs/33989008013)
   at `802252d`: passed in 28m43s.
 - Mac simulator build and complete regression/security suite: passed in 7m37s.
@@ -98,10 +105,10 @@ App Store review and TestFlight remain untouched.
 
 ## Next action
 
-Commit and push the completed encrypted-thumbnail composition milestone to
-draft PR #35. Treat its Mac simulator build, complete regression suite, and
-Swift security scan as the required gate before adding visible folder creation,
-navigation, and move-to-folder controls.
+Publish the optional-content-type compiler correction to draft PR #35 and
+require a fresh Mac simulator build, complete regression suite, and Swift
+security scan before adding visible folder creation, navigation, and
+move-to-folder controls.
 
 ## Frank's decision required
 

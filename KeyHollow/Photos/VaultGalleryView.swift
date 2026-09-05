@@ -588,7 +588,8 @@ struct VaultGalleryView: View {
               let generalFileStore,
               let presentationStore,
               session.isUnlocked,
-              UTType(record.contentTypeIdentifier)?.conforms(to: .image) == true else {
+              let contentTypeIdentifier = record.contentTypeIdentifier,
+              UTType(contentTypeIdentifier)?.conforms(to: .image) == true else {
             return
         }
 
