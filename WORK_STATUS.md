@@ -2,12 +2,13 @@
 
 Updated: 2026-09-05
 Branch: `chore/phase-four-preflight`
-Pull request: [#34](https://github.com/Frankbell84/KeyHollow/pull/34) (draft)
+Pull request: [#34](https://github.com/Frankbell84/KeyHollow/pull/34) (merged)
 
 ## Current task
 
-Preserve the completed, warning-free pre-Phase 4 cleanup as the clean baseline
-pending explicit merge approval. App Store review and TestFlight remain
+The pre-Phase 4 cleanup is complete and merged into `main` at `69154ff` after
+Frank's explicit approval. Preserve that commit as the clean rollback baseline.
+Phase 4 feature work has not begun. App Store review and TestFlight remain
 untouched.
 
 ## Completed work
@@ -38,17 +39,18 @@ untouched.
 - Release-hygiene gate: passed locally.
 - TestFlight build-number guard self-test: passed locally.
 - Whitespace and obsolete-status audit: passed locally.
-- Final remote CI run [#215](https://github.com/Frankbell84/KeyHollow/actions/runs/33985539241)
-  at `cce693e`: passed.
-- Mac simulator build and complete regression/security suite: passed in 6m49s.
+- Final branch-tip CI run [#216](https://github.com/Frankbell84/KeyHollow/actions/runs/33986912069)
+  at `7fb5487`: passed.
+- Mac simulator build and complete regression/security suite: passed in 6m41s.
 - Both first-party add-ons compiled under strict concurrency with
   warnings-as-errors; no add-on diagnostics remained.
 - Deterministic architecture-specific simulator selection removed the prior
   multiple-destination warning.
 - Artifact uploads through the pinned Node 24 action: passed; simulator and
   security-test artifacts were produced with recorded SHA-256 digests.
-- Swift CodeQL: passed in 24m20s with zero unresolved AST nodes and no failed
-  security gate.
+- Swift CodeQL: passed with no failed security gate.
+- PR #34 merged into `main` as `69154ff`; all three required checks were green
+  and GitHub reported no conflicts at merge time.
 
 ## Blockers
 
@@ -56,13 +58,14 @@ untouched.
 
 ## Next action
 
-Commit and push this final evidence record. Keep PR #34 in draft until Frank
-explicitly approves merging the clean baseline into `main`. After merge, tag
-the clean checkpoint and open Phase 4 on a fresh isolated branch.
+Create and push an annotated rollback tag at `69154ff`, then hold. When Frank
+explicitly starts Phase 4, create a fresh isolated branch from that tagged
+baseline before making any feature change.
 
 ## Frank's decision required
 
-- Approve or defer merging draft PR #34 into `main`.
+- No decision is currently required; the approved merge is complete.
+- Frank must explicitly start Phase 4 before feature implementation begins.
 - A new TestFlight build is not required for this behavior-neutral cleanup.
 - Any future TestFlight delivery or App Store review change still requires
   Frank's explicit approval.
