@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Prepare internal TestFlight Build 28 from the fully validated staging-free source commit `b964b37`; keep PR #33 draft, production, and App Store review untouched until the focused direct-import device check passes.
+Advance the exact validated staging-free delivery candidate from Build 27 to Build 28 and run the complete pre-upload gate; keep PR #33 draft, production, and App Store review untouched.
 
 ## Completed work
 
@@ -145,7 +145,7 @@ Prepare internal TestFlight Build 28 from the fully validated staging-free sourc
 
 ## Next action
 
-Commit and push the exact validated source transfer, then advance both targets to Build 28, rerun local gates, and run the signed TestFlight workflow.
+Commit this phase checkpoint, advance the app and thumbnail extension together to Build 28, rerun local gates, and push the numbered candidate before signed TestFlight delivery.
 
 ## Frank's decision required
 
