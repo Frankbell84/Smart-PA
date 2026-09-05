@@ -78,24 +78,21 @@ struct VaultGalleryView: View {
                     )
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: 0) {
-                            if !generalFileRecords.isEmpty {
-                                VaultGeneralFileSummaryView(
-                                    records: generalFileRecords,
+                        LazyVGrid(columns: columns, spacing: 3) {
+                            ForEach(generalFileRecords) { record in
+                                VaultGeneralFileTileView(
+                                    record: record,
+                                    isEnabled: !isSelecting,
                                     openFileManager: { showingVaultFiles = true }
                                 )
                             }
 
-                            if !records.isEmpty {
-                                LazyVGrid(columns: columns, spacing: 3) {
-                                    ForEach(records) { record in
-                                        thumbnailCell(record)
-                                    }
-                                }
-                                .padding(.horizontal, 3)
-                                .padding(.vertical, 3)
+                            ForEach(records) { record in
+                                thumbnailCell(record)
                             }
                         }
+                        .padding(.horizontal, 3)
+                        .padding(.vertical, 3)
                     }
                 }
             }

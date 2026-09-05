@@ -25,6 +25,10 @@ Refine the mixed-content Vault presentation so encrypted photos and general file
 - PR #33 completed the corrected macOS simulator build, full regression/security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL analysis at `84262d0`.
 - Frank confirmed on a physical iPhone that Build 24 fixes the functional defect: general files persist and are reachable from the primary Vault screen.
 - Build 24 exposed a presentation-quality issue only: general files use an oversized list card while photos use compact square tiles.
+- Replaced the oversized primary-screen file panel with compact file tiles inside the same three-column grid used by photo thumbnails.
+- File tiles retain file-type identity, display name, size, accessibility labels, and navigation into the dedicated file manager.
+- Photo-selection mode visibly disables file tiles because its save/delete actions remain intentionally photo-specific.
+- Updated the add-on behavior record to document the unified mixed-content grid without weakening the separate manifests or compiled-module boundary.
 
 ## Test and build status
 
@@ -36,17 +40,21 @@ Refine the mixed-content Vault presentation so encrypted photos and general file
 - Build 23 primary-vault visibility with a general-file-only vault: failed; correction is now published for review.
 - Build 24 primary-vault general-file visibility and navigation: passed on a physical iPhone.
 - Build 24 mixed-content visual consistency: refinement required before merge.
+- Refined source architecture boundary check: passed locally.
+- Refined source release-hygiene check: passed locally.
+- Refined source whitespace/diff validation: passed locally.
+- Refined macOS simulator build, full regression/security suite, and Swift CodeQL: pending after publication.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
 
 ## Blockers
 
-- No security, storage, or functional blocker. The remaining issue is mixed-content UI consistency.
+- No implementation blocker. Remote macOS validation and a fresh internal TestFlight build remain before visual confirmation.
 
 ## Next action
 
-Replace the separate oversized file panel with file tiles that share the photo grid's square geometry, preserve file-type identity and accessibility, then rerun all architecture, simulator, regression, and security gates before another isolated TestFlight build.
+Publish the mixed-content grid refinement to PR #33 and run the architecture, simulator, full regression/security, and Swift CodeQL gates. Only after they pass, prepare another isolated internal TestFlight build.
 
 ## Frank's decision required
 
