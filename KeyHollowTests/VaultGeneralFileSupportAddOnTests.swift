@@ -6,6 +6,27 @@ import KeyHollowCryptoCore
 import KeyHollowGeneralFileSupportAddOn
 
 final class VaultGeneralFileSupportAddOnTests: XCTestCase {
+    func testPrimaryImportFlowReturnsToVaultOnlyAfterAFileIsImported() {
+        XCTAssertTrue(
+            GeneralFileImportFlow.shouldReturnToPrimaryVault(
+                launchedFromPrimaryVault: true,
+                importedCount: 1
+            )
+        )
+        XCTAssertFalse(
+            GeneralFileImportFlow.shouldReturnToPrimaryVault(
+                launchedFromPrimaryVault: true,
+                importedCount: 0
+            )
+        )
+        XCTAssertFalse(
+            GeneralFileImportFlow.shouldReturnToPrimaryVault(
+                launchedFromPrimaryVault: false,
+                importedCount: 1
+            )
+        )
+    }
+
     func testPrimaryVaultIsNotEmptyWhenOnlyGeneralFilesExist() {
         XCTAssertFalse(VaultContentAvailability.isEmpty(photoCount: 0, generalFileCount: 1))
         XCTAssertFalse(VaultContentAvailability.isEmpty(photoCount: 1, generalFileCount: 0))

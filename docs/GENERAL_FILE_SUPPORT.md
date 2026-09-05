@@ -12,6 +12,10 @@ photo blobs, credential envelopes, or `.khvault` version-one decoder.
 - Review the pending selection before import. No selected file is committed to
   the encrypted vault until the user taps the explicit Import into Vault action;
   canceling or removing a pending item leaves the vault unchanged.
+- After a successful import launched from the primary Vault screen, discard the
+  pending review state and return to the unified Vault grid after the user
+  acknowledges the result. Opening `Vault Files` intentionally remains the
+  management path for stored-file export and deletion.
 - Accept common documents, PDFs, audio, archives, text, and other data files.
 - Encrypt the file bytes and authenticated metadata before committing the item
   to the add-on manifest.

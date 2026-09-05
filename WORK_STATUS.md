@@ -53,7 +53,11 @@ Prepare an isolated Build 26 containing only the fully validated post-import nav
 - Updated the add-on behavior record to document the unified mixed-content grid without weakening the separate manifests or compiled-module boundary.
 - Frank confirmed Build 25's unified mixed-content grid works on a physical iPhone.
 - Build 25 exposed a workflow-clarity defect: after a successful import from the primary Vault, the file-manager sheet remained open and made the stored file appear to remain in staging.
-- The feature-branch correction clears pending candidates and returns successful primary-vault imports to the unified grid after acknowledgment, while intentionally opened Vault Files management remains unchanged.
+- The pending import candidates already clear after confirmation, but the same `Vault Files` sheet immediately switches to its persisted-record manager, making the imported file appear to remain in staging.
+- Successful primary-vault imports now clear pending candidates and return to the unified grid after the user acknowledges the result.
+- Canceling the primary-vault review or Files picker now returns to the unified grid instead of revealing the stored-file manager as if it were staging.
+- Intentionally opening `Vault Files` still presents persisted encrypted records for export and deletion.
+- Added a regression decision test that distinguishes successful primary-vault imports from zero-import and intentional manager flows.
 
 ## Test and build status
 
@@ -83,6 +87,10 @@ Prepare an isolated Build 26 containing only the fully validated post-import nav
 - Signed Build 24 archive, embedded-extension/module-hygiene verification, IPA export, and Apple upload: passed in workflow #34.
 - Internal TestFlight Build 23: processed and available in `KeyHollow Internal` with status `Ready to Submit`.
 - Internal TestFlight Build 24: processed, installed, and functionally validated on a physical iPhone.
+- Build 25 unified mixed-content grid and file persistence: passed on a physical iPhone.
+- Build 25 post-import flow clarity: failed; the completed import remains in the file-manager sheet and looks like uncleared staging.
+- Corrected post-import architecture, release-hygiene, build-number guard, and diff gates: passed locally on the feature branch.
+- Corrected post-import macOS simulator build, full regression/security suite, and Swift CodeQL: passed on PR #33 at source commit `ecc02c0`.
 - Production branch and App Store review: untouched.
 
 ## Blockers
