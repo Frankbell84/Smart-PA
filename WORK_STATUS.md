@@ -6,7 +6,7 @@ Pull request: Draft PR #33
 
 ## Current task
 
-Transfer the fully validated mixed-content Vault presentation into the isolated TestFlight delivery branch without merging PR #33 or changing production.
+Refine the explicit file-import review flow so a successful primary-vault import clears its pending state and returns to the unified vault instead of appearing to remain in staging.
 
 ## Completed work
 
@@ -30,6 +30,8 @@ Transfer the fully validated mixed-content Vault presentation into the isolated 
 - Photo-selection mode visibly disables file tiles because its save/delete actions remain intentionally photo-specific.
 - Updated the add-on behavior record to document the unified mixed-content grid without weakening the separate manifests or compiled-module boundary.
 - PR #33 completed the refined macOS simulator build, full regression/security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL analysis at `7b41ffc`.
+- Build 25 physical-device testing confirmed that the unified mixed-content grid works and files remain encrypted, persisted, and reachable.
+- The pending import candidates already clear after confirmation, but the same `Vault Files` sheet immediately switches to its persisted-record manager, making the imported file appear to remain in staging.
 
 ## Test and build status
 
@@ -46,19 +48,21 @@ Transfer the fully validated mixed-content Vault presentation into the isolated 
 - Refined source whitespace/diff validation: passed locally.
 - Refined macOS simulator build and full regression/security suite: passed on PR #33 at `7b41ffc`.
 - Refined Swift CodeQL security analysis: passed on PR #33 at `7b41ffc`.
+- Build 25 unified mixed-content grid and file persistence: passed on a physical iPhone.
+- Build 25 post-import flow clarity: failed; the completed import remains in the file-manager sheet and looks like uncleared staging.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
 
 ## Blockers
 
-- No implementation or automated-validation blocker. A fresh isolated internal TestFlight build and physical-device visual confirmation remain.
+- No implementation blocker. The post-import transition needs a narrow UI correction, automated validation, and another internal device check.
 
 ## Next action
 
-Transfer only the validated unified-grid refinement to `delivery/general-file-support`, run the delivery gates, and prepare internal TestFlight Build 25. Keep PR #33 draft and production untouched.
+Implement a tested completion transition that dismisses a successful primary-vault import after its confirmation message, while preserving the persistent `Vault Files` manager when users intentionally open it. Then run the complete PR gates before another delivery build.
 
 ## Frank's decision required
 
-- After the refined build reaches TestFlight, Frank must confirm that mixed photo/file vaults look coherent and that file navigation remains clear.
+- After the corrected build reaches TestFlight, Frank must confirm that a successful primary-vault import returns to the unified grid and that intentionally opening `Vault Files` still shows the stored file.
 - Final merge and any App Store review submission remain separate decisions requiring Frank's explicit approval after device validation.
