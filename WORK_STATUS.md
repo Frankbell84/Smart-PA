@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Prepare and dispatch signed internal TestFlight Build 26 from the clean validated delivery source; keep PR #33 draft and production untouched.
+Verify Apple processing and internal-group availability for signed TestFlight Build 26; keep PR #33 draft and production untouched.
 
 ## Completed work
 
@@ -97,15 +97,17 @@ Prepare and dispatch signed internal TestFlight Build 26 from the clean validate
 - Delivery source parity for the corrected UI, regression test, and behavior documentation: passed against `ecc02c0`.
 - Both the KeyHollow app and thumbnail extension are aligned at Build 26.
 - Build 26 delivery architecture boundary, release-hygiene, build-number guard, and diff gates: passed locally.
+- Dispatched workflow #36 from isolated delivery commit `e7a7dff` with confirmed Build 26.
+- Workflow #36 passed build-number verification, production identity, release hygiene, signed archive/module hygiene, IPA export, Apple upload acceptance, artifact retention, and signing-material cleanup.
 - Production branch and App Store review: untouched.
 
 ## Blockers
 
-- No implementation, transfer, build-number, or local-validation blocker. Signed Build 26 upload, Apple processing, and physical-device confirmation remain.
+- No implementation, validation, signing, or upload blocker. Apple processing/internal-group availability and physical-device confirmation remain.
 
 ## Next action
 
-Dispatch the signed TestFlight workflow for Build 26, verify every archive/upload gate, then wait for Apple processing and internal-group availability.
+Wait for Apple to finish processing Build 26, confirm it is available in `KeyHollow Internal`, then hand off the focused physical-device checks.
 
 ## Frank's decision required
 
