@@ -6,7 +6,7 @@ Pull request: Draft PR #33
 
 ## Current task
 
-Promote the validated post-import navigation correction into an isolated TestFlight delivery build without merging the draft feature or changing production.
+Correct the failed Build 26 post-import lifecycle so completed imports cannot fall through into the persisted Vault Files manager; keep the add-on isolated and production untouched.
 
 ## Completed work
 
@@ -36,6 +36,8 @@ Promote the validated post-import navigation correction into an isolated TestFli
 - Canceling the primary-vault review or Files picker now returns to the unified grid instead of revealing the stored-file manager as if it were staging.
 - Intentionally opening `Vault Files` still presents persisted encrypted records for export and deletion.
 - Added a regression decision test that distinguishes successful primary-vault imports from zero-import and intentional manager flows.
+- Build 26 physical-device testing confirmed that importing succeeds and the file appears in the unified grid, but the originating sheet still remains visible as the persisted-record manager.
+- The underlying defect is now isolated to sheet lifecycle ownership: pending candidates clear correctly, but child-level dismissal is not reliably closing the parent-owned sheet.
 
 ## Test and build status
 
@@ -66,13 +68,13 @@ Promote the validated post-import navigation correction into an isolated TestFli
 
 ## Blockers
 
-- No implementation or automated-validation blocker. A fresh internal TestFlight build and physical-device confirmation remain.
+- No storage or encryption blocker. A parent-owned sheet-completion correction, automated validation, and another internal-device check remain.
 
 ## Next action
 
-Transfer only commit `ecc02c0` to the isolated delivery branch, prepare Build 26, and run the signed TestFlight delivery gate.
+Add a narrow parent-controlled completion callback, prevent import-only mode from rendering persisted records after success, and cover the lifecycle decision with regression tests before another delivery build.
 
 ## Frank's decision required
 
-- After the corrected build reaches TestFlight, Frank must confirm that a successful primary-vault import returns to the unified grid and that intentionally opening `Vault Files` still shows the stored file.
+- After the next corrected build reaches TestFlight, Frank must confirm that a successful primary-vault import returns to the unified grid and that intentionally opening `Vault Files` still shows the stored file.
 - Final merge and any App Store review submission remain separate decisions requiring Frank's explicit approval after device validation.
