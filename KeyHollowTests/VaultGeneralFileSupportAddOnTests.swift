@@ -135,6 +135,40 @@ final class VaultGeneralFileSupportAddOnTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: first.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: second.path))
     }
+
+    func testOpeningStorePurgesInterruptedPlaintextStaging() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "GeneralFileStagingCleanupTests-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let temporaryRoot = root.appendingPathComponent("Temporary", isDirectory: true)
+        let importRoot = temporaryRoot
+            .appendingPathComponent("KeyHollowGeneralFileImports", isDirectory: true)
+            .appendingPathComponent("interrupted-import", isDirectory: true)
+        let exportRoot = temporaryRoot
+            .appendingPathComponent("KeyHollowGeneralFileExports", isDirectory: true)
+            .appendingPathComponent("interrupted-export", isDirectory: true)
+        try FileManager.default.createDirectory(at: importRoot, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: exportRoot, withIntermediateDirectories: true)
+        try Data("import plaintext".utf8).write(
+            to: importRoot.appendingPathComponent("incoming")
+        )
+        try Data("export plaintext".utf8).write(
+            to: exportRoot.appendingPathComponent("document.txt")
+        )
+
+        let vaultID = UUID()
+        _ = try VaultGeneralFileStore(
+            vaultID: vaultID,
+            access: TestAccess(vaultID: vaultID),
+            storageRoot: root.appendingPathComponent("Store", isDirectory: true),
+            temporaryRoot: temporaryRoot
+        )
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: importRoot.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: exportRoot.path))
+    }
 }
 
 private struct Fixture {
@@ -155,7 +189,8 @@ private struct Fixture {
         store = try VaultGeneralFileStore(
             vaultID: vaultID,
             access: TestAccess(vaultID: vaultID),
-            storageRoot: storageRoot
+            storageRoot: storageRoot,
+            temporaryRoot: root.appendingPathComponent("Temporary", isDirectory: true)
         )
     }
 

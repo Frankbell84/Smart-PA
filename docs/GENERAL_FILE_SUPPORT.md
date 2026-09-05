@@ -34,6 +34,8 @@ and streaming large-file encryption remain a separately reviewed add-on.
   only inside the encrypted manifest.
 - Exports are authenticated before a protected temporary copy is shared, then
   the temporary export directory is removed when the system sheet closes.
+- Interrupted import and export staging is purged the next time the encrypted
+  file store opens, covering app termination before normal cleanup completes.
 - Vault deletion invokes an injected add-on cleanup boundary after credential
   destruction, without making the protected vault core import the add-on.
 

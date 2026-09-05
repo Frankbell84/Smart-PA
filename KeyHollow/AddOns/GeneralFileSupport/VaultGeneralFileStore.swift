@@ -24,17 +24,20 @@ public actor VaultGeneralFileStore {
 
     private let fileManager = FileManager.default
     private let root: URL
+    private let temporaryRoot: URL
     private let vaultID: UUID
     private let access: any VaultGeneralFileCryptographicAccess
 
     public init(
         vaultID: UUID,
         access: any VaultGeneralFileCryptographicAccess,
-        storageRoot: URL? = nil
+        storageRoot: URL? = nil,
+        temporaryRoot: URL? = nil
     ) throws {
         guard access.vaultID == vaultID else { throw StoreError.accessMismatch }
         self.vaultID = vaultID
         self.access = access
+        self.temporaryRoot = temporaryRoot ?? fileManager.temporaryDirectory
 
         if let storageRoot {
             root = storageRoot
@@ -52,6 +55,7 @@ public actor VaultGeneralFileStore {
 
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
         try Self.protectAndExclude(root, fileManager: fileManager)
+        try Self.purgeStaleTemporaryData(at: self.temporaryRoot, fileManager: fileManager)
     }
 
     public func loadManifest() throws -> VaultGeneralFileManifest {
@@ -112,7 +116,7 @@ public actor VaultGeneralFileStore {
         try Task.checkCancellation()
 
         let exportID = UUID()
-        let exportRoot = fileManager.temporaryDirectory
+        let exportRoot = temporaryRoot
             .appendingPathComponent("KeyHollowGeneralFileExports", isDirectory: true)
             .appendingPathComponent(exportID.uuidString.lowercased(), isDirectory: true)
         try fileManager.createDirectory(at: exportRoot, withIntermediateDirectories: true)
@@ -231,7 +235,7 @@ public actor VaultGeneralFileStore {
             guard byteCount <= Self.maximumFileByteCount else { throw StoreError.fileTooLarge }
         }
 
-        let stagingRoot = fileManager.temporaryDirectory
+        let stagingRoot = temporaryRoot
             .appendingPathComponent("KeyHollowGeneralFileImports", isDirectory: true)
             .appendingPathComponent(UUID().uuidString.lowercased(), isDirectory: true)
         let stagedURL = stagingRoot.appendingPathComponent("incoming", isDirectory: false)
@@ -280,6 +284,22 @@ public actor VaultGeneralFileStore {
     private func secureWrite(_ data: Data, to url: URL) throws {
         try data.write(to: url, options: [.atomic, .completeFileProtection])
         try Self.protectAndExclude(url, fileManager: fileManager)
+    }
+
+    /// Remove protected plaintext left only when iOS terminated the app before
+    /// an import or export completion handler could perform normal cleanup.
+    private static func purgeStaleTemporaryData(
+        at temporaryRoot: URL,
+        fileManager: FileManager
+    ) throws {
+        for directoryName in [
+            "KeyHollowGeneralFileImports",
+            "KeyHollowGeneralFileExports"
+        ] {
+            let directory = temporaryRoot.appendingPathComponent(directoryName, isDirectory: true)
+            guard fileManager.fileExists(atPath: directory.path) else { continue }
+            try fileManager.removeItem(at: directory)
+        }
     }
 
     private func safeDisplayName(_ proposed: String) -> String {
