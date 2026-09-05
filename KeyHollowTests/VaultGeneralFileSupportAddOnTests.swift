@@ -13,12 +13,14 @@ final class VaultGeneralFileSupportAddOnTests: XCTestCase {
 
         XCTAssertEqual(candidate.displayName, "Review Me.pdf")
         XCTAssertEqual(candidate.originalByteCount, 8)
-        XCTAssertTrue(try await fixture.store.loadManifest().files.isEmpty)
+        let manifestBeforeImport = try await fixture.store.loadManifest()
+        XCTAssertTrue(manifestBeforeImport.files.isEmpty)
 
         let record = try await fixture.store.importFile(candidate)
+        let manifestAfterImport = try await fixture.store.loadManifest()
 
         XCTAssertEqual(record.displayName, "Review Me.pdf")
-        XCTAssertEqual(try await fixture.store.loadManifest().files, [record])
+        XCTAssertEqual(manifestAfterImport.files, [record])
     }
 
     func testDiscardingReviewCandidateLeavesVaultAndSourceUnchanged() async throws {
@@ -30,7 +32,8 @@ final class VaultGeneralFileSupportAddOnTests: XCTestCase {
 
         candidate.discard()
 
-        XCTAssertTrue(try await fixture.store.loadManifest().files.isEmpty)
+        let manifestAfterDiscard = try await fixture.store.loadManifest()
+        XCTAssertTrue(manifestAfterDiscard.files.isEmpty)
         XCTAssertEqual(try Data(contentsOf: source), original)
     }
 
