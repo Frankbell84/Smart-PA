@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Validate internal TestFlight Build 28 on a physical iPhone for the direct, staging-free file-import experience; keep PR #33 draft, production, and App Store review untouched.
+Prepare isolated internal TestFlight Build 29 from the fully validated mixed-content transfer repair; keep PR #33 draft, production, and App Store review untouched.
 
 ## Completed work
 
@@ -88,6 +88,8 @@ Validate internal TestFlight Build 28 on a physical iPhone for the direct, stagi
 - The intentional `Vault Files` manager uses the same batch-import API for its plus button while retaining export and deletion controls.
 - Future metadata editing is explicitly decoupled from import and deferred to a deliberate post-import Vault Security/settings surface.
 - Replaced staging lifecycle tests with batch success, partial rejection, source-preservation, and maximum-selection regression coverage.
+- Frank confirmed Build 28's direct, staging-free ordinary-file import works, then found that portable-vault restore returns photos but omits general files and that matching new-vault confirmation digits do not expose an immediate Continue action.
+- PR #33 passed the mixed-content macOS simulator build, full regression/security suite, architecture enforcement, release hygiene, and Swift CodeQL at source commit `2ac4d75`.
 
 ## Test and build status
 
@@ -145,16 +147,19 @@ Validate internal TestFlight Build 28 on a physical iPhone for the direct, stagi
 - Build 28 app/extension number alignment, architecture boundary, release-hygiene, build-number guard self-test, and whitespace gates: passed locally.
 - Signed Build 28 delivery workflow #38: completed successfully from commit `6053978`.
 - Internal TestFlight Build 28: processed, assigned to `KeyHollow Internal`, and available with status `Ready to Submit`.
+- Build 28 direct, staging-free general-file import and unified-grid presentation: passed on a physical iPhone.
+- Build 28 mixed-content `.khvault` export/restore: failed on a physical iPhone; photos restore but general files are absent.
+- Mixed-content source macOS simulator build, full regression/security suite, and Swift CodeQL: passed on PR #33 at `2ac4d75`.
 
 ## Blockers
 
-- No source, validation, signing, upload, processing, or TestFlight-assignment blocker. Only focused physical-device confirmation remains.
+- No source or validation blocker. Build 29 delivery and focused physical-device confirmation remain.
 
 ## Next action
 
-Install Build 28, select one or more ordinary files from the primary Vault import menu, and confirm that Apple's picker returns directly to the unified three-column grid with no KeyHollow staging/review screen and each file appears exactly once. Then intentionally open `Vault Files` to confirm export and deletion management still work.
+Transfer only the validated mixed-content repair from `2ac4d75`, advance the app and thumbnail extension together to Build 29, pass delivery hygiene gates, and upload the signed candidate to the existing internal TestFlight group.
 
 ## Frank's decision required
 
-- After Build 28 reaches TestFlight, Frank must confirm that file selection returns directly to the unified grid with no KeyHollow staging/review screen and that intentionally opening Vault Files still shows the stored file.
+- After Build 29 reaches TestFlight, Frank must confirm a mixed photo/file vault exports and restores with every item intact, an older photo-only archive still restores, and matching LowKey confirmation reveals a smooth Continue action.
 - Final merge and any App Store review submission remain separate decisions requiring Frank's explicit approval after device validation.
