@@ -28,19 +28,22 @@ actor VaultUnlockService {
     private let limiter: UnlockAttemptLimiter
     private let store: VaultStore
     private let photoStorageRootOverride: URL?
+    private let additionalVaultDataRemover: @Sendable (UUID) throws -> Void
 
     init(
         kdf: PasswordKeyDeriving = ProductionArgon2idKDF(),
         limiter: UnlockAttemptLimiter = UnlockAttemptLimiter(),
         secrets: DeviceSecretProviding = DevicePepperStore(),
         vaultStorageRootOverride: URL? = nil,
-        photoStorageRootOverride: URL? = nil
+        photoStorageRootOverride: URL? = nil,
+        additionalVaultDataRemover: @escaping @Sendable (UUID) throws -> Void = { _ in }
     ) throws {
         self.kdf = kdf
         self.limiter = limiter
         self.secrets = secrets
         self.store = try VaultStore(rootOverride: vaultStorageRootOverride)
         self.photoStorageRootOverride = photoStorageRootOverride
+        self.additionalVaultDataRemover = additionalVaultDataRemover
     }
 
     func hasAnyVaults() async throws -> Bool {
@@ -263,6 +266,7 @@ actor VaultUnlockService {
                 vaultID: payload.vaultID,
                 storageRoot: photoStorageRootOverride
             )
+            try additionalVaultDataRemover(payload.vaultID)
         } catch {
             // Credential destruction succeeded, so do not recreate the envelope.
             // Surface the cleanup failure without restoring access to deleted data.

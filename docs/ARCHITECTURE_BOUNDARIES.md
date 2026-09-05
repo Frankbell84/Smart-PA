@@ -16,6 +16,7 @@ small local core with narrow adapters around it.
 | `Photos/SecurePhotoPicker` | The narrow Apple Photos adapter | Vault keys, archive format, credential persistence |
 | `UI` and gallery view | User interaction and presentation | Cryptographic algorithms or direct persistence formats |
 | `App` | Composition and lifecycle entry | Feature implementation details |
+| `AddOns/GeneralFileSupport` | Encrypted general-file records, manifests, blobs, and protected ingress/egress staging | Vault keys, photo storage, SwiftUI/UIKit, portable archive formats |
 
 ## Enforced rules
 
@@ -62,6 +63,12 @@ The app target remains the composition and presentation layer. It selects the
 concrete vault service at `KeyHollowApp`, injects its factory into `RootView`,
 and keeps the gallery and navigation outside every core module and platform
 adapter.
+
+`KeyHollowGeneralFileSupportAddOn` owns a separate encrypted data root and
+manifest. It receives domain-separated seal/open operations through a narrow
+revocable interface. The application layer presents Apple's Files and share
+interfaces and bridges the unlocked session capability; neither the protected
+vault core nor the photo core imports the add-on.
 
 ## Change policy
 
