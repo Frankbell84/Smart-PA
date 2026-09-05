@@ -42,6 +42,41 @@ final class PhaseTwoSecurityTests: XCTestCase {
         } catch VaultAccessError.revoked {}
     }
 
+    func testAddOnScopesAreDomainSeparatedAndRevokedWithSessionCapability() throws {
+        let capability = VaultAccessCapability(
+            vaultID: UUID(),
+            vaultKey: SymmetricKey(size: .bits256)
+        )
+        let plaintext = Data("general file secret".utf8)
+        let manifestDomain = "general-files.manifest.v1"
+        let blobDomain = "general-files.blob.v1.\(UUID().uuidString.lowercased())"
+
+        let manifestCiphertext = try capability.sealScopedData(
+            plaintext,
+            domain: manifestDomain
+        )
+        let blobCiphertext = try capability.sealScopedData(
+            plaintext,
+            domain: blobDomain
+        )
+
+        XCTAssertNotEqual(manifestCiphertext, blobCiphertext)
+        XCTAssertEqual(
+            try capability.openScopedData(manifestCiphertext, domain: manifestDomain),
+            plaintext
+        )
+        XCTAssertThrowsError(
+            try capability.openScopedData(manifestCiphertext, domain: blobDomain)
+        )
+
+        capability.revoke()
+        XCTAssertThrowsError(
+            try capability.openScopedData(blobCiphertext, domain: blobDomain)
+        ) { error in
+            XCTAssertEqual(error as? VaultAccessError, .revoked)
+        }
+    }
+
     @MainActor
     func testLockRevokesCapabilityCancelsTaskAndWaitsForCleanup() async throws {
         let session = VaultSession()

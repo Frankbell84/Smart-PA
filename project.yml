@@ -103,6 +103,19 @@ targets:
         DEFINES_MODULE: YES
         SKIP_INSTALL: YES
 
+  KeyHollowGeneralFileSupportAddOn:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/AddOns/GeneralFileSupport
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowGeneralFileSupportAddOn
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
   KeyHollowVaultThumbnailExtension:
     type: app-extension
     platform: iOS
@@ -144,6 +157,7 @@ targets:
       - path: KeyHollow
         excludes:
           - AddOns/FileRecognition
+          - AddOns/GeneralFileSupport
           - Security/CryptoBox.swift
           - Security/KeyDerivation.swift
           - Security/PasscodePolicy.swift
@@ -164,6 +178,7 @@ targets:
       - target: KeyHollowVaultThumbnailExtension
         embed: true
       - target: KeyHollowFileRecognitionAddOn
+      - target: KeyHollowGeneralFileSupportAddOn
       - target: KeyHollowCryptoCore
       - target: KeyHollowPhotoCore
       - target: KeyHollowPhotosAdapter
@@ -221,6 +236,8 @@ targets:
       - target: KeyHollow
       - target: KeyHollowFileRecognitionAddOn
         link: false
+      - target: KeyHollowGeneralFileSupportAddOn
+        link: false
       - target: KeyHollowCryptoCore
         link: false
       - target: KeyHollowPhotoCore
@@ -255,6 +272,7 @@ schemes:
       targets:
         KeyHollowVaultThumbnailExtension: all
         KeyHollowFileRecognitionAddOn: all
+        KeyHollowGeneralFileSupportAddOn: all
         KeyHollowCryptoCore: all
         KeyHollowPhotoCore: all
         KeyHollowPhotosAdapter: all

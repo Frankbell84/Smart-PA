@@ -35,6 +35,31 @@ public protocol PortableVaultExportAccess: VaultPhotoCryptographicAccess {
     func checkAccess() throws
 }
 
+public struct PortableVaultSupplementalValidation: Sendable {
+    public let itemCount: Int
+    public let storageNames: Set<String>
+
+    public init(itemCount: Int, storageNames: Set<String>) {
+        self.itemCount = itemCount
+        self.storageNames = storageNames
+    }
+}
+
+/// A narrow composition seam for independently compiled encrypted-content
+/// add-ons. The transfer core understands only authenticated ciphertext files.
+public protocol PortableVaultSupplementalContentProviding: Sendable {
+    func authenticatedArchiveInventory(
+        vaultID: UUID,
+        sourceRootOverride: URL?
+    ) async throws -> PortableVaultSupplementalArchiveInventory
+
+    func validateStagedContent(
+        at rootURL: URL,
+        sourceVaultID: UUID,
+        vaultKey: SymmetricKey
+    ) async throws -> PortableVaultSupplementalValidation
+}
+
 public struct EncryptedVaultExportReceipt: Equatable, Sendable {
     public let archiveURL: URL
     public let archiveID: UUID
@@ -51,6 +76,7 @@ public final class ValidatedPortableVaultRestore: @unchecked Sendable {
     public let sourceVaultCreatedAt: Date
     public let destinationVaultPayload: VaultPayload
     public let manifest: VaultPhotoManifest
+    public let supplementalItemCount: Int
     public let catalog: PortableArchivePayloadCatalog
 
     private let stagedPayload: PortableArchiveStagedPayload
@@ -62,6 +88,7 @@ public final class ValidatedPortableVaultRestore: @unchecked Sendable {
     fileprivate init(
         secrets: PortableArchiveSecrets,
         manifest: VaultPhotoManifest,
+        supplementalItemCount: Int,
         catalog: PortableArchivePayloadCatalog,
         stagedPayload: PortableArchiveStagedPayload
     ) {
@@ -74,6 +101,7 @@ public final class ValidatedPortableVaultRestore: @unchecked Sendable {
             createdAt: secrets.sourceVaultCreatedAt
         )
         self.manifest = manifest
+        self.supplementalItemCount = supplementalItemCount
         self.catalog = catalog
         self.stagedPayload = stagedPayload
     }
@@ -86,13 +114,19 @@ public final class ValidatedPortableVaultRestore: @unchecked Sendable {
         ownsStagingDirectory = false
     }
 
-    func commitEncryptedFiles(to destinationURL: URL) throws {
+    func commitEncryptedFiles(
+        to destinationURL: URL,
+        generalFileDestinationURL: URL?
+    ) throws {
         ownershipLock.lock()
         defer { ownershipLock.unlock() }
         guard ownsStagingDirectory else {
             throw PortableArchivePayloadError.alreadyFinished
         }
-        try stagedPayload.commit(to: destinationURL)
+        try stagedPayload.commit(
+            to: destinationURL,
+            generalFileDestinationURL: generalFileDestinationURL
+        )
         ownsStagingDirectory = false
     }
 }
@@ -109,13 +143,15 @@ public struct PortableVaultRestoreInstaller {
         credentialStore: any PortableVaultCredentialStoring,
         journalAuthenticationKey: SymmetricKey,
         journalRootOverride: URL? = nil,
-        photoDataRootOverride: URL? = nil
+        photoDataRootOverride: URL? = nil,
+        generalFileDataRootOverride: URL? = nil
     ) throws {
         self.credentialStore = credentialStore
         transactionJournal = try PortableVaultRestoreTransactionJournal(
             authenticationKey: journalAuthenticationKey,
             journalRootOverride: journalRootOverride,
-            photoDataRootOverride: photoDataRootOverride
+            photoDataRootOverride: photoDataRootOverride,
+            generalFileDataRootOverride: generalFileDataRootOverride
         )
     }
 
@@ -136,6 +172,16 @@ public struct PortableVaultRestoreInstaller {
         guard !FileManager.default.fileExists(atPath: destinationURL.path) else {
             throw PortableVaultRestoreInstallationError.destinationExists
         }
+        let generalFileDestinationURL: URL? = restore.supplementalItemCount == 0
+            ? nil
+            : transactionJournal.generalFileDataRoot.appendingPathComponent(
+                payload.vaultID.uuidString.lowercased(),
+                isDirectory: true
+            )
+        if let generalFileDestinationURL,
+           FileManager.default.fileExists(atPath: generalFileDestinationURL.path) {
+            throw PortableVaultRestoreInstallationError.destinationExists
+        }
 
         let envelope = try VaultEnvelope.seal(
             payload: payload,
@@ -153,7 +199,10 @@ public struct PortableVaultRestoreInstaller {
         // is removed last, so a process interruption at any earlier point is
         // rolled back on the next launch instead of exposing a partial vault.
         do {
-            try restore.commitEncryptedFiles(to: destinationURL)
+            try restore.commitEncryptedFiles(
+                to: destinationURL,
+                generalFileDestinationURL: generalFileDestinationURL
+            )
             try await credentialStore.writeIfAbsent(envelope, locator: locator)
             try transactionJournal.finish(transaction)
         } catch {
@@ -189,6 +238,8 @@ public struct EncryptedVaultTransferCoordinator {
         credential: PortableArchiveCredential,
         destinationURL: URL,
         sourceRootOverride: URL? = nil,
+        supplementalSourceRootOverride: URL? = nil,
+        supplementalContent: (any PortableVaultSupplementalContentProviding)? = nil,
         workingRootOverride: URL? = nil,
         keyDeriver: any PortableArchiveKeyDeriving = PortableArchiveArgon2idKeyDeriver()
     ) async throws -> EncryptedVaultExportReceipt {
@@ -210,6 +261,10 @@ public struct EncryptedVaultTransferCoordinator {
         guard !Self.isDescendant(destinationURL, of: sourceRoot) else {
             throw EncryptedVaultTransferError.invalidDestination
         }
+        if let supplementalSourceRootOverride,
+           Self.isDescendant(destinationURL, of: supplementalSourceRootOverride) {
+            throw EncryptedVaultTransferError.invalidDestination
+        }
 
         let sourceStore = try VaultPhotoStore(
             vaultID: vaultID,
@@ -217,9 +272,14 @@ public struct EncryptedVaultTransferCoordinator {
             storageRoot: sourceRoot
         )
         let sourceManifest = try await sourceStore.loadManifest()
+        let supplementalInventory = try await supplementalContent?.authenticatedArchiveInventory(
+            vaultID: vaultID,
+            sourceRootOverride: supplementalSourceRootOverride
+        ) ?? .empty
         let source = try PortableArchivePayloadSource.create(
-            rootURL: sourceRoot,
-            manifest: sourceManifest
+            photoRootURL: sourceRoot,
+            photoManifest: sourceManifest,
+            supplementalInventory: supplementalInventory
         )
 
         let prepared = try access.preparePortableArchive(
@@ -253,6 +313,7 @@ public struct EncryptedVaultTransferCoordinator {
             archiveURL: destinationURL,
             credential: credential,
             workingRootOverride: workingRootOverride,
+            supplementalContent: supplementalContent,
             keyDeriver: keyDeriver
         )
         defer { verified.discard() }
@@ -265,7 +326,8 @@ public struct EncryptedVaultTransferCoordinator {
               verified.destinationVaultPayload.vaultKey == prepared.secrets.vaultKey,
               verified.catalog == source.catalog,
               verified.manifest.version == sourceManifest.version,
-              verified.manifest.photos == sourceManifest.photos else {
+              verified.manifest.photos == sourceManifest.photos,
+              verified.supplementalItemCount == supplementalInventory.itemCount else {
             throw EncryptedVaultTransferError.archiveVerificationFailed
         }
 
@@ -287,6 +349,7 @@ public struct EncryptedVaultTransferCoordinator {
         archiveURL: URL,
         credential: PortableArchiveCredential,
         workingRootOverride: URL? = nil,
+        supplementalContent: (any PortableVaultSupplementalContentProviding)? = nil,
         keyDeriver: any PortableArchiveKeyDeriving = PortableArchiveArgon2idKeyDeriver()
     ) async throws -> ValidatedPortableVaultRestore {
         let workingRoot = try Self.workingRoot(override: workingRootOverride)
@@ -311,7 +374,32 @@ public struct EncryptedVaultTransferCoordinator {
                 storageRoot: stagedPayload.directoryURL
             )
             let manifest = try await stagedStore.loadManifest()
-            try Self.validate(catalog: stagedPayload.catalog, against: manifest)
+            let supplementalValidation: PortableVaultSupplementalValidation
+            if stagedPayload.catalog.entries.contains(where: {
+                $0.role == .supplementalManifest
+            }) {
+                guard let supplementalContent else {
+                    throw EncryptedVaultTransferError.restoredCatalogMismatch
+                }
+                supplementalValidation = try await supplementalContent.validateStagedContent(
+                    at: stagedPayload.directoryURL.appendingPathComponent(
+                        "supplemental",
+                        isDirectory: true
+                    ),
+                    sourceVaultID: secrets.sourceVaultID,
+                    vaultKey: vaultKey
+                )
+            } else {
+                supplementalValidation = PortableVaultSupplementalValidation(
+                    itemCount: 0,
+                    storageNames: []
+                )
+            }
+            try Self.validate(
+                catalog: stagedPayload.catalog,
+                against: manifest,
+                supplementalValidation: supplementalValidation
+            )
 
             // Authenticate every inner AES-GCM blob. Decrypted media exists only
             // transiently in memory and is never written during this validation.
@@ -324,6 +412,7 @@ public struct EncryptedVaultTransferCoordinator {
             return ValidatedPortableVaultRestore(
                 secrets: secrets,
                 manifest: manifest,
+                supplementalItemCount: supplementalValidation.itemCount,
                 catalog: stagedPayload.catalog,
                 stagedPayload: stagedPayload
             )
@@ -335,7 +424,11 @@ public struct EncryptedVaultTransferCoordinator {
 
     static func validate(
         catalog: PortableArchivePayloadCatalog,
-        against manifest: VaultPhotoManifest
+        against manifest: VaultPhotoManifest,
+        supplementalValidation: PortableVaultSupplementalValidation = .init(
+            itemCount: 0,
+            storageNames: []
+        )
     ) throws {
         guard manifest.version == VaultPhotoManifest.currentVersion else {
             throw EncryptedVaultTransferError.restoredCatalogMismatch
@@ -348,6 +441,26 @@ public struct EncryptedVaultTransferCoordinator {
             guard expected.updateValue(.original, forKey: photo.blobName) == nil,
                   expected.updateValue(.thumbnail, forKey: photo.thumbnailName) == nil else {
                 throw EncryptedVaultTransferError.restoredCatalogMismatch
+            }
+        }
+        if supplementalValidation.itemCount > 0 {
+            guard expected.updateValue(
+                .supplementalManifest,
+                forKey: "supplemental/manifest.khm"
+            ) == nil else {
+                throw EncryptedVaultTransferError.restoredCatalogMismatch
+            }
+            guard supplementalValidation.storageNames.count
+                    == supplementalValidation.itemCount else {
+                throw EncryptedVaultTransferError.restoredCatalogMismatch
+            }
+            for storageName in supplementalValidation.storageNames {
+                guard expected.updateValue(
+                    .supplementalBlob,
+                    forKey: "supplemental/\(storageName)"
+                ) == nil else {
+                    throw EncryptedVaultTransferError.restoredCatalogMismatch
+                }
             }
         }
 

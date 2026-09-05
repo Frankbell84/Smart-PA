@@ -70,6 +70,11 @@ TRANSFER_MODULE_FILES = {
     "KeyHollow/Transfer/EncryptedVaultTransferCoordinator.swift",
 }
 FILE_RECOGNITION_PREFIX = "KeyHollow/AddOns/FileRecognition/"
+GENERAL_FILE_SUPPORT_PREFIX = "KeyHollow/AddOns/GeneralFileSupport/"
+SECURITY_SCOPED_INGRESS_PREFIXES = (
+    FILE_RECOGNITION_PREFIX,
+    GENERAL_FILE_SUPPORT_PREFIX,
+)
 
 
 def relative(file: Path) -> str:
@@ -358,11 +363,11 @@ def main() -> int:
 
         if (
             "startAccessingSecurityScopedResource" in source
-            and not path.startswith(FILE_RECOGNITION_PREFIX)
+            and not path.startswith(SECURITY_SCOPED_INGRESS_PREFIXES)
         ):
             violations.append(
-                f"{path}: security-scoped vault-file access must remain inside "
-                "the file-recognition add-on"
+                f"{path}: security-scoped file access must remain inside an "
+                "approved file-ingress add-on"
             )
 
         if (

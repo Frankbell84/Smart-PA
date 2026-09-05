@@ -2,11 +2,116 @@ import CryptoKit
 import Foundation
 import XCTest
 @testable import KeyHollow
+@testable import KeyHollowGeneralFileSupportAddOn
 @testable import KeyHollowPhotoCore
 @testable import KeyHollowTransferCore
 @testable import KeyHollowVaultCore
 
 final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
+    func testMixedPhotoAndGeneralFileArchiveRestoresBothStores() async throws {
+        let roots = try TestRoots.create()
+        defer { roots.remove() }
+
+        let vaultID = UUID()
+        let vaultKey = SymmetricKey(data: Data(repeating: 0x7a, count: 32))
+        let capability = VaultAccessCapability(vaultID: vaultID, vaultKey: vaultKey)
+        let photoStore = try VaultPhotoStore(
+            vaultID: vaultID,
+            vaultKey: vaultKey,
+            storageRoot: roots.source
+        )
+        let expectedPhoto = Data("mixed archive photo".utf8)
+        let photoRecord = try await photoStore.importPhoto(
+            originalData: expectedPhoto,
+            thumbnailData: Data("mixed archive thumbnail".utf8)
+        )
+
+        let generalAccess = SessionGeneralFileAccess(capability: capability)
+        let generalStore = try VaultGeneralFileStore(
+            vaultID: vaultID,
+            access: generalAccess,
+            storageRoot: roots.generalSource,
+            temporaryRoot: roots.parent
+        )
+        let expectedFile = Data("portable encrypted document".utf8)
+        let sourceFile = roots.parent.appendingPathComponent("evidence.pdf")
+        try expectedFile.write(to: sourceFile)
+        let fileRecord = try await generalStore.importFile(at: sourceFile)
+
+        let credential = PortableArchiveCredential.recoveryCode(
+            "0123-4567-89AB-CDEF-GHJK-MNPQ-RSTV-WXYZ"
+        )
+        let bridge = GeneralFilePortableTransferBridge(access: generalAccess)
+        let coordinator = EncryptedVaultTransferCoordinator()
+        let receipt = try await coordinator.exportVault(
+            vaultID: vaultID,
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            access: capability,
+            credential: credential,
+            destinationURL: roots.archive,
+            sourceRootOverride: roots.source,
+            supplementalSourceRootOverride: roots.generalSource,
+            supplementalContent: bridge,
+            workingRootOverride: roots.working,
+            keyDeriver: TestTransferKeyDeriver()
+        )
+        XCTAssertEqual(receipt.encryptedFileCount, 5)
+
+        let restore = try await coordinator.stageAndValidateRestore(
+            archiveURL: roots.archive,
+            credential: credential,
+            workingRootOverride: roots.working,
+            supplementalContent: GeneralFilePortableTransferBridge(),
+            keyDeriver: TestTransferKeyDeriver()
+        )
+        XCTAssertEqual(restore.manifest.photos.count, 1)
+        XCTAssertEqual(restore.supplementalItemCount, 1)
+
+        let installer = try PortableVaultRestoreInstaller(
+            credentialStore: TestPortableVaultCredentialStore(),
+            journalAuthenticationKey: testRestoreJournalKey,
+            journalRootOverride: roots.transactions,
+            photoDataRootOverride: roots.installed,
+            generalFileDataRootOverride: roots.generalInstalled
+        )
+        let installed = try await installer.install(
+            restore,
+            localUnlockKey: SymmetricKey(data: Data(repeating: 0x43, count: 32))
+        )
+
+        let installedPhotoRoot = roots.installed.appendingPathComponent(
+            installed.vaultID.uuidString.lowercased(),
+            isDirectory: true
+        )
+        let installedPhotoStore = try VaultPhotoStore(
+            vaultID: installed.vaultID,
+            vaultKey: SymmetricKey(data: installed.vaultKey),
+            storageRoot: installedPhotoRoot
+        )
+        let installedPhoto = try await installedPhotoStore.loadPhoto(photoRecord)
+        XCTAssertEqual(installedPhoto, expectedPhoto)
+
+        let installedGeneralRoot = roots.generalInstalled.appendingPathComponent(
+            installed.vaultID.uuidString.lowercased(),
+            isDirectory: true
+        )
+        let installedCapability = VaultAccessCapability(
+            vaultID: installed.vaultID,
+            vaultKey: SymmetricKey(data: installed.vaultKey)
+        )
+        let installedGeneralStore = try VaultGeneralFileStore(
+            vaultID: installed.vaultID,
+            access: SessionGeneralFileAccess(capability: installedCapability),
+            storageRoot: installedGeneralRoot,
+            temporaryRoot: roots.parent
+        )
+        let installedManifest = try await installedGeneralStore.validateAllEncryptedFiles()
+        XCTAssertEqual(installedManifest.files, [fileRecord])
+        let prepared = try await installedGeneralStore.prepareExport(installedManifest.files)
+        XCTAssertEqual(try Data(contentsOf: try XCTUnwrap(prepared.urls.first)), expectedFile)
+        await installedGeneralStore.discardExport(prepared)
+    }
+
     func testWholeVaultExportIsVerifiedAndSourceRemainsUnchanged() async throws {
         let roots = try TestRoots.create()
         defer { roots.remove() }
@@ -315,7 +420,8 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         let journal = try PortableVaultRestoreTransactionJournal(
             authenticationKey: testRestoreJournalKey,
             journalRootOverride: roots.transactions,
-            photoDataRootOverride: roots.installed
+            photoDataRootOverride: roots.installed,
+            generalFileDataRootOverride: roots.generalInstalled
         )
         _ = try journal.begin(
             destinationVaultID: destinationVaultID,
@@ -334,6 +440,17 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         try Data("interrupted encrypted payload".utf8).write(
             to: destinationURL.appendingPathComponent("manifest.khm")
         )
+        let generalDestinationURL = roots.generalInstalled.appendingPathComponent(
+            destinationVaultID.uuidString.lowercased(),
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: generalDestinationURL,
+            withIntermediateDirectories: false
+        )
+        try Data("interrupted encrypted file manifest".utf8).write(
+            to: generalDestinationURL.appendingPathComponent("manifest.khm")
+        )
         try await credentialStore.writeIfAbsent(
             envelope,
             locator: locator
@@ -342,6 +459,7 @@ final class EncryptedVaultTransferCoordinatorTests: XCTestCase {
         try await journal.recoverAll(credentialStore: credentialStore)
 
         XCTAssertFalse(FileManager.default.fileExists(atPath: destinationURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: generalDestinationURL.path))
         let recoveredEnvelope = await credentialStore.envelope(for: locator)
         XCTAssertNil(recoveredEnvelope)
         XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: roots.transactions.path).isEmpty)
@@ -658,6 +776,8 @@ private struct TestRoots {
     let source: URL
     let working: URL
     let installed: URL
+    let generalSource: URL
+    let generalInstalled: URL
     let transactions: URL
     let archive: URL
 
@@ -667,6 +787,8 @@ private struct TestRoots {
         let source = parent.appendingPathComponent("source", isDirectory: true)
         let working = parent.appendingPathComponent("working", isDirectory: true)
         let installed = parent.appendingPathComponent("installed", isDirectory: true)
+        let generalSource = parent.appendingPathComponent("general-source", isDirectory: true)
+        let generalInstalled = parent.appendingPathComponent("general-installed", isDirectory: true)
         let transactions = parent.appendingPathComponent("transactions", isDirectory: true)
         try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
         return TestRoots(
@@ -674,6 +796,8 @@ private struct TestRoots {
             source: source,
             working: working,
             installed: installed,
+            generalSource: generalSource,
+            generalInstalled: generalInstalled,
             transactions: transactions,
             archive: parent.appendingPathComponent("transfer.khvault")
         )

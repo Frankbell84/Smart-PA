@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import KeyHollowGeneralFileSupportAddOn
 import KeyHollowPhotoCore
 import KeyHollowPhotosAdapter
 
@@ -30,14 +31,19 @@ struct VaultGalleryView: View {
 
     @State private var store: VaultPhotoStore?
     @State private var records: [VaultPhotoRecord] = []
+    @State private var generalFileStore: VaultGeneralFileStore?
+    @State private var generalFileRecords: [VaultGeneralFileRecord] = []
+    @State private var contentStoresLoaded = false
     @State private var thumbnails: [UUID: UIImage] = [:]
     @State private var decryptedPhoto: DecryptedPhoto?
     @State private var showingImportOptions = false
     @State private var showingPicker = false
+    @State private var showingFilePicker = false
     @State private var showingNewVault = false
     @State private var showingSecuritySettings = false
     @State private var showingEncryptedImport = false
     @State private var showingEncryptedExport = false
+    @State private var showingVaultFiles = false
     @State private var showingDeleteSelectionConfirmation = false
     @State private var importMode: VaultImportMode = .copy
     @State private var isSelecting = false
@@ -59,15 +65,28 @@ struct VaultGalleryView: View {
             Divider()
 
             Group {
-                if records.isEmpty && !isWorking {
+                if !contentStoresLoaded {
+                    ProgressView("Opening vault…")
+                } else if VaultContentAvailability.isEmpty(
+                    photoCount: records.count,
+                    generalFileCount: generalFileRecords.count
+                ) && !isWorking {
                     ContentUnavailableView(
                         "Empty Vault",
                         systemImage: "photo.on.rectangle.angled",
-                        description: Text("Import photos to store encrypted copies inside this vault.")
+                        description: Text("Import photos or files to store encrypted copies inside this vault.")
                     )
                 } else {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 3) {
+                            ForEach(generalFileRecords) { record in
+                                VaultGeneralFileTileView(
+                                    record: record,
+                                    isEnabled: !isSelecting,
+                                    openFileManager: { showingVaultFiles = true }
+                                )
+                            }
+
                             ForEach(records) { record in
                                 thumbnailCell(record)
                             }
@@ -90,23 +109,35 @@ struct VaultGalleryView: View {
                 selectionActionBar
             }
         }
-        .confirmationDialog("Import Photos", isPresented: $showingImportOptions, titleVisibility: .visible) {
-            Button("Copy to Vault") {
+        .confirmationDialog("Import to Vault", isPresented: $showingImportOptions, titleVisibility: .visible) {
+            Button("Copy Photos to Vault") {
                 importMode = .copy
                 showingPicker = true
             }
-            Button("Move to Vault") {
+            Button("Move Photos to Vault") {
                 importMode = .move
                 showingPicker = true
             }
+            Button("Import Files to Vault") {
+                session.beginSystemInteraction()
+                showingFilePicker = true
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Copy keeps the originals in Photos. Move encrypts and verifies the vault copies first, then asks iOS to delete the originals.")
+            Text("Import encrypted copies from Photos or Files. Moving photos verifies the vault copies first, then asks iOS to delete the originals.")
         }
         .sheet(isPresented: $showingPicker) {
             SecurePhotoPicker(selectionLimit: 50) { event in
                 await handleImportEvent(event)
             }
+        }
+        .fileImporter(
+            isPresented: $showingFilePicker,
+            allowedContentTypes: [.data],
+            allowsMultipleSelection: true
+        ) { result in
+            session.endSystemInteraction()
+            importGeneralFiles(result)
         }
         .sheet(isPresented: $showingNewVault) {
             AdditionalVaultSetupView(service: service)
@@ -122,6 +153,12 @@ struct VaultGalleryView: View {
         }
         .sheet(isPresented: $showingEncryptedExport) {
             EncryptedVaultExportView(service: service)
+                .environmentObject(session)
+        }
+        .sheet(isPresented: $showingVaultFiles, onDismiss: {
+            Task { await reloadGeneralFiles() }
+        }) {
+            VaultGeneralFilesView()
                 .environmentObject(session)
         }
         .sheet(item: $decryptedPhoto) { photo in
@@ -152,10 +189,14 @@ struct VaultGalleryView: View {
         .task(id: session.activeVaultID) {
             store = nil
             records = []
+            generalFileStore = nil
+            generalFileRecords = []
+            contentStoresLoaded = false
             thumbnails = [:]
             decryptedPhoto = nil
             leaveSelectionMode()
-            await initializeStore()
+            await initializeStores()
+            contentStoresLoaded = true
         }
     }
 
@@ -186,7 +227,7 @@ struct VaultGalleryView: View {
                     Image(systemName: "plus")
                 }
                 .disabled(isWorking)
-                .accessibilityLabel("Import photos")
+                .accessibilityLabel("Import to vault")
 
                 Menu {
                     Button {
@@ -205,6 +246,12 @@ struct VaultGalleryView: View {
                         showingEncryptedExport = true
                     } label: {
                         Label("Export Encrypted Vault", systemImage: "square.and.arrow.up.on.square")
+                    }
+
+                    Button {
+                        showingVaultFiles = true
+                    } label: {
+                        Label("Vault Files", systemImage: "folder.fill")
                     }
 
                     Button {
@@ -326,16 +373,62 @@ struct VaultGalleryView: View {
         }
     }
 
-    private func initializeStore() async {
-        guard store == nil,
-              let context = session.activeVaultContext() else { return }
+    private func initializeStores() async {
+        guard let context = session.activeVaultContext() else { return }
 
+        if store == nil {
+            do {
+                let createdStore = try VaultPhotoStore(vaultID: context.id, access: context.access)
+                store = createdStore
+                try await reload(using: createdStore)
+            } catch {
+                message = "The encrypted photo store could not be opened."
+            }
+        }
+
+        if generalFileStore == nil {
+            do {
+                let access = SessionGeneralFileAccess(capability: context.access)
+                let createdStore = try VaultGeneralFileStore(vaultID: context.id, access: access)
+                generalFileStore = createdStore
+                generalFileRecords = try await createdStore.loadManifest().files
+            } catch {
+                message = "The encrypted file store could not be opened."
+            }
+        }
+    }
+
+    @MainActor
+    private func reloadGeneralFiles() async {
+        guard let generalFileStore else { return }
         do {
-            let createdStore = try VaultPhotoStore(vaultID: context.id, access: context.access)
-            store = createdStore
-            try await reload(using: createdStore)
+            generalFileRecords = try await generalFileStore.loadManifest().files
         } catch {
-            message = "The encrypted photo store could not be opened."
+            message = "The encrypted file list could not be refreshed."
+        }
+    }
+
+    private func importGeneralFiles(_ result: Result<[URL], Error>) {
+        guard case .success(let urls) = result, !urls.isEmpty else { return }
+        guard urls.count <= VaultGeneralFileStore.maximumBatchCount else {
+            message = "Choose no more than \(VaultGeneralFileStore.maximumBatchCount) files at a time."
+            return
+        }
+        guard let generalFileStore, !isWorking else { return }
+        isWorking = true
+
+        session.startSensitiveTask { _ in
+            defer { isWorking = false }
+            do {
+                let outcome = try await generalFileStore.importFiles(at: urls)
+                guard !Task.isCancelled else { return }
+                generalFileRecords = try await generalFileStore.loadManifest().files
+                message = GeneralFileImportPresentation.message(for: outcome)
+            } catch is CancellationError {
+                return
+            } catch {
+                message = "The selected files could not be imported into this vault."
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import KeyHollowFileRecognitionAddOn
+import KeyHollowGeneralFileSupportAddOn
 
 @main
 struct KeyHollowApp: App {
@@ -23,7 +24,11 @@ struct KeyHollowApp: App {
             } else {
                 ZStack {
                     RootView(
-                        makeService: { try VaultUnlockService() },
+                        makeService: {
+                            try VaultUnlockService(additionalVaultDataRemover: { vaultID in
+                                try VaultGeneralFileStore.destroyVaultData(vaultID: vaultID)
+                            })
+                        },
                         stageIncomingVaultFile: { url in
                             try vaultFileIngress.stageIfRecognized(url)
                         }

@@ -67,6 +67,30 @@ final class VaultAccessCapability: PortableVaultExportAccess, @unchecked Sendabl
         _ = try withKey { _ in () }
     }
 
+    /// Application-composition seam for independently compiled local add-ons.
+    /// Callers receive a scoped cryptographic operation, never the vault key.
+    func sealScopedData(_ plaintext: Data, domain: String) throws -> Data {
+        try withKey { vaultKey in
+            try CryptoBox.seal(plaintext, using: scopedKey(from: vaultKey, domain: domain))
+        }
+    }
+
+    func openScopedData(_ ciphertext: Data, domain: String) throws -> Data {
+        try withKey { vaultKey in
+            try CryptoBox.open(ciphertext, using: scopedKey(from: vaultKey, domain: domain))
+        }
+    }
+
+    private func scopedKey(from vaultKey: SymmetricKey, domain: String) -> SymmetricKey {
+        let label = "keyhollow.addon.\(domain)"
+        return HKDF<SHA256>.deriveKey(
+            inputKeyMaterial: vaultKey,
+            salt: Data(label.utf8),
+            info: Data(),
+            outputByteCount: 32
+        )
+    }
+
     private func derivedKey(from vaultKey: SymmetricKey, for purpose: VaultKeyPurpose) -> SymmetricKey {
         switch purpose {
         case .manifest:
