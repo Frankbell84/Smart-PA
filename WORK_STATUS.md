@@ -6,7 +6,7 @@ Pull request: Draft PR #33
 
 ## Current task
 
-Refine the explicit file-import review flow so a successful primary-vault import clears its pending state and returns to the unified vault instead of appearing to remain in staging.
+Promote the validated post-import navigation correction into an isolated TestFlight delivery build without merging the draft feature or changing production.
 
 ## Completed work
 
@@ -58,17 +58,19 @@ Refine the explicit file-import review flow so a successful primary-vault import
 - Corrected post-import release-hygiene check: passed locally.
 - Corrected post-import TestFlight build-number guard self-test: passed locally.
 - Corrected post-import whitespace/diff validation: passed locally.
+- Corrected post-import macOS simulator build and full regression/security suite: passed on PR #33 at `ecc02c0`.
+- Corrected post-import Swift CodeQL security analysis: passed on PR #33 at `ecc02c0`.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
 
 ## Blockers
 
-- No implementation blocker. Local and remote automated validation plus another internal device check remain.
+- No implementation or automated-validation blocker. A fresh internal TestFlight build and physical-device confirmation remain.
 
 ## Next action
 
-Run local and remote architecture, simulator, regression/security, and Swift CodeQL gates for the corrected transition. Only after they pass, prepare another isolated internal TestFlight build.
+Transfer only commit `ecc02c0` to the isolated delivery branch, prepare Build 26, and run the signed TestFlight delivery gate.
 
 ## Frank's decision required
 
