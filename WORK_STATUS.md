@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Validate the processed internal TestFlight Build 25 unified mixed-content grid on a physical iPhone before any merge decision.
+Prepare an isolated Build 26 containing only the fully validated post-import navigation correction; keep PR #33 draft and production untouched.
 
 ## Completed work
 
@@ -51,6 +51,9 @@ Validate the processed internal TestFlight Build 25 unified mixed-content grid o
 - File tiles retain file-type identity, display name, size, accessibility labels, and navigation into the dedicated file manager.
 - Photo-selection mode visibly disables file tiles because its save/delete actions remain intentionally photo-specific.
 - Updated the add-on behavior record to document the unified mixed-content grid without weakening the separate manifests or compiled-module boundary.
+- Frank confirmed Build 25's unified mixed-content grid works on a physical iPhone.
+- Build 25 exposed a workflow-clarity defect: after a successful import from the primary Vault, the file-manager sheet remained open and made the stored file appear to remain in staging.
+- The feature-branch correction clears pending candidates and returns successful primary-vault imports to the unified grid after acknowledgment, while intentionally opened Vault Files management remains unchanged.
 
 ## Test and build status
 
@@ -84,13 +87,13 @@ Validate the processed internal TestFlight Build 25 unified mixed-content grid o
 
 ## Blockers
 
-- No implementation, automated-validation, signing, upload, or Apple-processing blocker. Physical-device visual confirmation remains.
+- No implementation or source-validation blocker. Isolated delivery transfer, signed Build 26 upload, Apple processing, and physical-device confirmation remain.
 
 ## Next action
 
-After Build 25 appears in TestFlight, install it and verify that photos and general files use aligned square tiles in one grid, file labels remain readable, tapping a file opens Vault Files, and photo opening/selection still works normally. Keep PR #33 draft and production untouched until that device validation passes.
+Transfer only source commit `ecc02c0`, verify delivery parity and local gates, increment the delivery build to 26, then run the signed TestFlight upload gate.
 
 ## Frank's decision required
 
-- After Build 25 arrives, Frank must confirm that photos and general files share a coherent grid and that file navigation remains clear.
+- After Build 26 arrives, Frank must confirm that a successful primary-vault file import returns to the unified grid and that intentionally opening Vault Files still shows the stored file.
 - Final merge and any App Store review submission remain separate decisions requiring Frank's explicit approval after device validation.
