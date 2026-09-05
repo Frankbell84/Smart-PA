@@ -6,7 +6,7 @@ Pull request: Draft PR #33
 
 ## Current task
 
-Correct the failed Build 26 post-import lifecycle so completed imports cannot fall through into the persisted Vault Files manager; keep the add-on isolated and production untouched.
+Remove the user-facing general-file staging/review model entirely and replace it with one narrow direct batch-import operation shared by the primary Vault and intentional Vault Files manager; keep the add-on isolated and production untouched.
 
 ## Completed work
 
@@ -42,6 +42,8 @@ Correct the failed Build 26 post-import lifecycle so completed imports cannot fa
 - Completed primary-vault imports enter a terminal presentation state, so they cannot fall through into the persisted-record manager while dismissal is being processed.
 - Picker cancellation and review cancellation use the same parent-owned close path; intentionally opening `Vault Files` remains a separate manager flow.
 - Added regression coverage for completed, unfinished, and intentional-manager lifecycle decisions and documented the ownership boundary.
+- Build 27 physical-device testing confirmed that parent-controlled dismissal still does not reliably eliminate the post-selection staging/manager experience.
+- Frank directed that the staging/review step be removed: selecting files must encrypt them immediately and refresh the same unified three-column grid used by photos.
 
 ## Test and build status
 
@@ -78,13 +80,13 @@ Correct the failed Build 26 post-import lifecycle so completed imports cannot fa
 
 ## Blockers
 
-- No storage or encryption blocker. A parent-owned sheet-completion correction, automated validation, and another internal-device check remain.
+- No storage or encryption blocker. The obsolete pending-selection model must be removed cleanly, followed by full automated validation and another internal-device check.
 
 ## Next action
 
-Transfer only the validated parent-owned lifecycle correction into the isolated delivery branch, verify source parity and local quality gates, then prepare the next uniquely numbered internal TestFlight build.
+Commit this device-test checkpoint, remove the pending-candidate API and review UI, add a module-owned direct batch-import API, route both pickers through it, and update regression tests and the behavior contract before running the full quality gates.
 
 ## Frank's decision required
 
-- After the next corrected build reaches TestFlight, Frank must confirm that a successful primary-vault import returns to the unified grid and that intentionally opening `Vault Files` still shows the stored file.
+- After the next corrected build reaches TestFlight, Frank must confirm that selecting files imports directly into the unified grid with no staging/review screen and that intentionally opening `Vault Files` still shows stored files for management.
 - Final merge and any App Store review submission remain separate decisions requiring Frank's explicit approval after device validation.
