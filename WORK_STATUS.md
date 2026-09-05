@@ -70,6 +70,8 @@ Correct the failed Build 26 post-import lifecycle so completed imports cannot fa
 - Parent-owned lifecycle correction release-hygiene check: passed locally.
 - Parent-owned lifecycle correction TestFlight build-number guard self-test: passed locally.
 - Parent-owned lifecycle correction whitespace/diff validation: passed locally.
+- Parent-owned lifecycle correction macOS simulator build and full regression/security suite: passed on PR #33 at `bf30be0`.
+- Parent-owned lifecycle correction Swift CodeQL security analysis: passed on PR #33 at `bf30be0`.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
@@ -80,7 +82,7 @@ Correct the failed Build 26 post-import lifecycle so completed imports cannot fa
 
 ## Next action
 
-Publish the parent-owned lifecycle correction to draft PR #33 and require the macOS simulator, full regression/security suite, architecture gate, release-hygiene gate, and Swift CodeQL analysis before preparing another delivery build.
+Transfer only the validated parent-owned lifecycle correction into the isolated delivery branch, verify source parity and local quality gates, then prepare the next uniquely numbered internal TestFlight build.
 
 ## Frank's decision required
 
