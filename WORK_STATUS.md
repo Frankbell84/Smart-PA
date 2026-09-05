@@ -6,7 +6,7 @@ Pull request: Draft PR #33
 
 ## Current task
 
-Validate internal TestFlight Build 29 on a physical iPhone for mixed photo/file portable-vault export and restore plus the smoother LowKey confirmation flow; preserve backward compatibility with existing photo-only `.khvault` archives and keep production untouched.
+Prepare the fully validated general-file-support candidate for Frank's final merge decision while keeping production and App Store review untouched. Defer thumbnail parity for images imported through Files to the dedicated folder/presentation phase.
 
 ## Completed work
 
@@ -63,6 +63,9 @@ Validate internal TestFlight Build 29 on a physical iPhone for mixed photo/file 
 - Matching, policy-compliant confirmation digits now reveal an inline Continue action directly beneath the second LowKey field while preserving the keyboard toolbar action.
 - PR #33 completed the corrected macOS simulator build, full mixed photo/file regression and security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL analysis at `2ac4d75`.
 - The exact validated implementation and tests were transferred to isolated delivery Build 29; signed workflow #39 passed and Apple assigned Build 29 to `KeyHollow Internal` with status `Ready to Submit`.
+- Frank confirmed on a physical iPhone that Build 29 works end to end, including mixed photo/file portable-vault export and restore and the smoother matching-LowKey Continue flow.
+- Physical testing confirmed that general files and Photo-library images now share the unified vault grid and persist through the protected transfer path.
+- One presentation refinement is intentionally deferred: image files imported through Apple's Files picker use a generic encrypted-file tile instead of the live thumbnail used for Photo-library imports. This is a folder/presentation concern, not a storage, encryption, or transfer defect.
 
 ## Test and build status
 
@@ -108,19 +111,22 @@ Validate internal TestFlight Build 29 on a physical iPhone for mixed photo/file 
 - Mixed-content macOS simulator compilation and full regression/security suite: passed on PR #33 at `2ac4d75`.
 - Mixed-content Swift CodeQL security analysis: passed on PR #33 at `2ac4d75`.
 - Signed internal TestFlight Build 29 delivery, Apple processing, and `KeyHollow Internal` assignment: passed.
+- Build 29 mixed photo/file export and restore on a physical iPhone: passed.
+- Build 29 matching-LowKey inline Continue interaction on a physical iPhone: passed.
+- Image-file thumbnail parity with Photo-library imports: deferred to the folder/presentation phase by design.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
 
 ## Blockers
 
-- No implementation, validation, signing, upload, processing, or TestFlight-assignment blocker. Only focused physical-iPhone confirmation remains.
+- No implementation, validation, signing, upload, processing, TestFlight-assignment, or physical-device blocker. Final merge awaits Frank's explicit approval.
 
 ## Next action
 
-Install Build 29 and validate one new mixed photo/file archive end to end, one legacy photo-only archive, and the inline Continue action after matching LowKey confirmation.
+With Frank's explicit approval, make PR #33 merge-ready and merge the completed general-file-support layer. Carry thumbnail generation and unified image-tile presentation forward as an acceptance requirement for the dedicated folder feature.
 
 ## Frank's decision required
 
-- After the next corrected build reaches TestFlight, Frank must confirm a mixed photo/file vault exports and restores with every item intact, an older photo-only archive still restores, and the matching LowKey confirmation reveals a smooth Continue action.
-- Final merge and any App Store review submission remain separate decisions requiring Frank's explicit approval after device validation.
+- Frank must explicitly approve the final merge of PR #33 now that Build 29 has passed device validation.
+- Any App Store review submission remains a separate decision requiring Frank's explicit approval.
