@@ -78,6 +78,7 @@ Advance the exact validated staging-free delivery candidate from Build 27 to Bui
 - PR #33 passed the direct-import macOS simulator build, full regression/security suite, architecture enforcement, release hygiene, and Swift CodeQL at source commit `b964b37`.
 - Transferred only the seven validated implementation, regression-test, and behavior-documentation files from source commit `b964b37` into the isolated delivery branch.
 - Confirmed exact file-for-file parity for every transferred file against `b964b37`; the delivery status record remains delivery-specific.
+- Advanced the KeyHollow app and thumbnail extension together from Build 27 to Build 28; no app identity or version-number field changed.
 - Removed the pending-candidate type, review list, second confirmation button, child-dismissal policy, and every user-facing staging lifecycle symbol.
 - Added a narrow module-owned batch-import API that enforces the 50-file limit, processes each file through the existing protected copy/encrypt/verify/commit path, and returns only aggregate counts.
 - The primary Vault now presents Apple's Files picker directly and refreshes the unified three-column grid after import without presenting `Vault Files`.
@@ -138,14 +139,15 @@ Advance the exact validated staging-free delivery candidate from Build 27 to Bui
 - Direct-import source macOS simulator build, full regression/security suite, and Swift CodeQL: passed on PR #33 at `b964b37`.
 - Direct-import architecture boundary, release-hygiene, build-number guard, and whitespace gates: passed on the source branch.
 - Delivery direct-import architecture boundary, release-hygiene, build-number guard, whitespace, obsolete-symbol, and exact source-parity gates: passed locally.
+- Build 28 app/extension number alignment, architecture boundary, release-hygiene, build-number guard self-test, and whitespace gates: passed locally.
 
 ## Blockers
 
-- No source implementation, transfer, parity, or local-validation blocker. Build 28 numbering, signing, upload, Apple processing, and physical-device confirmation remain.
+- No source implementation, transfer, parity, numbering, or local-validation blocker. Build 28 signing, upload, Apple processing, and physical-device confirmation remain.
 
 ## Next action
 
-Commit this phase checkpoint, advance the app and thumbnail extension together to Build 28, rerun local gates, and push the numbered candidate before signed TestFlight delivery.
+Commit and push the numbered Build 28 candidate, then dispatch the signed TestFlight workflow and require every delivery gate before Apple processing and internal-group assignment.
 
 ## Frank's decision required
 
