@@ -6,7 +6,7 @@ Pull request: Draft PR #33
 
 ## Current task
 
-Refine the mixed-content Vault presentation so encrypted photos and general files use one coherent visual system while remaining separate compiled modules underneath.
+Transfer the fully validated mixed-content Vault presentation into the isolated TestFlight delivery branch without merging PR #33 or changing production.
 
 ## Completed work
 
@@ -29,6 +29,7 @@ Refine the mixed-content Vault presentation so encrypted photos and general file
 - File tiles retain file-type identity, display name, size, accessibility labels, and navigation into the dedicated file manager.
 - Photo-selection mode visibly disables file tiles because its save/delete actions remain intentionally photo-specific.
 - Updated the add-on behavior record to document the unified mixed-content grid without weakening the separate manifests or compiled-module boundary.
+- PR #33 completed the refined macOS simulator build, full regression/security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL analysis at `7b41ffc`.
 
 ## Test and build status
 
@@ -43,18 +44,19 @@ Refine the mixed-content Vault presentation so encrypted photos and general file
 - Refined source architecture boundary check: passed locally.
 - Refined source release-hygiene check: passed locally.
 - Refined source whitespace/diff validation: passed locally.
-- Refined macOS simulator build, full regression/security suite, and Swift CodeQL: pending after publication.
+- Refined macOS simulator build and full regression/security suite: passed on PR #33 at `7b41ffc`.
+- Refined Swift CodeQL security analysis: passed on PR #33 at `7b41ffc`.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
 
 ## Blockers
 
-- No implementation blocker. Remote macOS validation and a fresh internal TestFlight build remain before visual confirmation.
+- No implementation or automated-validation blocker. A fresh isolated internal TestFlight build and physical-device visual confirmation remain.
 
 ## Next action
 
-Publish the mixed-content grid refinement to PR #33 and run the architecture, simulator, full regression/security, and Swift CodeQL gates. Only after they pass, prepare another isolated internal TestFlight build.
+Transfer only the validated unified-grid refinement to `delivery/general-file-support`, run the delivery gates, and prepare internal TestFlight Build 25. Keep PR #33 draft and production untouched.
 
 ## Frank's decision required
 
