@@ -68,6 +68,7 @@ Transfer the fully validated parent-owned import-sheet lifecycle correction from
 - Added regression coverage for completed, unfinished, and intentional-manager lifecycle decisions and documented the ownership boundary.
 - Transferred only the validated parent-owned lifecycle source, regression test, and behavior documentation from `bf30be0` into the isolated delivery branch.
 - Confirmed exact delivery parity for every transferred file against validated source commit `bf30be0`.
+- Advanced both the KeyHollow app and thumbnail extension from Build 26 to Build 27 for the corrected internal candidate.
 
 ## Test and build status
 
@@ -115,6 +116,7 @@ Transfer the fully validated parent-owned import-sheet lifecycle correction from
 - Parent-owned lifecycle correction TestFlight build-number guard self-test: passed locally.
 - Parent-owned lifecycle correction whitespace/diff validation: passed locally.
 - Delivery parent-owned lifecycle architecture boundary, release-hygiene, build-number guard, diff, and source-parity gates: passed locally.
+- Build 27 app/extension build-number alignment, architecture boundary, release-hygiene, build-number guard, and diff gates: passed locally.
 
 ## Blockers
 
@@ -122,7 +124,7 @@ Transfer the fully validated parent-owned import-sheet lifecycle correction from
 
 ## Next action
 
-Commit and push the validated delivery transfer, then advance both targets to Build 27 and rerun the local gates before dispatching the signed TestFlight pipeline.
+Commit and push the Build 27 delivery checkpoint, then dispatch the signed TestFlight workflow and require production identity, build-number uniqueness, archive/module hygiene, upload acceptance, Apple processing, and internal-group availability.
 
 ## Frank's decision required
 
