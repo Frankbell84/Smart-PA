@@ -111,6 +111,12 @@ public actor VaultGeneralFileStore {
         }
     }
 
+    public func importFile(_ candidate: VaultGeneralFileImportCandidate) throws
+        -> VaultGeneralFileRecord {
+        defer { candidate.discard() }
+        return try importFile(at: candidate.sourceURL)
+    }
+
     public func prepareExport(_ records: [VaultGeneralFileRecord]) throws -> PreparedGeneralFileExport {
         guard !records.isEmpty else { throw StoreError.unsupportedItem }
         try Task.checkCancellation()

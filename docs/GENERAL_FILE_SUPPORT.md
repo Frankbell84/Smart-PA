@@ -9,6 +9,9 @@ photo blobs, credential envelopes, or `.khvault` version-one decoder.
 - Import up to 50 regular files per selection from Apple's Files interface.
 - Open the Files picker directly from the vault's primary import menu; the
   capability is not hidden inside security or overflow settings.
+- Review the pending selection before import. No selected file is committed to
+  the encrypted vault until the user taps the explicit Import into Vault action;
+  canceling or removing a pending item leaves the vault unchanged.
 - Accept common documents, PDFs, audio, archives, text, and other data files.
 - Encrypt the file bytes and authenticated metadata before committing the item
   to the add-on manifest.
@@ -28,6 +31,9 @@ and streaming large-file encryption remain a separately reviewed add-on.
 - The add-on receives authenticated seal/open operations through
   `VaultGeneralFileCryptographicAccess`; it never receives or retains a vault
   key.
+- The add-on owns the security-scoped file-selection lifetime during import
+  review; the presentation layer receives only bounded candidate metadata and
+  explicit confirm/discard actions.
 - The app session derives domain-separated keys and retains synchronous
   revocation ownership.
 - Incoming files are copied from security-scoped URLs into protected temporary

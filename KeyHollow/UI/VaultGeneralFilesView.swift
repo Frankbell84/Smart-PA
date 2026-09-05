@@ -39,6 +39,7 @@ struct VaultGeneralFilesView: View {
 
     @State private var store: VaultGeneralFileStore?
     @State private var records: [VaultGeneralFileRecord] = []
+    @State private var pendingImports: [VaultGeneralFileImportCandidate] = []
     @State private var selectedIDs: Set<UUID> = []
     @State private var isSelecting = false
     @State private var isImporting = false
@@ -55,7 +56,9 @@ struct VaultGeneralFilesView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if records.isEmpty && !isWorking {
+                if !pendingImports.isEmpty {
+                    importReview
+                } else if records.isEmpty && !isWorking {
                     ContentUnavailableView(
                         "No Vault Files",
                         systemImage: "doc.badge.plus",
@@ -91,20 +94,23 @@ struct VaultGeneralFilesView: View {
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
             }
-            .navigationTitle(isSelecting ? "\(selectedIDs.count) Selected" : "Vault Files")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(isSelecting ? "Cancel" : "Done") {
-                        if isSelecting {
+                    Button(isSelecting || isReviewingImport ? "Cancel" : "Done") {
+                        if isReviewingImport {
+                            cancelPendingImport()
+                        } else if isSelecting {
                             leaveSelectionMode()
                         } else {
                             dismiss()
                         }
                     }
+                    .disabled(isWorking)
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    if !isSelecting {
+                    if !isSelecting && !isReviewingImport {
                         Button("Select") { isSelecting = true }
                             .disabled(records.isEmpty || isWorking)
                         Button {
@@ -117,7 +123,7 @@ struct VaultGeneralFilesView: View {
                         .accessibilityLabel("Import files")
                     }
                 }
-                if isSelecting {
+                if isSelecting && !isReviewingImport {
                     ToolbarItemGroup(placement: .bottomBar) {
                         Button {
                             exportSelected()
@@ -144,7 +150,7 @@ struct VaultGeneralFilesView: View {
             allowsMultipleSelection: true
         ) { result in
             session.endSystemInteraction()
-            handleImportResult(result)
+            prepareImportReview(result)
         }
         .sheet(item: $export) { prepared in
             GeneralFileShareSheet(urls: prepared.urls) {
@@ -175,11 +181,65 @@ struct VaultGeneralFilesView: View {
             await initializeStore()
             await beginInitialImportIfNeeded()
         }
+        .onDisappear {
+            if !isWorking {
+                cancelPendingImport()
+            }
+        }
+    }
+
+    private var isReviewingImport: Bool { !pendingImports.isEmpty }
+
+    private var navigationTitle: String {
+        if isReviewingImport { return "Review Import" }
+        return isSelecting ? "\(selectedIDs.count) Selected" : "Vault Files"
+    }
+
+    private var importButtonTitle: String {
+        let noun = pendingImports.count == 1 ? "File" : "Files"
+        return "Import \(pendingImports.count) \(noun) into Vault"
+    }
+
+    private var importReview: some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Review selected files")
+                    .font(.headline)
+                Text("Nothing has been added yet. Confirm the selection below to encrypt these files into this vault.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+
+            List {
+                ForEach(pendingImports) { pending in
+                    pendingFileRow(pending)
+                        .deleteDisabled(isWorking)
+                }
+                .onDelete(perform: removePendingImports)
+            }
+            .listStyle(.insetGrouped)
+
+            Button {
+                importPendingFiles()
+            } label: {
+                Text(importButtonTitle)
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(isWorking)
+            .padding()
+            .accessibilityIdentifier("general-file-import-confirm")
+        }
+        .accessibilityIdentifier("general-file-import-review")
     }
 
     private func fileRow(_ record: VaultGeneralFileRecord) -> some View {
         HStack(spacing: 14) {
-            Image(systemName: iconName(for: record))
+            Image(systemName: iconName(for: record.contentTypeIdentifier))
                 .font(.title2)
                 .foregroundStyle(.tint)
                 .frame(width: 32)
@@ -195,8 +255,28 @@ struct VaultGeneralFilesView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func iconName(for record: VaultGeneralFileRecord) -> String {
-        guard let identifier = record.contentTypeIdentifier,
+    private func pendingFileRow(_ pending: VaultGeneralFileImportCandidate) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: iconName(for: pending.contentTypeIdentifier))
+                .font(.title2)
+                .foregroundStyle(.tint)
+                .frame(width: 32)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(pending.displayName)
+                    .lineLimit(2)
+                if let byteCount = pending.originalByteCount {
+                    Text(ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func iconName(for identifier: String?) -> String {
+        guard let identifier,
               let type = UTType(identifier) else { return "doc" }
         if type.conforms(to: .pdf) { return "doc.richtext" }
         if type.conforms(to: .audio) { return "waveform" }
@@ -230,23 +310,35 @@ struct VaultGeneralFilesView: View {
         isImporting = true
     }
 
-    private func handleImportResult(_ result: Result<[URL], Error>) {
+    private func prepareImportReview(_ result: Result<[URL], Error>) {
         guard case .success(let urls) = result else { return }
         guard !urls.isEmpty else { return }
         guard urls.count <= VaultGeneralFileStore.maximumBatchCount else {
             message = "Choose no more than \(VaultGeneralFileStore.maximumBatchCount) files at a time."
             return
         }
-        guard let store, !isWorking else { return }
+        guard store != nil, !isWorking else { return }
+        cancelPendingImport()
+        pendingImports = urls.map(VaultGeneralFileImportCandidate.init(sourceURL:))
+    }
+
+    private func importPendingFiles() {
+        let selection = pendingImports
+        guard let store, !selection.isEmpty, !isWorking else { return }
         isWorking = true
 
         session.startSensitiveTask { _ in
+            defer {
+                selection.forEach { $0.discard() }
+                pendingImports.removeAll()
+                isWorking = false
+            }
             var imported = 0
             var failed = 0
-            for url in urls {
+            for pending in selection {
                 guard !Task.isCancelled else { return }
                 do {
-                    _ = try await store.importFile(at: url)
+                    _ = try await store.importFile(pending)
                     imported += 1
                 } catch {
                     failed += 1
@@ -254,7 +346,6 @@ struct VaultGeneralFilesView: View {
             }
             guard !Task.isCancelled else { return }
             records = (try? await store.loadManifest().files) ?? records
-            isWorking = false
             if imported > 0 {
                 let noun = imported == 1 ? "file" : "files"
                 message = failed == 0
@@ -264,6 +355,17 @@ struct VaultGeneralFilesView: View {
                 message = "No files were imported. Choose regular files up to 100 MB; vault backups, folders, apps, and executable files are excluded."
             }
         }
+    }
+
+    private func removePendingImports(at offsets: IndexSet) {
+        let removed = offsets.map { pendingImports[$0] }
+        pendingImports.remove(atOffsets: offsets)
+        removed.forEach { $0.discard() }
+    }
+
+    private func cancelPendingImport() {
+        pendingImports.forEach { $0.discard() }
+        pendingImports.removeAll()
     }
 
     private var selectedRecords: [VaultGeneralFileRecord] {

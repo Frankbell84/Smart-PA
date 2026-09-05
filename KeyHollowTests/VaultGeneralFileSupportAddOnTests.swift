@@ -5,6 +5,35 @@ import KeyHollowCryptoCore
 import KeyHollowGeneralFileSupportAddOn
 
 final class VaultGeneralFileSupportAddOnTests: XCTestCase {
+    func testReviewCandidateDoesNotCommitUntilImportIsConfirmed() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanup() }
+        let source = try fixture.source(named: "Review Me.pdf", data: Data("pdf data".utf8))
+        let candidate = VaultGeneralFileImportCandidate(sourceURL: source)
+
+        XCTAssertEqual(candidate.displayName, "Review Me.pdf")
+        XCTAssertEqual(candidate.originalByteCount, 8)
+        XCTAssertTrue(try await fixture.store.loadManifest().files.isEmpty)
+
+        let record = try await fixture.store.importFile(candidate)
+
+        XCTAssertEqual(record.displayName, "Review Me.pdf")
+        XCTAssertEqual(try await fixture.store.loadManifest().files, [record])
+    }
+
+    func testDiscardingReviewCandidateLeavesVaultAndSourceUnchanged() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanup() }
+        let original = Data("not imported".utf8)
+        let source = try fixture.source(named: "Cancel.txt", data: original)
+        let candidate = VaultGeneralFileImportCandidate(sourceURL: source)
+
+        candidate.discard()
+
+        XCTAssertTrue(try await fixture.store.loadManifest().files.isEmpty)
+        XCTAssertEqual(try Data(contentsOf: source), original)
+    }
+
     func testImportEncryptsFileAndLeavesSourceUntouched() async throws {
         let fixture = try Fixture()
         defer { fixture.cleanup() }
