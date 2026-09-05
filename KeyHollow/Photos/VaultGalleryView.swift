@@ -39,6 +39,7 @@ struct VaultGalleryView: View {
     @State private var showingEncryptedImport = false
     @State private var showingEncryptedExport = false
     @State private var showingVaultFiles = false
+    @State private var beginVaultFileImportOnOpen = false
     @State private var showingDeleteSelectionConfirmation = false
     @State private var importMode: VaultImportMode = .copy
     @State private var isSelecting = false
@@ -91,18 +92,22 @@ struct VaultGalleryView: View {
                 selectionActionBar
             }
         }
-        .confirmationDialog("Import Photos", isPresented: $showingImportOptions, titleVisibility: .visible) {
-            Button("Copy to Vault") {
+        .confirmationDialog("Import to Vault", isPresented: $showingImportOptions, titleVisibility: .visible) {
+            Button("Copy Photos to Vault") {
                 importMode = .copy
                 showingPicker = true
             }
-            Button("Move to Vault") {
+            Button("Move Photos to Vault") {
                 importMode = .move
                 showingPicker = true
             }
+            Button("Import Files to Vault") {
+                beginVaultFileImportOnOpen = true
+                showingVaultFiles = true
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Copy keeps the originals in Photos. Move encrypts and verifies the vault copies first, then asks iOS to delete the originals.")
+            Text("Import encrypted copies from Photos or Files. Moving photos verifies the vault copies first, then asks iOS to delete the originals.")
         }
         .sheet(isPresented: $showingPicker) {
             SecurePhotoPicker(selectionLimit: 50) { event in
@@ -125,8 +130,10 @@ struct VaultGalleryView: View {
             EncryptedVaultExportView(service: service)
                 .environmentObject(session)
         }
-        .sheet(isPresented: $showingVaultFiles) {
-            VaultGeneralFilesView()
+        .sheet(isPresented: $showingVaultFiles, onDismiss: {
+            beginVaultFileImportOnOpen = false
+        }) {
+            VaultGeneralFilesView(beginImportOnAppear: beginVaultFileImportOnOpen)
                 .environmentObject(session)
         }
         .sheet(item: $decryptedPhoto) { photo in
@@ -191,7 +198,7 @@ struct VaultGalleryView: View {
                     Image(systemName: "plus")
                 }
                 .disabled(isWorking)
-                .accessibilityLabel("Import photos")
+                .accessibilityLabel("Import to vault")
 
                 Menu {
                     Button {

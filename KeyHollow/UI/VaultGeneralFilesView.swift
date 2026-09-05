@@ -35,6 +35,8 @@ struct VaultGeneralFilesView: View {
     @EnvironmentObject private var session: VaultSession
     @Environment(\.dismiss) private var dismiss
 
+    let beginImportOnAppear: Bool
+
     @State private var store: VaultGeneralFileStore?
     @State private var records: [VaultGeneralFileRecord] = []
     @State private var selectedIDs: Set<UUID> = []
@@ -44,6 +46,11 @@ struct VaultGeneralFilesView: View {
     @State private var export: PreparedGeneralFileExport?
     @State private var message: String?
     @State private var showingDeleteConfirmation = false
+    @State private var didBeginInitialImport = false
+
+    init(beginImportOnAppear: Bool = false) {
+        self.beginImportOnAppear = beginImportOnAppear
+    }
 
     var body: some View {
         NavigationStack {
@@ -164,7 +171,10 @@ struct VaultGeneralFilesView: View {
         } message: {
             Text(message ?? "")
         }
-        .task(id: session.activeVaultID) { await initializeStore() }
+        .task(id: session.activeVaultID) {
+            await initializeStore()
+            await beginInitialImportIfNeeded()
+        }
     }
 
     private func fileRow(_ record: VaultGeneralFileRecord) -> some View {
@@ -207,6 +217,17 @@ struct VaultGeneralFilesView: View {
         } catch {
             message = "The encrypted file store could not be opened."
         }
+    }
+
+    @MainActor
+    private func beginInitialImportIfNeeded() async {
+        guard beginImportOnAppear,
+              !didBeginInitialImport,
+              store != nil else { return }
+        didBeginInitialImport = true
+        await Task.yield()
+        session.beginSystemInteraction()
+        isImporting = true
     }
 
     private func handleImportResult(_ result: Result<[URL], Error>) {

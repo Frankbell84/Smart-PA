@@ -7,6 +7,8 @@ photo blobs, credential envelopes, or `.khvault` version-one decoder.
 ## First release scope
 
 - Import up to 50 regular files per selection from Apple's Files interface.
+- Open the Files picker directly from the vault's primary import menu; the
+  capability is not hidden inside security or overflow settings.
 - Accept common documents, PDFs, audio, archives, text, and other data files.
 - Encrypt the file bytes and authenticated metadata before committing the item
   to the add-on manifest.
