@@ -36,7 +36,17 @@ compatibility. App Store review and TestFlight remain untouched.
 - Merged the preflight cleanup through PR #34 and published the annotated
   `checkpoint/pre-phase-4-clean-baseline` rollback tag at `69154ff`.
 - Created `feature/folder-presentation-addon` directly from that clean tagged
-  checkpoint; no Phase 4 implementation has been added yet.
+  checkpoint.
+- Added the first independently compiled Phase 4 module:
+  `KeyHollowFolderPresentationAddOn`.
+- Defined neutral photo/general-file references, folder membership records, and
+  scoped cryptographic access without importing either protected content store.
+- Added an encrypted presentation store whose folder deletion and reconciliation
+  operations cannot delete protected photos or general files.
+- Added authenticated local thumbnail persistence as opaque bytes so image
+  generation and decoding remain outside the module.
+- Added folder lifecycle, input validation, encrypted-at-rest thumbnail,
+  reconciliation, and vault-access mismatch tests.
 
 ## Test and build status
 
@@ -55,8 +65,11 @@ compatibility. App Store review and TestFlight remain untouched.
   security-test artifacts were produced with recorded SHA-256 digests.
 - Swift CodeQL: passed with no failed security gate.
 - PR #34 merged into `main` as `69154ff`; all required checks were green.
-- Phase 4 inherits that green baseline. Phase 4 changes have not yet been
-  compiled or tested.
+- Phase 4 inherits that green baseline.
+- Phase 4 architecture boundary gate: passed locally.
+- Phase 4 release-hygiene gate: passed locally.
+- Phase 4 whitespace audit: passed locally.
+- The new Swift target and tests require the remote Mac compile/test gate.
 
 ## Blockers
 
@@ -64,10 +77,9 @@ compatibility. App Store review and TestFlight remain untouched.
 
 ## Next action
 
-Commit and push this Phase 4 start checkpoint. Then inventory the current
-gallery, General File Support, transfer, and composition seams and define the
-smallest compiled folder/presentation add-on contract without introducing a
-dependency from protected core modules back into the add-on.
+Commit and push the first compiled module milestone. Open its isolated draft
+review and run the Mac simulator build, complete regression suite, architecture
+gate, and Swift security analysis before wiring any UI behavior to the module.
 
 ## Frank's decision required
 

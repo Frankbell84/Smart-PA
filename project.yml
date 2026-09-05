@@ -118,6 +118,20 @@ targets:
         DEFINES_MODULE: YES
         SKIP_INSTALL: YES
 
+  KeyHollowFolderPresentationAddOn:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: KeyHollow/AddOns/FolderPresentation
+    settings:
+      base:
+        PRODUCT_NAME: KeyHollowFolderPresentationAddOn
+        SWIFT_VERSION: 5.0
+        SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+        DEFINES_MODULE: YES
+        SKIP_INSTALL: YES
+
   KeyHollowVaultThumbnailExtension:
     type: app-extension
     platform: iOS
@@ -160,6 +174,7 @@ targets:
         excludes:
           - AddOns/FileRecognition
           - AddOns/GeneralFileSupport
+          - AddOns/FolderPresentation
           - Security/CryptoBox.swift
           - Security/KeyDerivation.swift
           - Security/PasscodePolicy.swift
@@ -181,6 +196,7 @@ targets:
         embed: true
       - target: KeyHollowFileRecognitionAddOn
       - target: KeyHollowGeneralFileSupportAddOn
+      - target: KeyHollowFolderPresentationAddOn
       - target: KeyHollowCryptoCore
       - target: KeyHollowPhotoCore
       - target: KeyHollowPhotosAdapter
@@ -240,6 +256,8 @@ targets:
         link: false
       - target: KeyHollowGeneralFileSupportAddOn
         link: false
+      - target: KeyHollowFolderPresentationAddOn
+        link: false
       - target: KeyHollowCryptoCore
         link: false
       - target: KeyHollowPhotoCore
@@ -275,6 +293,7 @@ schemes:
         KeyHollowVaultThumbnailExtension: all
         KeyHollowFileRecognitionAddOn: all
         KeyHollowGeneralFileSupportAddOn: all
+        KeyHollowFolderPresentationAddOn: all
         KeyHollowCryptoCore: all
         KeyHollowPhotoCore: all
         KeyHollowPhotosAdapter: all
