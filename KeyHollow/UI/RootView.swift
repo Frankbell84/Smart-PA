@@ -1,15 +1,20 @@
 import SwiftUI
+import KeyHollowFileRecognitionAddOn
 import KeyHollowVaultCore
 
 struct RootView: View {
     @EnvironmentObject private var session: VaultSession
 
     let makeService: () throws -> VaultUnlockService
+    let stageIncomingVaultFile: (URL) throws -> StagedVaultFile?
 
     @State private var service: VaultUnlockService?
     @State private var setupRequired = false
     @State private var isChecking = true
     @State private var startupError: String?
+    @State private var incomingArchive: StagedVaultFile?
+    @State private var showingIncomingArchive = false
+    @State private var incomingArchiveError: String?
 
     var body: some View {
         Group {
@@ -69,6 +74,48 @@ struct RootView: View {
                     startupError = "Secure local storage could not be rechecked."
                 }
             }
+        }
+        .onOpenURL { url in
+            do {
+                guard let stagedArchive = try stageIncomingVaultFile(url) else { return }
+                incomingArchive?.discard()
+                incomingArchive = stagedArchive
+                showingIncomingArchive = service != nil
+            } catch VaultFileIngressError.insufficientStorage {
+                incomingArchiveError = "This iPhone does not have enough free space to import that vault safely."
+            } catch {
+                incomingArchiveError = "KeyHollow could not read that vault from Files. Make sure it is downloaded, then try again."
+            }
+        }
+        .onChange(of: service != nil) { _, serviceReady in
+            if serviceReady, incomingArchive != nil {
+                showingIncomingArchive = true
+            }
+        }
+        .sheet(isPresented: $showingIncomingArchive, onDismiss: {
+            incomingArchive?.discard()
+            incomingArchive = nil
+        }) {
+            if let service, let incomingArchive {
+                EncryptedVaultImportView(
+                    service: service,
+                    initialArchive: incomingArchive
+                )
+                .environmentObject(session)
+            } else {
+                ProgressView("Preparing KeyHollow…")
+            }
+        }
+        .alert(
+            "Vault File Unavailable",
+            isPresented: Binding(
+                get: { incomingArchiveError != nil },
+                set: { if !$0 { incomingArchiveError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { incomingArchiveError = nil }
+        } message: {
+            Text(incomingArchiveError ?? "")
         }
     }
 }

@@ -28,8 +28,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify release hygiene
+        run: python3 scripts/check_release_hygiene.py
+
       - name: Verify architecture boundaries
         run: python3 scripts/check_architecture_boundaries.py
+
+      - name: Test TestFlight build-number guard
+        run: node scripts/verify_testflight_build_number.mjs --self-test
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -98,6 +104,13 @@ jobs:
             -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Verify packaged thumbnail asset
+        run: |
+          set -euo pipefail
+          EXTENSION_PATH="build/DerivedData/Build/Products/Debug-iphonesimulator/KeyHollow.app/PlugIns/KeyHollowVaultThumbnail.appex"
+          test -d "$EXTENSION_PATH"
+          test -f "$EXTENSION_PATH/Assets.car"
 
       - name: Run security unit tests
         run: |

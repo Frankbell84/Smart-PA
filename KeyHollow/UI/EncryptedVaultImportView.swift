@@ -1,4 +1,5 @@
 import SwiftUI
+import KeyHollowFileRecognitionAddOn
 import KeyHollowTransferCore
 import UIKit
 import UniformTypeIdentifiers
@@ -10,8 +11,9 @@ struct EncryptedVaultImportView: View {
     @Environment(\.dismiss) private var dismiss
 
     let service: VaultUnlockService
+    let initialArchive: StagedVaultFile?
 
-    @State private var selectedArchive: SelectedPortableArchive?
+    @State private var selectedArchive: StagedVaultFile?
     @State private var recoveryCode = ""
     @State private var validatedPhotoCount: Int?
     @State private var tier: PasscodeTier = .enhanced
@@ -23,9 +25,15 @@ struct EncryptedVaultImportView: View {
     @State private var systemInteractionOpen = false
     @State private var isWorking = false
     @State private var message: String?
+    @State private var handledInitialArchive = false
     @FocusState private var focusedField: ImportField?
 
     private var requiredLength: Int { tier.fixedLength ?? customLength }
+
+    init(service: VaultUnlockService, initialArchive: StagedVaultFile? = nil) {
+        self.service = service
+        self.initialArchive = initialArchive
+    }
 
     var body: some View {
         NavigationStack {
@@ -202,6 +210,13 @@ struct EncryptedVaultImportView: View {
             isWorking = false
             message = "Import canceled because KeyHollow locked."
         }
+        .task {
+            guard !handledInitialArchive, let initialArchive else { return }
+            handledInitialArchive = true
+            selectedArchive = initialArchive
+            recoveryCode = ""
+            message = nil
+        }
     }
 
     private func clearSensitiveState() {
@@ -287,12 +302,15 @@ struct EncryptedVaultImportView: View {
 
         discardUninstalledMaterial()
         do {
-            selectedArchive = try Self.copyIntoProtectedTemporaryStorage(url)
+            guard let stagedArchive = try KHVaultFileIngress().stageIfRecognized(url) else {
+                throw VaultFileIngressError.unsupportedFile
+            }
+            selectedArchive = stagedArchive
             recoveryCode = ""
             message = nil
-        } catch PortableArchiveSelectionError.unsupportedFile {
+        } catch VaultFileIngressError.unsupportedFile {
             message = "Choose a KeyHollow .khvault file."
-        } catch PortableArchiveSelectionError.insufficientStorage {
+        } catch VaultFileIngressError.insufficientStorage {
             message = "This iPhone does not have enough free space to authenticate and install that export safely."
         } catch {
             message = "The selected export could not be copied into protected temporary storage."
@@ -394,70 +412,8 @@ struct EncryptedVaultImportView: View {
         selectedArchive = nil
     }
 
-    private static func copyIntoProtectedTemporaryStorage(
-        _ sourceURL: URL
-    ) throws -> SelectedPortableArchive {
-        guard sourceURL.pathExtension.lowercased() == "khvault" else {
-            throw PortableArchiveSelectionError.unsupportedFile
-        }
-
-        let fileManager = FileManager.default
-        let sourceValues = try sourceURL.resourceValues(forKeys: [.fileSizeKey])
-        guard let sourceSize = sourceValues.fileSize, sourceSize > 0 else {
-            throw PortableArchiveSelectionError.unsupportedFile
-        }
-
-        let importRoot = fileManager.temporaryDirectory
-            .appendingPathComponent("KeyHollowPortableImports", isDirectory: true)
-        try? fileManager.removeItem(at: importRoot)
-        let root = importRoot
-            .appendingPathComponent(UUID().uuidString.lowercased(), isDirectory: true)
-        let capacityValues = try fileManager.temporaryDirectory.resourceValues(
-            forKeys: [
-                .volumeAvailableCapacityForImportantUsageKey,
-                .volumeAvailableCapacityKey
-            ]
-        )
-        let available = capacityValues.volumeAvailableCapacityForImportantUsage ??
-            Int64(capacityValues.volumeAvailableCapacity ?? 0)
-        let doubled = Int64(sourceSize).multipliedReportingOverflow(by: 2)
-        let withHeadroom = doubled.partialValue.addingReportingOverflow(67_108_864)
-        guard !doubled.overflow,
-              !withHeadroom.overflow,
-              available >= withHeadroom.partialValue else {
-            throw PortableArchiveSelectionError.insufficientStorage
-        }
-
-        try fileManager.createDirectory(
-            at: root,
-            withIntermediateDirectories: true,
-            attributes: [.protectionKey: FileProtectionType.complete]
-        )
-        var protectedRoot = root
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = true
-        try protectedRoot.setResourceValues(values)
-
-        let destination = root.appendingPathComponent("Selected.khvault")
-        let accessed = sourceURL.startAccessingSecurityScopedResource()
-        defer {
-            if accessed { sourceURL.stopAccessingSecurityScopedResource() }
-        }
-        do {
-            try fileManager.copyItem(at: sourceURL, to: destination)
-        } catch {
-            try? fileManager.removeItem(at: root)
-            throw error
-        }
-        return SelectedPortableArchive(
-            url: destination,
-            displayName: sourceURL.lastPathComponent,
-            byteCount: UInt64(sourceSize)
-        )
-    }
-
-    private static func discardTemporaryArchive(_ archive: SelectedPortableArchive) {
-        try? FileManager.default.removeItem(at: archive.url.deletingLastPathComponent())
+    private static func discardTemporaryArchive(_ archive: StagedVaultFile) {
+        archive.discard()
     }
 
     private static func sanitizeRecoveryCode(_ value: String) -> String {
@@ -485,17 +441,6 @@ private enum ImportField: Hashable {
 private enum ImportSection: Hashable {
     case acknowledgement
     case install
-}
-
-private struct SelectedPortableArchive {
-    let url: URL
-    let displayName: String
-    let byteCount: UInt64
-}
-
-private enum PortableArchiveSelectionError: Error {
-    case unsupportedFile
-    case insufficientStorage
 }
 
 private struct EncryptedVaultDocumentImporter: UIViewControllerRepresentable {

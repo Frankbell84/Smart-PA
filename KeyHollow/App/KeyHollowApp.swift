@@ -1,10 +1,12 @@
 import Foundation
 import SwiftUI
+import KeyHollowFileRecognitionAddOn
 
 @main
 struct KeyHollowApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var session = VaultSession()
+    private let vaultFileIngress = KHVaultFileIngress()
 
     private var isHostedUnitTest: Bool {
         NSClassFromString("XCTestCase") != nil
@@ -20,7 +22,12 @@ struct KeyHollowApp: App {
                 Color.clear
             } else {
                 ZStack {
-                    RootView(makeService: { try VaultUnlockService() })
+                    RootView(
+                        makeService: { try VaultUnlockService() },
+                        stageIncomingVaultFile: { url in
+                            try vaultFileIngress.stageIfRecognized(url)
+                        }
+                    )
                         .environmentObject(session)
                         .privacySensitive()
 
