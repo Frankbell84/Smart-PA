@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Prepare an isolated Build 26 containing only the fully validated post-import navigation correction; keep PR #33 draft and production untouched.
+Prepare and dispatch signed internal TestFlight Build 26 from the clean validated delivery source; keep PR #33 draft and production untouched.
 
 ## Completed work
 
@@ -58,6 +58,8 @@ Prepare an isolated Build 26 containing only the fully validated post-import nav
 - Canceling the primary-vault review or Files picker now returns to the unified grid instead of revealing the stored-file manager as if it were staging.
 - Intentionally opening `Vault Files` still presents persisted encrypted records for export and deletion.
 - Added a regression decision test that distinguishes successful primary-vault imports from zero-import and intentional manager flows.
+- Transferred only validated source commit `ecc02c0` into the isolated delivery branch at `04c993c`.
+- Confirmed exact delivery parity for the corrected UI, regression test, and behavior documentation against `ecc02c0`.
 
 ## Test and build status
 
@@ -91,15 +93,17 @@ Prepare an isolated Build 26 containing only the fully validated post-import nav
 - Build 25 post-import flow clarity: failed; the completed import remains in the file-manager sheet and looks like uncleared staging.
 - Corrected post-import architecture, release-hygiene, build-number guard, and diff gates: passed locally on the feature branch.
 - Corrected post-import macOS simulator build, full regression/security suite, and Swift CodeQL: passed on PR #33 at source commit `ecc02c0`.
+- Delivery post-import architecture boundary, release-hygiene, build-number guard, and diff gates: passed at `04c993c`.
+- Delivery source parity for the corrected UI, regression test, and behavior documentation: passed against `ecc02c0`.
 - Production branch and App Store review: untouched.
 
 ## Blockers
 
-- No implementation or source-validation blocker. Isolated delivery transfer, signed Build 26 upload, Apple processing, and physical-device confirmation remain.
+- No implementation, transfer, or source-validation blocker. Build-number preparation, signed Build 26 upload, Apple processing, and physical-device confirmation remain.
 
 ## Next action
 
-Transfer only source commit `ecc02c0`, verify delivery parity and local gates, increment the delivery build to 26, then run the signed TestFlight upload gate.
+Increment both app targets to Build 26, re-run the delivery safeguards, then dispatch the signed TestFlight upload workflow.
 
 ## Frank's decision required
 
