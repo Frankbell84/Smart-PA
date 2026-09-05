@@ -72,7 +72,8 @@ analytics, advertising, authentication, or purchase SDKs.
 - Keep SwiftUI views and navigation in the app target.
 - Select the concrete vault service at the app composition boundary and inject
   its factory into the root view.
-- Status: implemented on the isolated branch and awaiting Mac validation.
+- Status: fully validated, merged as part of modular baseline `1913d43`, and
+  proven on a physical iPhone in Build 13.
 
 ## Gate after every milestone
 
@@ -91,4 +92,9 @@ analytics, advertising, authentication, or purchase SDKs.
 - Repeat the physical-iPhone test matrix.
 - Merge only after the owner confirms the modular build behaves like the
   validated Build 12 baseline.
+
+Status: complete. The modular baseline is tagged
+`checkpoint/modular-baseline-build-13`. Later File Recognition, thumbnail, and
+General File Support work preserved these compiled boundaries and passed the
+same gates.
 

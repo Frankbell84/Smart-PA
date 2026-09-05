@@ -23,7 +23,7 @@ public actor VaultGeneralFileStore {
         "khvault", "msi", "pkg", "sh"
     ]
 
-    private let fileManager = FileManager.default
+    private let fileManager: FileManager
     private let root: URL
     private let temporaryRoot: URL
     private let vaultID: UUID
@@ -36,12 +36,12 @@ public actor VaultGeneralFileStore {
         temporaryRoot: URL? = nil
     ) throws {
         guard access.vaultID == vaultID else { throw StoreError.accessMismatch }
-        self.vaultID = vaultID
-        self.access = access
-        self.temporaryRoot = temporaryRoot ?? fileManager.temporaryDirectory
+        let fileManager = FileManager.default
+        let resolvedTemporaryRoot = temporaryRoot ?? fileManager.temporaryDirectory
+        let resolvedRoot: URL
 
         if let storageRoot {
-            root = storageRoot
+            resolvedRoot = storageRoot
         } else {
             let appSupport = try fileManager.url(
                 for: .applicationSupportDirectory,
@@ -49,14 +49,20 @@ public actor VaultGeneralFileStore {
                 appropriateFor: nil,
                 create: true
             )
-            root = appSupport
+            resolvedRoot = appSupport
                 .appendingPathComponent("KeyHollow/GeneralFileData", isDirectory: true)
                 .appendingPathComponent(vaultID.uuidString.lowercased(), isDirectory: true)
         }
 
-        try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
-        try Self.protectAndExclude(root, fileManager: fileManager)
-        try Self.purgeStaleTemporaryData(at: self.temporaryRoot, fileManager: fileManager)
+        self.fileManager = fileManager
+        self.root = resolvedRoot
+        self.temporaryRoot = resolvedTemporaryRoot
+        self.vaultID = vaultID
+        self.access = access
+
+        try fileManager.createDirectory(at: resolvedRoot, withIntermediateDirectories: true)
+        try Self.protectAndExclude(resolvedRoot, fileManager: fileManager)
+        try Self.purgeStaleTemporaryData(at: resolvedTemporaryRoot, fileManager: fileManager)
     }
 
     public func loadManifest() throws -> VaultGeneralFileManifest {
