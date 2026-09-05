@@ -6,7 +6,7 @@ Source review: Draft PR #33
 
 ## Current task
 
-Run the signed isolated TestFlight Build 25 delivery after validating the unified mixed-content grid and preserving production.
+Wait for Apple to process isolated internal TestFlight Build 25, then validate the unified mixed-content grid on a physical iPhone.
 
 ## Completed work
 
@@ -44,6 +44,8 @@ Run the signed isolated TestFlight Build 25 delivery after validating the unifie
 - Transferred only the validated unified-grid source and documentation into this isolated delivery branch at `a12c4b7`.
 - Confirmed exact parity for the three transferred source/documentation files against validated source commit `7b41ffc`.
 - Advanced both the KeyHollow app and thumbnail extension to Build 25.
+- Ran signed TestFlight workflow #35 from delivery commit `a4c0faf`.
+- Workflow #35 passed build-number verification, production identity, release hygiene, signed archive/module hygiene, IPA export, and Apple upload acceptance.
 - Replaced the oversized primary-screen file panel with compact file tiles inside the same three-column grid used by photo thumbnails.
 - File tiles retain file-type identity, display name, size, accessibility labels, and navigation into the dedicated file manager.
 - Photo-selection mode visibly disables file tiles because its save/delete actions remain intentionally photo-specific.
@@ -65,6 +67,8 @@ Run the signed isolated TestFlight Build 25 delivery after validating the unifie
 - Delivery release-hygiene check: passed after the unified-grid transfer.
 - Delivery TestFlight build-number guard self-test: passed after the unified-grid transfer.
 - Delivery source parity for the transferred UI files and behavior record: passed against `7b41ffc`.
+- Signed Build 25 archive, embedded-extension/module-hygiene verification, IPA export, and Apple upload: passed in workflow #35.
+- Internal TestFlight Build 25: upload accepted by Apple; processing and automatic internal-group availability await confirmation.
 - Feature-branch architecture gate: passed at `6b39328`.
 - Feature-branch iOS simulator build and full regression/security suite: passed at `6b39328`.
 - Feature-branch Swift CodeQL analysis: passed at `6b39328`.
@@ -79,11 +83,11 @@ Run the signed isolated TestFlight Build 25 delivery after validating the unifie
 
 ## Blockers
 
-- No implementation or automated-validation blocker. Signed Build 25 delivery and physical-device visual confirmation remain.
+- No implementation, automated-validation, signing, or upload blocker. Apple processing and physical-device visual confirmation remain.
 
 ## Next action
 
-Commit and push the Build 25 delivery checkpoint, start the signed TestFlight workflow, verify Apple accepts the upload, and wait for physical-device visual confirmation. Keep PR #33 draft and production untouched.
+After Build 25 appears in TestFlight, install it and verify that photos and general files use aligned square tiles in one grid, file labels remain readable, tapping a file opens Vault Files, and photo opening/selection still works normally. Keep PR #33 draft and production untouched until that device validation passes.
 
 ## Frank's decision required
 
