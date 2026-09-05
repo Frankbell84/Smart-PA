@@ -6,7 +6,7 @@ Pull request: Draft PR #33
 
 ## Current task
 
-Deliver the fully validated mixed-content portable-vault repair and smoother LowKey confirmation flow as isolated internal TestFlight Build 29; preserve backward compatibility with existing photo-only `.khvault` archives and keep production untouched.
+Validate internal TestFlight Build 29 on a physical iPhone for mixed photo/file portable-vault export and restore plus the smoother LowKey confirmation flow; preserve backward compatibility with existing photo-only `.khvault` archives and keep production untouched.
 
 ## Completed work
 
@@ -62,6 +62,7 @@ Deliver the fully validated mixed-content portable-vault repair and smoother Low
 - The import verification summary now reports both photo and file counts.
 - Matching, policy-compliant confirmation digits now reveal an inline Continue action directly beneath the second LowKey field while preserving the keyboard toolbar action.
 - PR #33 completed the corrected macOS simulator build, full mixed photo/file regression and security suite, architecture enforcement, release-hygiene gate, and Swift CodeQL analysis at `2ac4d75`.
+- The exact validated implementation and tests were transferred to isolated delivery Build 29; signed workflow #39 passed and Apple assigned Build 29 to `KeyHollow Internal` with status `Ready to Submit`.
 
 ## Test and build status
 
@@ -106,17 +107,18 @@ Deliver the fully validated mixed-content portable-vault repair and smoother Low
 - Mixed-content repair whitespace/diff validation: passed locally.
 - Mixed-content macOS simulator compilation and full regression/security suite: passed on PR #33 at `2ac4d75`.
 - Mixed-content Swift CodeQL security analysis: passed on PR #33 at `2ac4d75`.
+- Signed internal TestFlight Build 29 delivery, Apple processing, and `KeyHollow Internal` assignment: passed.
 - Corrected macOS simulator build and full regression/security suite: passed on PR #33 at `84262d0`.
 - Corrected Swift CodeQL security analysis: passed on PR #33 at `84262d0`.
 - Production and App Store review: untouched.
 
 ## Blockers
 
-- No implementation blocker. The remaining gate is signed Build 29 delivery followed by focused physical-iPhone validation.
+- No implementation, validation, signing, upload, processing, or TestFlight-assignment blocker. Only focused physical-iPhone confirmation remains.
 
 ## Next action
 
-Transfer the exact validated source to the isolated delivery branch, advance the app and thumbnail extension together to Build 29, run delivery hygiene gates, upload to the existing internal TestFlight group, and wait for focused physical testing.
+Install Build 29 and validate one new mixed photo/file archive end to end, one legacy photo-only archive, and the inline Continue action after matching LowKey confirmation.
 
 ## Frank's decision required
 
