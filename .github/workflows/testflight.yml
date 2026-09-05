@@ -17,7 +17,7 @@ jobs:
     # branch after its review gates pass. No other feature branch can upload.
     if: >-
       github.ref == 'refs/heads/main' ||
-      github.ref == 'refs/heads/delivery/khvault-thumbnail-extension'
+      github.ref == 'refs/heads/delivery/general-file-support'
     runs-on: macos-26
     timeout-minutes: 30
     env:
